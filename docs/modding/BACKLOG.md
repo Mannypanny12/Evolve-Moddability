@@ -1,12 +1,10 @@
 # Modding Backlog
 
-This file is the temporary issue backlog while GitHub Issues are disabled for the fork.
-
-When Issues are enabled, migrate these entries into individual GitHub issues and keep this document as the high-level index.
+GitHub Issues are now enabled. Issues #2 through #9 are the canonical M0/M1 work items; this file remains a readable roadmap index.
 
 ## M0: Safety and reproducibility
 
-### [ ] M0A - Establish reproducible upstream baseline
+### M0A - Establish reproducible upstream baseline ([#2](../../issues/2))
 
 **Goal:** Establish a reproducible, documented baseline before any runtime refactor.
 
@@ -24,7 +22,7 @@ When Issues are enabled, migrate these entries into individual GitHub issues and
 - No generated files that upstream asks contributors not to commit are introduced accidentally.
 - Environment/version assumptions are documented.
 
-### [ ] M0B - Add characterization test harness
+### M0B - Add characterization test harness ([#3](../../issues/3))
 
 **Goal:** Create the minimum test infrastructure needed to refactor Evolve safely.
 
@@ -42,7 +40,7 @@ When Issues are enabled, migrate these entries into individual GitHub issues and
 - Failure output clearly identifies changed state.
 - No intentional gameplay changes.
 
-### [ ] M0C - Create representative save/state fixtures
+### M0C - Create representative save/state fixtures ([#4](../../issues/4))
 
 **Minimum fixture coverage**
 - fresh evolution;
@@ -63,7 +61,7 @@ When Issues are enabled, migrate these entries into individual GitHub issues and
 - Expected high-level invariants are documented.
 - Fixture format minimizes noisy diffs where practical.
 
-### [ ] M0D - Add deterministic simulation regression tests
+### M0D - Add deterministic simulation regression tests ([#5](../../issues/5))
 
 **Goal:** Prove that refactors preserve simulation behavior over time.
 
@@ -85,7 +83,7 @@ When Issues are enabled, migrate these entries into individual GitHub issues and
 
 ## M1: Registry foundation
 
-### [ ] M1A - Implement generic content registry core
+### M1A - Implement generic content registry core ([#6](../../issues/6))
 
 **Required capabilities**
 - register an entry;
@@ -102,7 +100,7 @@ When Issues are enabled, migrate these entries into individual GitHub issues and
 - Silent duplicate replacement is impossible.
 - No gameplay change.
 
-### [ ] M1B - Define namespace and legacy-ID rules
+### M1B - Define namespace and legacy-ID rules ([#7](../../issues/7))
 
 **Rules**
 - `evolve:*` is reserved for vanilla.
@@ -118,7 +116,7 @@ When Issues are enabled, migrate these entries into individual GitHub issues and
 - Legacy mapping is tested.
 - Conflict errors identify owner and ID.
 
-### [ ] M1C - Register first vanilla content through legacy adapters
+### M1C - Register first vanilla content through legacy adapters ([#8](../../issues/8))
 
 **Approach**
 - Keep existing vanilla objects/tables.
@@ -134,7 +132,7 @@ When Issues are enabled, migrate these entries into individual GitHub issues and
 - Regression tests show equivalent behavior.
 - No mass JSON conversion.
 
-### [ ] M1D - Add developer registry inspector
+### M1D - Add developer registry inspector ([#9](../../issues/9))
 
 **Show**
 - registry family;
