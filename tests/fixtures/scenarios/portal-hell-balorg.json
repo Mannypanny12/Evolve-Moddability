@@ -1,0 +1,151 @@
+{
+  "schema": 1,
+  "source": {
+    "commit": "3436358dcd03d9f9e071d51ea071e0a78c0322e4",
+    "version": "1.4.10"
+  },
+  "origin": "synthetic-overlay",
+  "id": "portal-hell-balorg",
+  "purpose": "Portal/Hell state using a demonic Balorg profile, with fortress combat infrastructure and late-Hell technology markers.",
+  "coverage": [
+    "portal",
+    "hell",
+    "balorg",
+    "combat",
+    "race-profile"
+  ],
+  "patch": {
+    "race": {
+      "species": "balorg",
+      "universe": "evil",
+      "seeded": true,
+      "immoral": 1,
+      "evil": 1,
+      "soul_eater": 1,
+      "slaver": 1
+    },
+    "tech": {
+      "space": 6,
+      "alpha": 4,
+      "hell": 1,
+      "hell_ruins": 4,
+      "hell_spire": 5,
+      "high_tech": 12,
+      "military": 6
+    },
+    "city": {
+      "calendar": {
+        "day": 120,
+        "year": 2100,
+        "weather": 2,
+        "temp": 1,
+        "moon": 0,
+        "wind": 0,
+        "orbit": 365
+      },
+      "biome": "hellscape",
+      "ptrait": [
+        "rage"
+      ],
+      "geology": {
+        "Copper": -0.02,
+        "Iron": 0.14
+      }
+    },
+    "portal": {
+      "fortress": {
+        "count": 1,
+        "garrison": 48,
+        "patrols": 3,
+        "patrol_size": 6
+      },
+      "turret": {
+        "count": 16,
+        "on": 14
+      },
+      "war_droid": {
+        "count": 10,
+        "on": 9
+      },
+      "mechbay": {
+        "count": 4,
+        "on": 4
+      },
+      "attractor": {
+        "count": 8,
+        "on": 8
+      }
+    },
+    "resource": {
+      "Money": {
+        "amount": 18000000,
+        "max": 30000000,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Soul_Gem": {
+        "amount": 340,
+        "max": 700,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Infernite": {
+        "amount": 9500,
+        "max": 18000,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "balorg": {
+        "amount": 880,
+        "max": 940,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      }
+    },
+    "civic": {
+      "d_job": "unemployed",
+      "unemployed": {
+        "workers": 14
+      },
+      "garrison": {
+        "raid": 45,
+        "workers": 70,
+        "wounded": 8
+      }
+    }
+  },
+  "invariants": [
+    {
+      "path": "race.species",
+      "equals": "balorg"
+    },
+    {
+      "path": "race.evil",
+      "equals": 1
+    },
+    {
+      "path": "tech.hell",
+      "equals": 1
+    },
+    {
+      "path": "portal.fortress.garrison",
+      "equals": 48
+    },
+    {
+      "path": "portal.mechbay.count",
+      "equals": 4
+    }
+  ]
+}
