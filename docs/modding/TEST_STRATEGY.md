@@ -193,6 +193,8 @@ Tests must distinguish:
 - seasonal/calendar environment;
 - worker scheduling time.
 
+Worker cadence defaults used by the deterministic oracle must come from a frozen, validated runtime contract rather than duplicated test-local constants. Where cadence spans multiple worker messages, tests should protect phase continuity across calls as well as single-call totals.
+
 Do not make deterministic simulation depend on the real date or system clock.
 
 ## Floating-point policy
