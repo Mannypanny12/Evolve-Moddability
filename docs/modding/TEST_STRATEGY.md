@@ -225,9 +225,9 @@ Measure by directory/module:
 - `Date.now/new Date` in simulation;
 - `Math.random/Math.rand` in simulation.
 
-New engine directories have a budget of zero.
+`src/engine/**` has a hard budget of zero. Browser/platform adapters belong outside that protected engine directory.
 
-Legacy budgets may decrease but never increase without explicit architectural approval.
+Legacy budgets are recorded per top-level legacy module. They may decrease but never increase. When a measured value decreases, the stored baseline must be lowered in the same change so the old headroom cannot be reused later.
 
 ### Dependency rules
 
@@ -238,7 +238,7 @@ Fail CI for:
 - domain/simulation importing browser adapters;
 - forbidden layer cycles.
 
-Track the size of the legacy strongly connected component until it is eliminated.
+Track both the size and membership of legacy strongly connected components until they are eliminated. A module that becomes acyclic is removed from the allowed legacy-cycle set and may not silently rejoin later.
 
 ### Dead-path verification
 
@@ -263,7 +263,8 @@ Every behavior-moving PR should state:
 - build;
 - harness/unit tests;
 - characterization tests;
-- minimal real-browser bootstrap/UI smoke with a proven startup-exception negative control.
+- minimal real-browser bootstrap/UI smoke with a proven startup-exception negative control;
+- M0E5 architecture fitness gate with zero-budget `src/engine/**` rules and downward-only legacy ratchets.
 
 ### M2-M5
 
@@ -271,7 +272,7 @@ Add:
 
 - state/command/calculation tests;
 - differential simulation;
-- architecture budgets.
+- state-ownership and layer rules layered onto the existing M0E5 architecture budgets.
 
 ### M6-M9
 
