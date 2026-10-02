@@ -96,15 +96,10 @@
       }
     },
     "support": {
-      "tau_home": [
-        "tau_home:orbital_station",
-        "tau_home:refueling_station"
-      ],
-      "tau_red": [
-        "tau_red:orbital_platform"
-      ],
+      "tau_home": [],
+      "tau_red": [],
       "tau_roid": [
-        "tau_roid:patrol_ship"
+        "tau_roid:mining_ship"
       ]
     },
     "resource": {
@@ -164,8 +159,8 @@
       "equals": 7
     },
     {
-      "path": "support.tau_home",
-      "includes": "tau_home:orbital_station"
+      "path": "support.tau_roid",
+      "includes": "tau_roid:mining_ship"
     }
   ]
 }
