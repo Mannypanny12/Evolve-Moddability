@@ -59,9 +59,11 @@ Each file under `tests/fixtures/scenarios/` records:
 }
 ```
 
-The materializer deep-merges `patch` onto a fresh clone of the canonical legacy base.
+The persisted-state materializer, `materializePersistedFixture()`, deep-merges `patch` onto a fresh clone of the canonical legacy base.
 
 Arrays and primitive values replace the base value. Plain objects merge recursively.
+
+The result is a **persisted fixture input**, not the live simulation object. M0E3 installs a separate structured clone into the legacy runtime before hydration, so startup or simulation mutations cannot leak back into the fixture object.
 
 ## Why synthetic fixtures
 
@@ -131,6 +133,25 @@ Examples:
 - reset-ready fixtures must contain their reset-specific landmarks.
 
 M0D can add more exact loop-output expectations without changing the fixture format.
+
+Generic load/startup defaults do not belong in scenario patches merely to make the real loop run. For example, default government tax state and missing garrison bookkeeping are supplied by the real legacy hydration path. Scenario-specific gameplay choices such as worker assignments, active structures, power/support priority, ARPA progress, Hell observation history, spire/mechbay state, and Truepath rival governments remain persisted fixture intent.
+
+## Fixture lifecycle
+
+M0E3 formalizes the lifecycle as:
+
+```text
+canonical base
+   -> persisted scenario overlay
+   -> materialized persisted fixture
+   -> cloned live legacy state
+   -> legacy-compatible hydration
+   -> runtime simulation state
+```
+
+The persisted fixture object is immutable input after materialization. The legacy adapter clones it at installation, performs the small generic government/garrison setup that normal startup expects, and then imports Evolve's real `main.js` startup so the game itself reconstructs runtime/transient state.
+
+Hydration must not invent scenario-specific gameplay state to conceal an incomplete fixture.
 
 ## Normalization policy
 
