@@ -1,0 +1,130 @@
+{
+  "schema": 1,
+  "source": {
+    "commit": "3436358dcd03d9f9e071d51ea071e0a78c0322e4",
+    "version": "1.4.10"
+  },
+  "origin": "synthetic-overlay",
+  "id": "reset-ready-mad",
+  "purpose": "Civilization poised for a Mutual Assured Destruction reset, including the MAD civic state and enough mature civilization context for reset calculations.",
+  "coverage": [
+    "reset-ready",
+    "mad",
+    "human",
+    "prestige"
+  ],
+  "patch": {
+    "race": {
+      "species": "human",
+      "universe": "standard",
+      "seeded": false,
+      "creative": 1,
+      "diverse": 1
+    },
+    "tech": {
+      "primitive": 5,
+      "military": 5,
+      "mass": 1,
+      "high_tech": 4
+    },
+    "city": {
+      "calendar": {
+        "day": 120,
+        "year": 720,
+        "weather": 2,
+        "temp": 1,
+        "moon": 0,
+        "wind": 0,
+        "orbit": 365
+      },
+      "biome": "grassland",
+      "ptrait": [],
+      "geology": {
+        "Copper": 0.08,
+        "Iron": 0.06
+      }
+    },
+    "civic": {
+      "mad": {
+        "armed": false
+      },
+      "govern": {
+        "type": "democracy",
+        "rev": 0,
+        "fr": 0
+      },
+      "garrison": {
+        "raid": 25,
+        "workers": 30,
+        "wounded": 0
+      }
+    },
+    "resource": {
+      "Money": {
+        "amount": 250000,
+        "max": 400000,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Knowledge": {
+        "amount": 180000,
+        "max": 250000,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "human": {
+        "amount": 240,
+        "max": 280,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      }
+    },
+    "prestige": {
+      "Plasmid": {
+        "count": 20
+      },
+      "AntiPlasmid": {
+        "count": 0
+      },
+      "Phage": {
+        "count": 0
+      }
+    },
+    "stats": {
+      "mad": 2,
+      "bioseed": 0,
+      "blackhole": 0,
+      "ascend": 0,
+      "plasmid": 140,
+      "achieve": {},
+      "feat": {}
+    }
+  },
+  "invariants": [
+    {
+      "path": "civic.mad.armed",
+      "equals": false
+    },
+    {
+      "path": "tech.mass",
+      "equals": 1
+    },
+    {
+      "path": "stats.mad",
+      "min": 2
+    },
+    {
+      "path": "race.species",
+      "equals": "human"
+    }
+  ]
+}
