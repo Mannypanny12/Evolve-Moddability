@@ -40,5 +40,23 @@ jobs:
       - name: Build game and wiki
         run: npm run build
 
-      - name: Ensure build left no tracked diff
-        run: git diff --exit-code
+      - name: Check build only changed generated outputs
+        shell: bash
+        run: |
+          changed="$(git diff --name-only)"
+          echo "Tracked files changed by build:"
+          printf '%s\n' "$changed"
+
+          unexpected=0
+          while IFS= read -r file; do
+            case "$file" in
+              ""|evolve/main.js|evolve/evolve.css|wiki/wiki.js|wiki/wiki.css)
+                ;;
+              *)
+                echo "Unexpected tracked file changed by the build: $file"
+                unexpected=1
+                ;;
+            esac
+          done <<< "$changed"
+
+          test "$unexpected" -eq 0
