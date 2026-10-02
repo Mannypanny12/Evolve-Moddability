@@ -219,14 +219,17 @@ function engineSourceViolations(source, filename, engineRoot){
         ['browser window', /\bwindow\b/],
         ['DOM document', /\bdocument\b/],
         ['browser navigator', /\bnavigator\b/],
+        ['platform globalThis', /\bglobalThis\b/],
         ['jQuery', /\bjQuery\b|\$\s*\(/],
         ['Vue', /\bVue\b/],
         ['localStorage', /\blocalStorage\b/],
         ['legacy save storage', /\bsave\s*\.\s*(?:getItem|setItem|removeItem|clear)\s*\(/],
         ['wall clock Date.now', /\bDate\s*\.\s*now\s*\(/],
         ['wall clock new Date', /\bnew\s+Date\s*\(/],
+        ['wall clock Date()', /\bDate\s*\(/],
         ['wall clock performance.now', /\bperformance\s*\.\s*now\s*\(/],
         ['direct random source', /\bMath\s*\.\s*(?:random|rand)\s*\(/],
+        ['direct crypto random source', /\bcrypto\s*\.\s*getRandomValues\s*\(/],
     ];
 
     for (const [label, pattern] of rules){
