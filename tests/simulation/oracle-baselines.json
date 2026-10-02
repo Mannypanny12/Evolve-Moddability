@@ -9,8 +9,8 @@
     "wallClock": "2026-01-01T12:00:00.000Z",
     "randomSeed": 1
   },
-  "observationSchema": 2,
-  "observationChange": "M0E1 expands authoritative state coverage and explicitly tags verified legacy resource-value NaN.",
+  "observationSchema": 3,
+  "observationChange": "M0E1 corrective audit observes gameplay-active simulation challenge state and uses an explicit fail-closed top-level settings policy, including power and queue behavior settings.",
   "scenarios": {
     "fresh-evolution-p20": {
       "fixture": "fresh-evolution",
