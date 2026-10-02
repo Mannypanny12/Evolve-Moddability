@@ -75,9 +75,18 @@ function normalizeResources(resources){
         const entry = {};
         for (const field of fields){
             if (Object.prototype.hasOwnProperty.call(source, field)){
-                entry[field] = normalizeValue(source[field], {
-                    parts: ['resource', id, field]
-                });
+                if (field === 'value' && Number.isNaN(source[field])){
+                    entry[field] = canonicalize(
+                        source[field],
+                        ['resource', id, field],
+                        { allowNonFinite: true }
+                    );
+                }
+                else {
+                    entry[field] = normalizeValue(source[field], {
+                        parts: ['resource', id, field]
+                    });
+                }
             }
         }
 
