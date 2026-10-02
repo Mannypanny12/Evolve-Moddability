@@ -99,9 +99,9 @@ These are intentionally small but real seams.
 
 ## Determinism and isolation
 
-Each test installs a fresh state object.
+Each test installs a fresh state object and clears legacy transient caches used by production, power/support calculations, callbacks, acceleration tracking, intervals, and worker state.
 
-The bundle sees an empty in-memory storage instance during module initialization, so the test process never reads or writes the user's real browser save.
+The bundle sees an empty in-memory storage instance during module initialization, and that storage is cleared between tests, so the test process never reads or writes the user's real browser save.
 
 The harness freezes wall-clock time and replaces unseeded `Math.random` with deterministic test-controlled implementations. Tests can provide either a seed or an exact random sequence.
 

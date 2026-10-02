@@ -1,4 +1,20 @@
-import { global, setGlobal, tmp_vars } from '../../src/vars.js';
+import {
+    global,
+    setGlobal,
+    tmp_vars,
+    breakdown,
+    power_generated,
+    p_on,
+    support_on,
+    int_on,
+    gal_on,
+    spire_on,
+    atrack,
+    callback_queue,
+    active_rituals,
+    webWorker,
+    intervals
+} from '../../src/vars.js';
 import '../../src/locale.js';
 import '../../src/achieve.js';
 import { modRes, loopTimers } from '../../src/functions.js';
@@ -44,8 +60,30 @@ function clearObject(object){
 
 function installLegacyState(state){
     setGlobal(state);
+
     clearObject(tmp_vars);
     tmp_vars.resource = {};
+
+    clearObject(breakdown);
+    breakdown.c = {};
+    breakdown.p = {};
+
+    [power_generated, p_on, support_on, int_on, gal_on, spire_on, active_rituals, intervals]
+        .forEach(clearObject);
+
+    callback_queue.clear();
+    atrack.t = 0;
+
+    webWorker.w = false;
+    webWorker.s = false;
+    webWorker.mt = 250;
+    webWorker.midRatio = 4;
+    webWorker.longRatio = 20;
+
+    const runtime = globalThis.__EVOLVE_TEST_RUNTIME__;
+    if (runtime && runtime.storage){
+        runtime.storage.clear();
+    }
 }
 
 function legacyState(){

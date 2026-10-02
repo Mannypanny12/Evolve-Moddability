@@ -167,6 +167,7 @@ runtime.clock.set(frozenNow);
 runtime.rng.seed(1);
 
 const storage = new MemoryStorage();
+runtime.storage = storage;
 const documentStub = {
     body: makeElement(),
     documentElement: makeElement(),
