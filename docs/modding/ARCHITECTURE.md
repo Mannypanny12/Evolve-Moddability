@@ -1,204 +1,475 @@
-# Modding Architecture
+# Target Engine Architecture
 
-## Architectural principles
+## Architectural intent
 
-1. **Wrap first, migrate later.** Existing Evolve logic is adapted behind stable interfaces before it is rewritten.
-2. **Vanilla is the compatibility oracle.** Refactors must preserve observable behavior.
-3. **No public dependency on `global`.** Mods use stable services and registries.
-4. **Namespaced IDs from the beginning.** Public IDs use forms such as `evolve:food` and `example:mana`.
-5. **Declarative where practical, code where necessary.** Avoid inventing a pseudo-language capable of expressing every mechanic.
-6. **Mod-owned state is isolated.** A mod writes only to its own save namespace through the storage API.
-7. **Debuggability is a feature.** Registries, modifiers, dependencies, and unlocks should be inspectable.
-8. **Upstream mergeability matters.** Avoid unnecessary edits to unrelated vanilla code.
+The project is a full refactor, not a permanent compatibility shell around legacy Evolve.
 
-## Current architecture observations
-
-Evolve already contains several useful registry-like structures:
-- races and genus definitions;
-- traits;
-- events;
-- achievements;
-- resource metadata tables;
-- technology and action definitions.
-
-However, those definitions often contain executable functions which directly read and mutate `global.*`, and production/jobs/UI frequently reference specific vanilla IDs directly.
-
-The main extraction problem is therefore not identifying content. It is replacing cross-system assumptions with stable services.
-
-## Target layers
+The migration strategy is **strangler-style**:
 
 ```text
-+------------------------------------------------------+
-| Authoring / tooling                                  |
-| validator | package builder | graphical editor       |
-+--------------------------+---------------------------+
-                           |
-                           v
-+------------------------------------------------------+
-| Mod package / loader                                 |
-| manifest | dependencies | load order | profiles      |
-+--------------------------+---------------------------+
-                           |
-                           v
-+------------------------------------------------------+
-| Public Mod API                                       |
-| registries | hooks | modifiers | effects | UI | save |
-+--------------------------+---------------------------+
-                           |
-                           v
-+------------------------------------------------------+
-| Engine services                                      |
-| state | resources | actions | tick | RNG | saves     |
-| production | combat | prestige | statistics          |
-+--------------------------+---------------------------+
-                           |
-             +-------------+-------------+
-             |                           |
-             v                           v
-       Vanilla content                Mod content
+legacy implementation
+        |
+temporary adapter
+        |
+new engine capability
+        |
+vanilla migrated to new capability
+        |
+adapter deleted
+        |
+legacy implementation deleted
 ```
 
-## Registry layer
+Adapters are acceptable only while a subsystem is being migrated.
 
-The first stable abstraction is a registry service. It owns public content identities and maps them to current vanilla implementations.
+## Dependency rule
 
-Initial registry families:
-- resources;
-- achievements;
-- races;
-- traits;
-- events;
-- actions;
-- technologies;
-- buildings/structures;
-- jobs.
+The intended dependency direction is:
 
-A registry entry must have a stable namespaced ID. During migration, a registry may contain a legacy ID mapping.
+```text
+Platform adapters
+      |
+Application / UI
+      |
+Public Mod API        first-party Evolve content       external content
+          \                 |                           /
+           \                v                          /
+            +---------- Engine contracts -------------+
+                         |
+                         v
+                  Engine implementation
+                         |
+                         v
+                  State / persistence
+```
+
+More concretely:
+
+- engine core may not import vanilla content;
+- engine core may not access DOM/jQuery/Vue;
+- engine simulation may not access localStorage directly;
+- engine simulation may not read wall-clock time or random sources directly;
+- content definitions may describe rules but may not mutate state directly;
+- UI issues commands and reads selectors/view models;
+- persistence serializes explicit state, not arbitrary live objects.
+
+## Engine kernel
+
+The kernel owns concepts that are independent of Evolve-specific content:
+
+- namespaced IDs;
+- registries;
+- package/content ownership;
+- runtime environment ports;
+- state store;
+- commands;
+- conditions;
+- effects;
+- costs;
+- modifiers/calculations;
+- domain events;
+- simulation systems;
+- serialization/migrations;
+- diagnostics.
+
+## Identity
+
+All engine-visible content uses stable namespaced IDs.
+
+Examples:
+
+```text
+evolve:resource/food
+evolve:structure/farm
+evolve:technology/agriculture
+warcraft:resource/gold
+warcraft:unit/footman
+```
+
+Legacy IDs such as `Food`, `farm`, or `primitive` are migration aliases only.
+
+Identity must not depend on localized names, DOM IDs, object keys, or file location.
+
+## Definitions versus state
+
+A central design rule is that content definition and save state are different things.
 
 Example:
 
-```js
-registry.resources.register({
-  id: "evolve:food",
-  legacyId: "Food",
-  source: "evolve"
-});
+```text
+StructureDefinition
+- id
+- costs
+- requirements
+- effects
+- tags
+- presentation metadata
+
+StructureState
+- count
+- active
+- powered
+- local runtime values
 ```
 
-## State/service boundary
+Definitions are owned by content packages. State belongs to the game session/save.
 
-The public API must not expose the shape of `global`.
+The same split applies to:
 
-Early service implementations may proxy directly to it:
+- resources;
+- jobs;
+- technologies;
+- races/factions;
+- traits;
+- achievements;
+- events;
+- challenges;
+- structures;
+- queues;
+- combat entities.
 
-```js
-game.resources.get("evolve:food")
+## State model
+
+The eventual authoritative state is an explicit `GameState`, not the legacy `global` object.
+
+Candidate domains:
+
+```text
+GameState
+|-- meta
+|   |-- schemaVersion
+|   |-- engineVersion
+|   |-- activeContent
+|   |-- simulationTime
+|   +-- RNG state
+|-- run
+|   |-- world/environment
+|   |-- faction/species
+|   |-- challenges
+|   +-- progression mode
+|-- resources
+|-- population
+|-- jobs
+|-- structures
+|-- technologies
+|-- queues
+|-- power/support
+|-- crafting/trade
+|-- combat
+|-- events
+|-- achievements
+|-- statistics
+|-- prestige
++-- modData
 ```
 
-may initially resolve to:
+User preferences and UI layout belong in a separate settings/application model unless they materially affect simulation.
 
-```js
-global.resource.Food
+Derived caches and transient render state must not be persisted as authoritative data.
+
+## State mutation
+
+State is read through selectors/queries and changed through commands/effects or tightly scoped domain services.
+
+Avoid a generic public `set(path, value)` mechanism.
+
+Example:
+
+```text
+BuildStructureCommand
+      |
+validate conditions
+      |
+quote + pay costs atomically
+      |
+apply structure state change
+      |
+emit StructureBuilt
+      |
+statistics/achievements/UI react
 ```
 
-The indirection is the important part. It allows the internal save/state shape to evolve without breaking mods.
+This replaces today's mixture of action callbacks, payment helpers, direct mutation, redraw calls, and post callbacks.
 
-## Modifier engine
+## Runtime environment ports
 
-The modifier engine is the central mechanism for composable gameplay changes.
+Simulation receives explicit interfaces for environmental dependencies:
 
-Example target families:
-- `production.*`
-- `storage.*`
-- `cost.*`
-- `capacity.*`
-- `population.*`
-- `combat.*`
-- `research.*`
-- `crafting.*`
-- `morale.*`
-- `trade.*`
-- `prestige.*`
+- `Clock`;
+- `Rng`;
+- `Storage`;
+- `Logger`;
+- optional analytics/telemetry;
+- platform file/import services.
 
-Modifiers are ordered, attributable, and explainable. The engine should be able to return both the final value and a breakdown of contributing modifiers.
+Tests provide deterministic implementations.
 
-## Hook/event bus
+Real-world seasonal/calendar content receives explicit calendar/environment context rather than calling `new Date()` throughout domain logic.
 
-The engine should expose lifecycle hooks rather than requiring mods to patch functions.
+## Registries
 
-Initial hook candidates:
-- `game:loaded`
-- `tick:before`, `tick:after`
-- `resource:beforeGain`, `resource:afterGain`
-- `resource:beforeSpend`, `resource:afterSpend`
-- `action:beforeExecute`, `action:afterExecute`
-- `building:constructed`
-- `technology:researched`
-- `job:assigned`
-- `combat:started`, `combat:resolved`
-- `prestige:before`, `prestige:after`
-- `achievement:unlocked`
-- `save:before`, `save:after`
+Registries own definitions and identity, not mutable gameplay state.
 
-Hook naming and mutability rules must be versioned before third-party use.
+Initial registry families:
 
-## Declarative conditions and effects
+- resources;
+- structures;
+- technologies;
+- jobs;
+- factions/races;
+- traits;
+- achievements;
+- events;
+- challenges;
+- actions/commands where content-defined;
+- reset/prestige definitions;
+- navigation/UI descriptors later.
 
-Frequently used behaviors should have data representations, for example:
-- requires technology;
-- requires building;
-- requires race/tag;
-- unlock content;
-- add capacity;
-- modify production;
-- grant resource;
-- grant achievement.
+A registry entry records:
 
-Bespoke mechanics continue to use code through the advanced API.
+- public ID;
+- owner/package;
+- schema version;
+- tags;
+- optional legacy aliases;
+- definition.
 
-## UI boundary
+Silent replacement is forbidden.
 
-The existing Vue/jQuery UI should not be rewritten as a prerequisite.
+## Conditions
 
-Instead, later milestones add explicit extension points:
-- register tab;
-- register panel;
-- register settings section;
-- register popover/details provider;
-- register wiki/encyclopedia section.
+Common predicates become reusable condition definitions:
 
-## Save boundary
+- technology level;
+- structure count;
+- resource threshold;
+- active trait/tag;
+- faction/species;
+- universe/world property;
+- challenge active;
+- achievement/perk state;
+- compound all/any/not.
 
-Engine-owned state and mod-owned state are separate.
+Conditions return structured failure reasons so the UI and developer tools can answer:
 
-Target shape:
+> Why is this locked?
+
+Custom code conditions remain possible for exceptional mechanics.
+
+## Effects
+
+Common mutations become effects:
+
+- add/spend resource;
+- unlock/reveal;
+- grant technology/progression level;
+- construct/remove structure;
+- assign job;
+- apply timed state;
+- add achievement/statistic;
+- enqueue work;
+- apply modifier;
+- emit domain event.
+
+Effects execute through engine mutation authority and are testable independently.
+
+## Cost engine
+
+Costs are first-class quotes rather than arbitrary functions hidden inside UI action objects.
+
+A cost quote should support:
+
+- current cost;
+- scaling/offset;
+- affordability;
+- capacity/max-affordability;
+- atomic payment;
+- special currencies;
+- explanatory breakdown.
+
+Legacy `payCosts()`, `checkCosts()`, and queue cost behavior migrate into this engine.
+
+## Calculation and modifier engine
+
+The calculation engine owns numeric composition.
+
+Targets include:
+
+- production;
+- consumption;
+- storage/capacity;
+- cost;
+- job output;
+- population;
+- combat;
+- research;
+- crafting;
+- trade;
+- morale;
+- power/support;
+- prestige.
+
+Each result can expose a trace:
+
+```text
+base lumber                    10
+evolve:tech/steel_axes       x1.20
+evolve:trait/strong          x1.10
+evolve:biome/forest         x1.15
+---------------------------------
+final                         15.18
+```
+
+Hard-coded condition chains are migrated into contributors/modifiers where that improves composability. Bespoke algorithms can remain named calculations.
+
+## Simulation
+
+The new simulation is an ordered system scheduler.
+
+Compatibility phases may initially mirror legacy cadence:
+
+```text
+fast
+mid
+long
+```
+
+but each phase contains independent systems, for example:
+
+```text
+fast
+|-- derive production context
+|-- production systems
+|-- consumption
+|-- resource application
+|-- queue progress
++-- transient effect decay
+
+mid
+|-- capacities
+|-- population/job reconciliation
+|-- power/support reconciliation
++-- progression maintenance
+
+long
+|-- events
+|-- world/calendar
+|-- combat/world periodic systems
+|-- statistics checkpoints
++-- autosave request
+```
+
+UI rendering is not a simulation system.
+
+Offline progression invokes the same deterministic systems with controlled elapsed-time policy rather than maintaining separate game logic.
+
+## Domain events and hooks
+
+Internal domain events are part of the engine before public hooks.
+
+Examples:
+
+- `ResourceChanged`;
+- `TechnologyGranted`;
+- `StructureBuilt`;
+- `JobAssigned`;
+- `AchievementUnlocked`;
+- `ResetCompleted`;
+- `CombatResolved`.
+
+Public mod hooks are later projections of stable domain events. This prevents the mod API from exposing temporary legacy call structure.
+
+## Persistence
+
+Target save envelope:
 
 ```json
 {
+  "format": 2,
   "engine": { "version": "..." },
-  "game": {},
-  "mods": {
-    "example": {
-      "version": "1.2.0",
-      "data": {}
-    }
-  }
+  "content": {
+    "base": "evolve",
+    "packages": []
+  },
+  "state": {},
+  "mods": {}
 }
 ```
 
-A mod receives only its own storage namespace. Save migrations remain deterministic and versioned.
+Persistence owns:
 
-## Security boundary
+- serialization;
+- deserialization;
+- validation;
+- migrations;
+- backups;
+- legacy import;
+- required package metadata.
 
-Data-only mods and executable code mods are distinct concepts.
+Historical raw-`global` saves are imported through a compatibility layer and migrated into explicit state.
 
-Data mods should be loadable without arbitrary code execution. Code mods are explicitly trusted until a later sandbox design exists.
+## First-party vanilla content
 
-## Upstream policy
+Vanilla Evolve becomes a first-party content package architecturally.
 
-The fork should retain a recognizable relationship to upstream Evolve. Modding changes should be concentrated in:
-- new modding/engine adapter modules;
-- narrowly scoped call-site changes;
-- characterization tests.
+It does not need to be distributed as an archive, but it must use:
 
-Avoid broad aesthetic refactors unrelated to the modding goal.
+- registries;
+- definitions;
+- commands/effects;
+- calculations/modifiers;
+- simulation systems;
+- persistence contracts.
+
+Engine code may not special-case an `evolve:` ID merely because it is vanilla.
+
+## UI/application layer
+
+The existing UI can be migrated incrementally, but the destination is:
+
+```text
+UI -> command/application service -> engine
+UI <- selector/view model --------- engine
+```
+
+UI components do not:
+
+- calculate authoritative production;
+- mutate state directly;
+- own unlock logic;
+- perform save serialization;
+- define simulation cadence.
+
+## Legacy bridge
+
+During migration, a dedicated legacy bridge may expose controlled translation between `GameState` and `global`.
+
+Rules:
+
+1. never part of the public Mod API;
+2. never imported by new engine core;
+3. covered by differential tests;
+4. usage is measured in CI;
+5. each adapter has a removal milestone;
+6. no new feature may depend on the bridge once the relevant domain is migrated.
+
+## Architecture fitness rules
+
+CI should grow these checks over time:
+
+- forbidden import directions;
+- cycle detection;
+- `global.*` reference budget;
+- DOM reference budget outside UI;
+- direct localStorage usage budget;
+- direct random/time access budget;
+- registry ownership validation;
+- content schema validation.
+
+Budgets only move downward.
+
+## Completion gate
+
+The engine refactor is complete only after the legacy bridge and authoritative `global` state can be deleted.
+
+External mod stability starts after that internal architecture has been proven by vanilla migration.

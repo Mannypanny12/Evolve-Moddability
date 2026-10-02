@@ -1,151 +1,151 @@
-# Modding Backlog
+# Refactor Backlog
 
-GitHub Issues are now enabled. Issues #2 through #9 are the canonical M0/M1 work items; this file remains a readable roadmap index.
+GitHub Issues #2 through #9 track the current M0/M1 implementation work. The roadmap now targets a full engine refactor rather than a permanent wrapper around legacy Evolve.
+
+See [ROADMAP.md](ROADMAP.md) for the complete M0-M14 plan.
 
 ## M0: Safety and reproducibility
 
-### M0A - Establish reproducible upstream baseline ([#2](../../issues/2))
+### M0A - Reproducible upstream baseline ([#2](../../issues/2)) - complete
 
-**Goal:** Establish a reproducible, documented baseline before any runtime refactor.
+Established exact baseline, locked build, CI, and build-tooling correction.
 
-**Scope**
-- Record the exact upstream Evolve commit used as the baseline.
-- Verify dependency installation and all existing build commands.
-- Document generated JS/CSS artifact policy.
-- Add a single repeatable command suitable for future CI that proves the unmodified source builds.
-- Do not change gameplay.
+### M0B - Characterization test harness ([#3](../../issues/3))
 
-**Acceptance criteria**
-- A clean checkout can install and build using documented steps.
-- Game and wiki bundles build successfully.
-- The exact upstream baseline commit is recorded.
-- No generated files that upstream asks contributors not to commit are introduced accidentally.
-- Environment/version assumptions are documented.
+Add a test environment able to control:
 
-### M0B - Add characterization test harness ([#3](../../issues/3))
+- storage/localStorage replacement;
+- legacy state loading;
+- clock;
+- RNG;
+- worker/timer behavior;
+- minimal DOM shims only where legacy code requires them.
 
-**Goal:** Create the minimum test infrastructure needed to refactor Evolve safely.
+Initial characterization targets should include a resource mutation/cost behavior and one progression behavior.
 
-**Scope**
-- Add a test runner appropriate for the existing JavaScript/esbuild codebase.
-- Make core game modules testable with minimal production-code disruption.
-- Support controlled state fixtures.
-- Support deterministic setup/teardown.
-- Add initial characterization tests for a low-risk existing behavior.
+### M0C - Representative state/save fixtures ([#4](../../issues/4))
 
-**Acceptance criteria**
-- Tests run from one documented npm command.
-- At least one current vanilla behavior is captured before refactoring.
-- Tests do not mutate real browser/localStorage data.
-- Failure output clearly identifies changed state.
-- No intentional gameplay changes.
+Fixture coverage expands to include:
 
-### M0C - Create representative save/state fixtures ([#4](../../issues/4))
-
-**Minimum fixture coverage**
-- fresh evolution;
-- early civilization;
-- established/pre-industrial;
+- evolution;
+- early city;
+- pre-industrial;
 - industrial;
-- early space;
+- space;
 - interstellar;
-- late/high-complexity;
-- reset-ready;
+- portal/hell;
+- late game;
+- multiple reset tiers;
 - active challenge;
-- at least two materially different racial trait profiles.
+- multiple race/trait profiles;
+- queue/power/crafting states.
 
-**Acceptance criteria**
-- Each fixture records origin/version and purpose.
-- Fixtures are deterministic/reusable.
-- No user-specific data.
-- Expected high-level invariants are documented.
-- Fixture format minimizes noisy diffs where practical.
+### M0D - Deterministic differential simulation ([#5](../../issues/5))
 
-### M0D - Add deterministic simulation regression tests ([#5](../../issues/5))
+Run controlled legacy loop steps and capture normalized state.
 
-**Goal:** Prove that refactors preserve simulation behavior over time.
+The harness must be capable of comparing a future new-system implementation against legacy behavior.
 
-**Compare where applicable**
-- resource amounts/capacities;
-- population/jobs;
-- unlocked technologies;
-- buildings/structures;
-- queues;
-- statistics;
-- production/power state;
-- reset-relevant state.
+## M1: Engine kernel and seams
 
-**Acceptance criteria**
-- Fixed fixture + fixed seed + fixed tick count yields stable expected results.
-- Floating-point tolerances are explicit and narrow.
-- A deliberate production change causes a useful failing diff.
-- Unseeded randomness is removed from the tested path or clearly isolated.
+### M1A - Identity and registry kernel ([#6](../../issues/6))
 
-## M1: Registry foundation
+Implement:
 
-### M1A - Implement generic content registry core ([#6](../../issues/6))
-
-**Required capabilities**
-- register an entry;
-- namespaced public ID;
+- namespaced IDs;
+- registry primitive;
 - source/package ownership;
 - duplicate detection;
-- lookup/existence;
-- iteration;
-- useful validation errors.
+- legacy aliases;
+- deterministic lookup/iteration;
+- validation.
 
-**Acceptance criteria**
-- Unit tests cover success and error cases.
-- Registration/iteration semantics are documented.
-- Silent duplicate replacement is impossible.
-- No gameplay change.
+This is an internal engine primitive, not yet a public Mod API.
 
-### M1B - Define namespace and legacy-ID rules ([#7](../../issues/7))
+### M1B - Definition contracts and namespace rules ([#7](../../issues/7))
 
-**Rules**
-- `evolve:*` is reserved for vanilla.
-- Public IDs use `namespace:local_id`.
-- Mod namespaces use a validated identifier format.
-- Legacy vanilla IDs may map to public IDs during migration.
-- IDs cannot be silently repurposed.
-- Cross-namespace overrides require an explicit future mechanism.
+Define:
 
-**Acceptance criteria**
-- Parser/validator tests exist.
-- Reserved namespace behavior is tested.
-- Legacy mapping is tested.
-- Conflict errors identify owner and ID.
+- `evolve` namespace reservation;
+- content ID grammar;
+- immutable identity;
+- definition/state separation;
+- initial schemas for low-risk content such as achievements/resource metadata/basic technology metadata;
+- explicit extension/override policy deferred until needed.
 
-### M1C - Register first vanilla content through legacy adapters ([#8](../../issues/8))
+### M1C - Runtime environment ports ([#8](../../issues/8))
 
-**Approach**
-- Keep existing vanilla objects/tables.
-- Add adapter registration, for example `evolve:food -> Food`.
-- Change the minimum lookup path needed to prove the boundary.
-- Characterize behavior before changing lookup.
+Introduce testable interfaces for:
 
-**Suggested targets:** achievements and/or resource metadata.
+- Clock;
+- RNG;
+- Storage;
+- Logger/diagnostics.
 
-**Acceptance criteria**
-- At least one real vanilla content family is discoverable through the registry.
-- Existing legacy code still works.
-- Regression tests show equivalent behavior.
-- No mass JSON conversion.
+Browser implementations adapt current platform behavior. New engine code uses ports instead of direct globals/platform calls.
 
-### M1D - Add developer registry inspector ([#9](../../issues/9))
+### M1D - Legacy bridge and architecture inspector ([#9](../../issues/9))
 
-**Show**
-- registry family;
-- public namespaced ID;
-- owning source/package;
-- legacy ID/alias;
-- duplicate/validation errors.
+Provide:
 
-**Acceptance criteria**
-- Developers can enumerate registered entries at runtime or through a documented debug command.
-- Ownership and legacy mappings are visible.
-- Inspector code is not a dependency of normal game logic.
+- registry/definition inspection;
+- ownership and aliases;
+- legacy mapping inspection;
+- architecture diagnostics;
+- temporary controlled bridge to legacy state where needed.
+
+Document removal rules for every adapter.
+
+## Immediate sequence
+
+```text
+M0A complete
+   |
+M0B harness
+   |
+M0C fixtures
+   |
+M0D deterministic differential simulation
+   |
+M1A identity/registry
+   |
+M1B definition contracts
+   |
+M1C environment ports
+   |
+M1D bridge/inspector
+   |
+M2 explicit GameState
+```
+
+Do not jump directly to mod loading, total conversions, or bulk content conversion. Those would lock in legacy assumptions before the engine is ready.
 
 ## Later milestones
 
-See [ROADMAP.md](ROADMAP.md) for M2 through M11.
+- M2 explicit state architecture;
+- M3 commands/conditions/effects/costs;
+- M4 calculation/modifier engine;
+- M5 deterministic simulation;
+- M6 vanilla migration waves;
+- M7 persistence v2;
+- M8 UI/application separation;
+- M9 legacy decommission + first-party Evolve package;
+- M10 package loader + public Mod API;
+- M11 Mod Manager/developer tooling;
+- M12 authoring tools;
+- M13 total-conversion certification;
+- M14 Android.
+
+## Definition of done for a migration slice
+
+A subsystem is not considered migrated merely because an adapter exists.
+
+A slice is done when:
+
+1. legacy behavior is characterized;
+2. new engine behavior is tested;
+3. differential comparison passes;
+4. authoritative reads/writes use the new path;
+5. save implications are handled;
+6. architecture metrics improve or stay within ratchet;
+7. the obsolete legacy path or adapter is removed, or a specific next removal slice is recorded.
