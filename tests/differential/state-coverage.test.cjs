@@ -7,7 +7,8 @@ const {
     canonicalize,
     canonicalStringify,
     UNDEFINED_SENTINEL_KEY,
-    UNDEFINED_SENTINEL_VALUE
+    UNDEFINED_SENTINEL_VALUE,
+    NON_FINITE_SENTINEL_VALUE
 } = require('../simulation/canonical-state.cjs');
 const {
     ROOT_POLICY,
@@ -189,5 +190,39 @@ test('normalization rejects non-finite authoritative resource values before JSON
     assert.throws(
         () => normalizeSimulationState(state),
         /Non-finite number at resource\.Money\.amount/
+    );
+});
+
+
+test('known legacy non-tradable resource NaN value is preserved as an explicit tag', () => {
+    const state = minimalState();
+    state.resource.Aerogel = {
+        amount: 0,
+        max: -1,
+        value: NaN,
+        diff: 0,
+        delta: 0,
+        rate: 0,
+        display: false,
+        crates: 0,
+        containers: 0,
+        stackable: false
+    };
+
+    const normalized = normalizeSimulationState(state);
+
+    assert.deepEqual(normalized.resources.Aerogel.value, {
+        [UNDEFINED_SENTINEL_KEY]: NON_FINITE_SENTINEL_VALUE,
+        value: 'NaN'
+    });
+});
+
+test('Infinity remains invalid even in resource value fields', () => {
+    const state = minimalState();
+    state.resource.Money.value = Infinity;
+
+    assert.throws(
+        () => normalizeSimulationState(state),
+        /Non-finite number at resource\.Money\.value/
     );
 });
