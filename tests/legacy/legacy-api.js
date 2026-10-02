@@ -44,6 +44,32 @@ import '../../src/index.js';
 import '../../src/seasons.js';
 import '../../src/wiki/change.js';
 import '../../src/debug.js';
+import legacyBase from '../fixtures/legacy-base.json';
+
+const frozenCadence = legacyBase.harness.cadence;
+
+function assertLegacyCadenceContract(){
+    const actual = {
+        mainMs: webWorker.mt,
+        midRatio: webWorker.midRatio,
+        longRatio: webWorker.longRatio
+    };
+    const expected = frozenCadence;
+
+    if (
+        actual.mainMs !== expected.mainMs ||
+        actual.midRatio !== expected.midRatio ||
+        actual.longRatio !== expected.longRatio
+    ){
+        throw new Error(
+            'Legacy worker cadence drifted from frozen harness contract: ' +
+            'expected=' + JSON.stringify(expected) +
+            ' actual=' + JSON.stringify(actual)
+        );
+    }
+}
+
+assertLegacyCadenceContract();
 
 const PRISTINE_LEGACY_STATE = structuredClone(global);
 
@@ -64,7 +90,17 @@ function clearObject(object){
     Object.keys(object).forEach(key => delete object[key]);
 }
 
+let simulationModule = null;
+let simulationLifecycle = 'fresh';
+
 function installLegacyState(state){
+    if (simulationLifecycle === 'hydrated'){
+        throw new Error(
+            'Legacy simulation state cannot be replaced after hydration; ' +
+            'start a fresh isolated process'
+        );
+    }
+
     const runtimeState = clone(state);
     setGlobal(runtimeState);
 
@@ -83,15 +119,16 @@ function installLegacyState(state){
 
     webWorker.w = false;
     webWorker.s = false;
-    webWorker.mt = 250;
-    webWorker.midRatio = 4;
-    webWorker.longRatio = 20;
+    webWorker.mt = frozenCadence.mainMs;
+    webWorker.midRatio = frozenCadence.midRatio;
+    webWorker.longRatio = frozenCadence.longRatio;
 
     const runtime = globalThis.__EVOLVE_TEST_RUNTIME__;
     if (runtime && runtime.storage){
         runtime.storage.clear();
     }
 
+    simulationLifecycle = 'installed';
     return runtimeState;
 }
 
@@ -146,8 +183,6 @@ function eventEffect(id){
     return events[id].effect();
 }
 
-let simulationModule = null;
-
 function hydrateGarrisonDefaults(){
     const persisted = global.civic.garrison
         ? clone(global.civic.garrison)
@@ -165,18 +200,24 @@ function hydrateGarrisonDefaults(){
 }
 
 async function hydrateSimulationState(){
-    if (!simulationModule){
+    if (simulationLifecycle === 'fresh'){
+        throw new Error('Legacy simulation state must be installed before hydration');
+    }
+
+    if (simulationLifecycle === 'installed'){
         if (global.race.species !== 'protoplasm'){
             defineGovernment(true);
             hydrateGarrisonDefaults();
         }
         simulationModule = await import('../../src/main.js');
+        simulationLifecycle = 'hydrated';
     }
+
     return simulationModule;
 }
 
 async function runGameLoops(periods){
-    if (!simulationModule){
+    if (simulationLifecycle !== 'hydrated' || !simulationModule){
         throw new Error('Legacy simulation state must be hydrated before running game loops');
     }
     webWorker.s = true;
@@ -197,6 +238,14 @@ function transientSimulationState(){
 
 function loopTiming(){
     return loopTimers();
+}
+
+function legacyCadence(){
+    return {
+        mainMs: webWorker.mt,
+        midRatio: webWorker.midRatio,
+        longRatio: webWorker.longRatio
+    };
 }
 
 function setWallClock(timestamp){
@@ -235,6 +284,7 @@ globalThis.__EVOLVE_LEGACY_TEST_API__ = {
     runGameLoops,
     transientSimulationState,
     loopTiming,
+    legacyCadence,
     setWallClock,
     resetWallClock,
     setRandomSequence,
