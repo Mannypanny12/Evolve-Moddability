@@ -1,0 +1,204 @@
+{
+  "version": 1,
+  "sourceCommit": "f2ebf4564171137b4340cf33e5361c2330d7dadc",
+  "measurement": {
+    "global": "global dot-or-bracket access",
+    "browser": "jQuery/$ calls plus document, window, Vue, and navigator references",
+    "storage": "localStorage plus legacy save get/set/remove/clear calls",
+    "clock": "Date.now plus new Date calls",
+    "random": "Math.random plus legacy Math.rand calls"
+  },
+  "largestLegacySccSize": 20,
+  "allowedLegacyCycleMembers": [
+    "achieve.js",
+    "actions.js",
+    "arpa.js",
+    "civics.js",
+    "edenic.js",
+    "events.js",
+    "functions.js",
+    "governor.js",
+    "index.js",
+    "industry.js",
+    "jobs.js",
+    "portal.js",
+    "prod.js",
+    "races.js",
+    "resets.js",
+    "resources.js",
+    "seasons.js",
+    "space.js",
+    "tech.js",
+    "truepath.js"
+  ],
+  "legacyModules": {
+    "achieve.js": {
+      "global": 644,
+      "browser": 33,
+      "storage": 0,
+      "clock": 1,
+      "random": 0
+    },
+    "actions.js": {
+      "global": 2823,
+      "browser": 338,
+      "storage": 2,
+      "clock": 4,
+      "random": 9
+    },
+    "arpa.js": {
+      "global": 384,
+      "browser": 75,
+      "storage": 0,
+      "clock": 0,
+      "random": 1
+    },
+    "civics.js": {
+      "global": 667,
+      "browser": 114,
+      "storage": 0,
+      "clock": 0,
+      "random": 0
+    },
+    "debug.js": {
+      "global": 2,
+      "browser": 4,
+      "storage": 0,
+      "clock": 0,
+      "random": 0
+    },
+    "edenic.js": {
+      "global": 626,
+      "browser": 89,
+      "storage": 0,
+      "clock": 0,
+      "random": 0
+    },
+    "events.js": {
+      "global": 354,
+      "browser": 0,
+      "storage": 0,
+      "clock": 0,
+      "random": 49
+    },
+    "functions.js": {
+      "global": 510,
+      "browser": 64,
+      "storage": 1,
+      "clock": 17,
+      "random": 6
+    },
+    "governor.js": {
+      "global": 505,
+      "browser": 103,
+      "storage": 0,
+      "clock": 0,
+      "random": 9
+    },
+    "index.js": {
+      "global": 133,
+      "browser": 121,
+      "storage": 12,
+      "clock": 1,
+      "random": 0
+    },
+    "industry.js": {
+      "global": 640,
+      "browser": 164,
+      "storage": 0,
+      "clock": 0,
+       "random": 0
+    },
+    "jobs.js": {
+      "global": 329,
+      "browser": 28,
+      "storage": 0,
+      "clock": 0,
+       "random": 0
+    },
+    "locale.js": {
+      "global": 8,
+      "browser": 0,
+      "storage": 1,
+      "clock": 0,
+      "random": 0
+    },
+    "main.js": {
+      "global": 4884,
+      "browser": 171,
+      "storage": 3,
+      "clock": 2,
+      "random": 72
+    },
+    "portal.js": {
+      "global": 2015,
+      "browser": 282,
+      "storage": 0,
+      "clock": 0,
+      "random": 42
+    },
+    "prod.js": {
+      "global": 125,
+      "browser": 0,
+      "storage": 0,
+      "clock": 0,
+      "random": 0
+    },
+    "races.js": {
+      "global": 1023,
+      "browser": 51,
+      "storage": 4,
+      "clock": 1,
+      "random": 2
+    },
+    "resets.js": {
+      "global": 538,
+      "browser": 13,
+      "storage": 23,
+      "clock": 1,
+      "random": 1
+    },
+    "resources.js": {
+      "global": 841,
+      "browser": 179,
+      "storage": 1,
+      "clock": 0,
+      "random": 2
+    },
+    "seasons.js": {
+      "global": 68,
+      "browser": 100,
+      "storage": 0,
+      "clock": 1,
+      "random": 0
+    },
+    "space.js": {
+      "global": 1643,
+      "browser": 428,
+      "storage": 2,
+      "clock": 0,
+      "random": 0
+    },
+    "tech.js": {
+      "global": 878,
+      "browser": 719,
+      "storage": 4,
+      "clock": 0,
+      "random": 0
+    },
+    "truepath.js": {
+      "global": 1407,
+      "browser": 291,
+      "storage": 0,
+      "clock": 0,
+      "random": 15
+    },
+    "vars.js": {
+      "global": 1268,
+      "browser": 38,
+      "storage": 4,
+      "clock": 6,
+      "random": 5
+    }
+  }
+}
