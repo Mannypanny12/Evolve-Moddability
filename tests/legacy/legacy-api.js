@@ -65,7 +65,8 @@ function clearObject(object){
 }
 
 function installLegacyState(state){
-    setGlobal(state);
+    const runtimeState = clone(state);
+    setGlobal(runtimeState);
 
     clearObject(tmp_vars);
     tmp_vars.resource = {};
@@ -90,6 +91,8 @@ function installLegacyState(state){
     if (runtime && runtime.storage){
         runtime.storage.clear();
     }
+
+    return runtimeState;
 }
 
 function legacyState(){
@@ -145,7 +148,7 @@ function eventEffect(id){
 
 let simulationModule = null;
 
-async function initializeSimulation(){
+async function hydrateSimulationState(){
     if (!simulationModule){
         if (global.race.species !== 'protoplasm'){
             defineGovernment(true);
@@ -157,9 +160,11 @@ async function initializeSimulation(){
 }
 
 async function runGameLoops(periods){
-    const simulation = await initializeSimulation();
+    if (!simulationModule){
+        throw new Error('Legacy simulation state must be hydrated before running game loops');
+    }
     webWorker.s = true;
-    simulation.execGameLoops(periods);
+    simulationModule.execGameLoops(periods);
 }
 
 function transientSimulationState(){
@@ -210,7 +215,7 @@ globalThis.__EVOLVE_LEGACY_TEST_API__ = {
     technologyDefinition,
     actionCondition,
     eventEffect,
-    initializeSimulation,
+    hydrateSimulationState,
     runGameLoops,
     transientSimulationState,
     loopTiming,
