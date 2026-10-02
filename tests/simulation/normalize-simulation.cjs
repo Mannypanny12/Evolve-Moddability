@@ -6,7 +6,8 @@ const {
 const {
     SIMULATION_SETTING_KEYS,
     RESOURCE_FIELD_POLICY,
-    assertKnownRootPolicy
+    assertKnownRootPolicy,
+    assertKnownSimulationSettingPolicy
 } = require('./legacy-state-policy.cjs');
 
 function normalizeValue(value, options = {}){
@@ -101,6 +102,7 @@ function normalizeStats(stats){
 }
 
 function normalizeSimulationSettings(settings){
+    assertKnownSimulationSettingPolicy(settings);
     const result = {};
     for (const key of SIMULATION_SETTING_KEYS){
         if (Object.prototype.hasOwnProperty.call(settings || {}, key)){
@@ -115,7 +117,7 @@ function normalizeSimulationSettings(settings){
 function normalizeSimulationState(state, transient = {}){
     assertKnownRootPolicy(state);
 
-    return {
+    const result = {
         metadata: {
             version: normalizeValue(state.version, { parts: ['version'] }),
             new: normalizeValue(state.new, { parts: ['new'] })
@@ -165,6 +167,12 @@ function normalizeSimulationState(state, transient = {}){
         simulationSettings: normalizeSimulationSettings(state.settings || {}),
         transient: normalizeValue(transient, { parts: ['transient'] })
     };
+
+    if (Object.prototype.hasOwnProperty.call(state, 'sim')){
+        result.simulationMode = normalizeValue(state.sim, { parts: ['sim'] });
+    }
+
+    return result;
 }
 
 module.exports = {
