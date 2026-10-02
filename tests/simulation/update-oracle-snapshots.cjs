@@ -62,10 +62,43 @@ function selectedScenarios(args){
     });
 }
 
+function validateManifestEntry(manifest, scenario){
+    const entry = manifest.scenarios[scenario.key];
+    if (!entry){
+        throw new Error('Missing manifest entry for ' + scenario.key);
+    }
+    if (entry.fixture !== scenario.fixture || entry.periods !== scenario.periods){
+        throw new Error('Manifest scenario metadata mismatch for ' + scenario.key);
+    }
+    return entry;
+}
+
+function runRepeatableScenario(runLegacyScenario, scenario){
+    const first = runLegacyScenario(scenario);
+    const second = runLegacyScenario(scenario);
+    const firstHash = fingerprintSnapshot(first.after);
+    const secondHash = fingerprintSnapshot(second.after);
+
+    if (firstHash !== secondHash){
+        const differences = exactSnapshotDiff(first.after, second.after);
+        throw new Error(
+            scenario.key + ': independent simulation runs disagree; ' +
+            'first SHA-256=' + firstHash + ' second SHA-256=' + secondHash + '\n' +
+            formatFrozenDiffs(differences)
+        );
+    }
+
+    return {
+        after: first.after,
+        sha256: firstHash
+    };
+}
+
 function main(){
     const args = process.argv.slice(2);
     const accept = args.includes('--accept');
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    const nextManifest = structuredClone(manifest);
     const scenarios = selectedScenarios(args);
 
     if (manifest.schema !== 2){
@@ -74,53 +107,79 @@ function main(){
 
     buildLegacyBundle();
     const { runLegacyScenario } = require('./differential-harness.cjs');
-    fs.mkdirSync(snapshotRoot, { recursive: true });
+
+    const pending = [];
 
     for (const scenario of scenarios){
-        const entry = manifest.scenarios[scenario.key];
-        if (!entry){
-            throw new Error('Missing manifest entry for ' + scenario.key);
-        }
-        if (entry.fixture !== scenario.fixture || entry.periods !== scenario.periods){
-            throw new Error('Manifest scenario metadata mismatch for ' + scenario.key);
-        }
-
-        const run = runLegacyScenario(scenario);
-        const actualHash = fingerprintSnapshot(run.after);
+        const entry = validateManifestEntry(manifest, scenario);
+        const result = runRepeatableScenario(runLegacyScenario, scenario);
         const destination = resolveSnapshotPath(entry);
+        const previous = fs.existsSync(destination)
+            ? loadSnapshot(entry)
+            : null;
 
-        if (actualHash !== entry.sha256 && !accept){
+        if (result.sha256 !== entry.sha256 && !accept){
+            const differences = previous === null
+                ? null
+                : exactSnapshotDiff(previous, result.after);
+            const detail = differences === null
+                ? 'No committed snapshot exists to produce a structural diff.'
+                : formatFrozenDiffs(differences);
+
             throw new Error(
-                scenario.key + ': current simulation SHA-256 ' + actualHash +
-                ' does not match frozen ' + entry.sha256 + '. ' +
+                scenario.key + ': current simulation SHA-256 ' + result.sha256 +
+                ' does not match frozen ' + entry.sha256 + '.\n' +
+                detail + '\n' +
                 'Use --accept only after reviewing and intentionally approving the behavior change.'
             );
         }
 
-        if (accept && fs.existsSync(destination)){
-            const previous = loadSnapshot(entry);
-            const differences = exactSnapshotDiff(previous, run.after);
-            if (differences.diffs.length > 0){
-                process.stdout.write(
-                    '\n' + scenario.key + ' intentional golden change:\n' +
-                    formatFrozenDiffs(differences) + '\n'
-                );
-            }
-        }
+        const differences = accept && previous !== null
+            ? exactSnapshotDiff(previous, result.after)
+            : null;
 
-        fs.writeFileSync(destination, serializeSnapshot(run.after), 'utf8');
+        pending.push({
+            scenario,
+            destination,
+            content: serializeSnapshot(result.after),
+            sha256: result.sha256,
+            differences
+        });
+    }
+
+    // Nothing is written until every selected scenario has completed and passed
+    // determinism/manifest validation.
+    for (const item of pending){
+        if (item.differences && item.differences.diffs.length > 0){
+            process.stdout.write(
+                '\n' + item.scenario.key + ' intentional golden change:\n' +
+                formatFrozenDiffs(item.differences) + '\n'
+            );
+        }
+    }
+
+    fs.mkdirSync(snapshotRoot, { recursive: true });
+
+    for (const item of pending){
+        fs.writeFileSync(item.destination, item.content, 'utf8');
         if (accept){
-            entry.sha256 = actualHash;
+            nextManifest.scenarios[item.scenario.key].sha256 = item.sha256;
         }
         process.stdout.write(
-            scenario.key + ': wrote ' + path.relative(root, destination) +
-            ' (' + actualHash + ')\n'
+            item.scenario.key + ': wrote ' + path.relative(root, item.destination) +
+            ' (' + item.sha256 + ')\n'
         );
     }
 
     if (accept){
-        fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n', 'utf8');
-        process.stdout.write('Updated oracle manifest fingerprints because --accept was supplied.\n');
+        fs.writeFileSync(
+            manifestPath,
+            JSON.stringify(nextManifest, null, 2) + '\n',
+            'utf8'
+        );
+        process.stdout.write(
+            'Updated oracle manifest fingerprints because --accept was supplied.\n'
+        );
     }
 }
 
