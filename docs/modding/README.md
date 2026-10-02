@@ -51,6 +51,9 @@ engine
 - [TOTAL_CONVERSIONS.md](TOTAL_CONVERSIONS.md): total-conversion certification requirements.
 - [BACKLOG.md](BACKLOG.md): current implementation sequence and issue mapping.
 - [BASELINE.md](BASELINE.md): reproducible M0A baseline.
+- [M0B_HARNESS.md](M0B_HARNESS.md): legacy characterization harness and deterministic browser/runtime shims.
+- [M0C_FIXTURES.md](M0C_FIXTURES.md): representative source-anchored fixture catalog.
+- [M0D_SIMULATION.md](M0D_SIMULATION.md): deterministic legacy simulation oracle and differential harness.
 
 ## Non-goals for early milestones
 
