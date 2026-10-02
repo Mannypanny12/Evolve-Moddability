@@ -23,6 +23,31 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Reject committed generated bundles in pull requests
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          base_sha="${{ github.event.pull_request.base.sha }}"
+          head_sha="${{ github.event.pull_request.head.sha }}"
+
+          git fetch --no-tags --depth=1 origin "$base_sha" "$head_sha"
+          changed="$(git diff --name-only "$base_sha" "$head_sha")"
+
+          echo "Files changed by this pull request:"
+          printf '%s\n' "$changed"
+
+          generated=0
+          while IFS= read -r file; do
+            case "$file" in
+              evolve/main.js|evolve/evolve.css|wiki/wiki.js|wiki/wiki.css)
+                echo "Generated bundle must not be committed in a pull request: $file"
+                generated=1
+                ;;
+            esac
+          done <<< "$changed"
+
+          test "$generated" -eq 0
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
