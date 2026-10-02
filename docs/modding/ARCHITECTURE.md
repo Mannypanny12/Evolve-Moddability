@@ -45,6 +45,8 @@ Public Mod API        first-party Evolve content       external content
 
 More concretely:
 
+- `src/engine/**` is the protected platform-independent engine boundary;
+- browser/platform adapters live outside `src/engine/**` and depend inward on engine contracts;
 - engine core may not import vanilla content;
 - engine core may not access DOM/jQuery/Vue;
 - engine simulation may not access localStorage directly;
