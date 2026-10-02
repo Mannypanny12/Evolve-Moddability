@@ -1640,10 +1640,16 @@
     "warseed": 3692
   },
   "simulationSettings": {
+    "alwaysPower": false,
     "at": 0,
     "boring": false,
+    "lowPowerBalance": false,
+    "mtorder": [],
     "pause": false,
-    "qAny": false
+    "qAny": false,
+    "qAny_res": false,
+    "q_merge": "merge_nearby",
+    "showCivic": false
   },
   "special": {
     "egg": {
