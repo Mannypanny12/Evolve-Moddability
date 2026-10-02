@@ -44,6 +44,14 @@ test('oracle manifest provenance matches the canonical legacy base contract', ()
     assert.equal(baselines.environment.randomSeed, legacyBase.harness.rngSeed);
     assert.equal(baselines.runtimeContractSchema, ORACLE_RUNTIME_CONTRACT_SCHEMA);
     assert.equal(ORACLE_RUNTIME_CONTRACT_SCHEMA, legacyBase.harness.contractSchema);
+
+    assert.throws(
+        () => validateOracleManifest({
+            ...baselines,
+            runtimeContractSchema: ORACLE_RUNTIME_CONTRACT_SCHEMA + 1
+        }),
+        /runtime contract schema mismatch/
+    );
 });
 
 test('oracle child-result metadata validation fails closed on provenance drift', () => {
