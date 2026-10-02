@@ -1,33 +1,68 @@
 'use strict';
 
-function normalizeValue(value, excluded = new Set()){
-    if (Array.isArray(value)){
-        return value.map(item => normalizeValue(item, excluded));
+const {
+    canonicalize
+} = require('./canonical-state.cjs');
+const {
+    SIMULATION_SETTING_KEYS,
+    assertKnownRootPolicy
+} = require('./legacy-state-policy.cjs');
+
+function normalizeValue(value, options = {}){
+    const excluded = options.excluded ?? new Set();
+    const parts = options.parts ?? [];
+
+    if (
+        value === undefined ||
+        value === null ||
+        typeof value === 'number' ||
+        typeof value === 'string' ||
+        typeof value === 'boolean'
+    ){
+        return canonicalize(value, parts);
     }
-    if (value && typeof value === 'object'){
+
+    if (Array.isArray(value)){
+        return value.map((item, index) => normalizeValue(item, {
+            excluded,
+            parts: [...parts, String(index)]
+        }));
+    }
+
+    if (typeof value === 'object'){
         const result = {};
         for (const key of Object.keys(value).sort()){
             if (excluded.has(key)){
                 continue;
             }
-            const nested = value[key];
-            if (typeof nested === 'function' || nested === undefined){
-                continue;
-            }
-            result[key] = normalizeValue(nested, excluded);
+            result[key] = normalizeValue(value[key], {
+                excluded,
+                parts: [...parts, key]
+            });
         }
         return result;
     }
-    if (typeof value === 'number' && Object.is(value, -0)){
-        return 0;
-    }
-    return value;
+
+    throw new TypeError(
+        `Unsupported authoritative state value at ${parts.length ? parts.join('.') : '<root>'}: ${typeof value}`
+    );
 }
 
 function normalizeResources(resources){
     const fields = [
-        'amount','max','diff','delta','rate','display',
-        'crates','containers','trade','stackable'
+        'amount',
+        'max',
+        'value',
+        'diff',
+        'delta',
+        'rate',
+        'display',
+        'crates',
+        'containers',
+        'trade',
+        'stackable',
+        'gen',
+        'gen_d'
     ];
     const result = {};
 
@@ -36,64 +71,101 @@ function normalizeResources(resources){
         if (!source || typeof source !== 'object'){
             continue;
         }
+
         const entry = {};
         for (const field of fields){
             if (Object.prototype.hasOwnProperty.call(source, field)){
-                entry[field] = normalizeValue(source[field]);
+                entry[field] = normalizeValue(source[field], {
+                    parts: ['resource', id, field]
+                });
             }
         }
+
         if (Object.keys(entry).length > 0){
             result[id] = entry;
+        }
+    }
+
+    return result;
+}
+
+function normalizeStats(stats){
+    return normalizeValue(stats || {}, {
+        excluded: new Set(['start', 'current']),
+        parts: ['stats']
+    });
+}
+
+function normalizeSimulationSettings(settings){
+    const result = {};
+    for (const key of SIMULATION_SETTING_KEYS){
+        if (Object.prototype.hasOwnProperty.call(settings || {}, key)){
+            result[key] = normalizeValue(settings[key], {
+                parts: ['settings', key]
+            });
         }
     }
     return result;
 }
 
-function normalizeStats(stats){
-    return normalizeValue(stats || {}, new Set(['start','current']));
-}
-
 function normalizeSimulationState(state, transient = {}){
+    assertKnownRootPolicy(state);
+
     return {
-        seeds: { seed: state.seed, warseed: state.warseed },
-        resources: normalizeResources(state.resource || {}),
-        populationAndCivics: normalizeValue(state.civic || {}),
-        structures: {
-            city: normalizeValue(state.city || {}),
-            space: normalizeValue(state.space || {}),
-            interstellar: normalizeValue(state.interstellar || {}),
-            galaxy: normalizeValue(state.galaxy || {}),
-            portal: normalizeValue(state.portal || {}),
-            eden: normalizeValue(state.eden || {}),
-            tauceti: normalizeValue(state.tauceti || {}),
-            starDock: normalizeValue(state.starDock || {})
+        metadata: {
+            version: normalizeValue(state.version, { parts: ['version'] }),
+            new: normalizeValue(state.new, { parts: ['new'] })
         },
-        technologies: normalizeValue(state.tech || {}),
-        race: normalizeValue(state.race || {}),
+        seeds: {
+            seed: normalizeValue(state.seed, { parts: ['seed'] }),
+            warseed: normalizeValue(state.warseed, { parts: ['warseed'] })
+        },
+        resources: normalizeResources(state.resource || {}),
+        evolution: normalizeValue(state.evolution || {}, { parts: ['evolution'] }),
+        populationAndCivics: normalizeValue(state.civic || {}, { parts: ['civic'] }),
+        structures: {
+            city: normalizeValue(state.city || {}, { parts: ['city'] }),
+            space: normalizeValue(state.space || {}, { parts: ['space'] }),
+            interstellar: normalizeValue(state.interstellar || {}, { parts: ['interstellar'] }),
+            galaxy: normalizeValue(state.galaxy || {}, { parts: ['galaxy'] }),
+            portal: normalizeValue(state.portal || {}, { parts: ['portal'] }),
+            eden: normalizeValue(state.eden || {}, { parts: ['eden'] }),
+            tauceti: normalizeValue(state.tauceti || {}, { parts: ['tauceti'] }),
+            starDock: normalizeValue(state.starDock || {}, { parts: ['starDock'] })
+        },
+        technologies: normalizeValue(state.tech || {}, { parts: ['tech'] }),
+        arpa: normalizeValue(state.arpa || {}, { parts: ['arpa'] }),
+        race: normalizeValue(state.race || {}, { parts: ['race'] }),
+        custom: normalizeValue(state.custom || {}, { parts: ['custom'] }),
+        pillars: normalizeValue(state.pillars || {}, { parts: ['pillars'] }),
+        governor: normalizeValue(state.govern || {}, { parts: ['govern'] }),
+        special: normalizeValue(state.special || {}, { parts: ['special'] }),
         queues: {
-            build: normalizeValue(state.queue || {}),
-            research: normalizeValue(state.r_queue || {})
+            build: normalizeValue(state.queue || {}, { parts: ['queue'] }),
+            research: normalizeValue(state.r_queue || {}, { parts: ['r_queue'] })
         },
         grids: {
-            power: normalizeValue(state.power || []),
-            support: normalizeValue(state.support || {})
+            power: normalizeValue(state.power || [], { parts: ['power'] }),
+            support: normalizeValue(state.support || {}, { parts: ['support'] })
         },
         statistics: normalizeStats(state.stats || {}),
         events: {
-            normal: normalizeValue(state.event || {}),
-            major: normalizeValue(state.m_event || {})
+            normal: normalizeValue(state.event || {}, { parts: ['event'] }),
+            major: normalizeValue(state.m_event || {}, { parts: ['m_event'] })
         },
-        prestige: normalizeValue(state.prestige || {}),
+        prestige: normalizeValue(state.prestige || {}, { parts: ['prestige'] }),
         genetics: {
-            genes: normalizeValue(state.genes || {}),
-            blood: normalizeValue(state.blood || {})
+            genes: normalizeValue(state.genes || {}, { parts: ['genes'] }),
+            blood: normalizeValue(state.blood || {}, { parts: ['blood'] })
         },
-        simulationSettings: {
-            pause: state.settings ? state.settings.pause : undefined,
-            acceleratedTime: state.settings ? state.settings.at : undefined
-        },
-        transient: normalizeValue(transient)
+        simulationSettings: normalizeSimulationSettings(state.settings || {}),
+        transient: normalizeValue(transient, { parts: ['transient'] })
     };
 }
 
-module.exports = { normalizeSimulationState };
+module.exports = {
+    normalizeValue,
+    normalizeResources,
+    normalizeSimulationSettings,
+    normalizeSimulationState
+};
