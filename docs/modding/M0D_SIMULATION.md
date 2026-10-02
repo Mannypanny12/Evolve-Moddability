@@ -190,22 +190,38 @@ Those are wall-clock bookkeeping fields rather than the simulation outcomes M0D 
 
 Do not add fields to the exclusion list merely because they are inconvenient or unstable. A newly unstable field should first be understood and controlled at its source.
 
-## Frozen oracle fingerprints
+## Frozen oracle snapshots
 
-`tests/simulation/oracle-baselines.json` stores a SHA-256 fingerprint of each normalized post-simulation snapshot.
+M0E2 stores the full canonical normalized post-simulation state for every frozen scenario under:
 
-This catches a failure mode that repeatability alone cannot:
+`tests/simulation/oracle-snapshots/`
 
-> A code change can be perfectly deterministic and still change legacy behavior.
+`tests/simulation/oracle-baselines.json` is the manifest. Each scenario entry records:
 
-Therefore M0D checks both:
+- fixture ID;
+- period count;
+- snapshot path;
+- SHA-256 fingerprint of the same canonical normalized state.
 
-1. run A equals independent run B;
-2. the resulting normalized state matches the frozen legacy oracle fingerprint.
+Scenario identity includes the period count (for example `fresh-evolution-p20`) so later cadence coverage can add other period counts without changing the manifest model.
 
-A fingerprint update is a behavioral-baseline change and requires explicit review.
+The committed JSON snapshot is the review surface. The hash remains an integrity guard, not the only golden.
 
-Never recapture fingerprints merely to make CI green.
+A frozen scenario passes only when:
+
+1. the committed snapshot hashes to the manifest SHA-256;
+2. independent simulation run A hashes to that SHA-256;
+3. independent simulation run B hashes to that SHA-256.
+
+This preserves the exact protection of the original hash-only oracle while making failures inspectable.
+
+### Exact frozen comparison versus migration tolerance
+
+Frozen historical goldens are exact, including numeric values.
+
+The `1e-10` absolute/relative tolerance in the general differential comparator remains for temporary legacy-versus-candidate migration comparisons. It is deliberately **not** used to decide whether a frozen historical golden still matches.
+
+If a frozen run changes, the test compares it structurally against the committed snapshot using zero numeric tolerance and reports bounded path-by-path differences. Large values are truncated in diagnostics, and large diff sets explicitly report that additional differences were omitted.
 
 ## Structural differential comparison
 
@@ -292,14 +308,41 @@ It creates the behavioral safety oracle needed to begin that work.
 
 ## Updating the oracle
 
-A legitimate oracle update should document why behavior changed.
+Normal tests never rewrite oracle snapshots.
 
-Recommended process:
+To regenerate a snapshot while requiring behavior to remain identical to the currently frozen SHA-256:
 
-1. identify the exact normalized paths that changed;
-2. determine whether the change is intentional;
-3. update characterization/differential expectations where appropriate;
-4. recapture affected hashes only;
-5. record the behavioral reason in the PR.
+```bash
+npm run oracle:update -- fresh-evolution-p20
+```
 
-During architecture-only migration, the expected outcome is normally **no oracle change**.
+Regenerate all current snapshots without permitting behavioral drift:
+
+```bash
+npm run oracle:update -- --all
+```
+
+Both commands fail if the current simulation fingerprint differs from the frozen manifest.
+
+Only after a behavioral change has been independently identified, reviewed and intentionally approved may the stored golden be changed:
+
+```bash
+npm run oracle:update -- fresh-evolution-p20 --accept
+```
+
+or, when an intentionally reviewed change affects the entire matrix:
+
+```bash
+npm run oracle:update -- --all --accept
+```
+
+With `--accept`, the updater:
+
+1. runs the real deterministic legacy simulation;
+2. reports bounded structural differences against an existing snapshot;
+3. rewrites canonical pretty JSON with deterministic key ordering;
+4. updates the corresponding manifest SHA-256.
+
+Review the JSON diff, not only the new fingerprint.
+
+Never use `--accept` merely to make CI green. During architecture-only migration, the normal expected result is **no frozen oracle change**.
