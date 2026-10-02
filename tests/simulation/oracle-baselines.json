@@ -22,19 +22,19 @@
       "fixture": "early-civilization-human",
       "periods": 1,
       "snapshot": "oracle-snapshots/early-civilization-human-p1.json",
-      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+      "sha256": "2472f8ec3eeaefacc80ff926add7c87c2e1f0bbc3404149e6fbc80ec481af042"
     },
     "early-civilization-human-p3": {
       "fixture": "early-civilization-human",
       "periods": 3,
       "snapshot": "oracle-snapshots/early-civilization-human-p3.json",
-      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+      "sha256": "fb9ac01ef58898cec62ea30d85705a9092a25073684a33f6c181a37ab7d26761"
     },
     "early-civilization-human-p4": {
       "fixture": "early-civilization-human",
       "periods": 4,
       "snapshot": "oracle-snapshots/early-civilization-human-p4.json",
-      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+      "sha256": "02444de6f71dd7cfa0c5815c3ee9cf09657f78d93e640391fc906874e1b43414"
     },
     "early-civilization-human-p20": {
       "fixture": "early-civilization-human",
@@ -46,7 +46,7 @@
       "fixture": "preindustrial-orc",
       "periods": 20,
       "snapshot": "oracle-snapshots/preindustrial-orc-p20.json",
-      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+      "sha256": "dfa8141fecbec019475ea37bfd630727af2610b42808c4a9d23c6b65766a71a9"
     },
     "industrial-human-queues-p20": {
       "fixture": "industrial-human-queues",

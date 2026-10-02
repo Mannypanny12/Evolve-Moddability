@@ -1,0 +1,2074 @@
+{
+  "arpa": {},
+  "custom": {},
+  "events": {
+    "major": {
+      "l": false,
+      "t": 99
+    },
+    "normal": {
+      "l": false,
+      "t": 499
+    }
+  },
+  "evolution": {
+    "gmloaded": 1,
+    "mloaded": 1
+  },
+  "genetics": {
+    "blood": {},
+    "genes": {
+      "minor": {}
+    }
+  },
+  "governor": {
+    "candidate": [],
+    "governor": {},
+    "policy": {}
+  },
+  "grids": {
+    "power": [
+      "city:transmitter",
+      "prtl_ruins:arcology",
+      "city:apartment",
+      "eden_asphodel:rectory",
+      "eden_asphodel:corruptor",
+      "int_alpha:habitat",
+      "int_alpha:luxury_condo",
+      "spc_red:spaceport",
+      "spc_titan:titan_spaceport",
+      "spc_titan:electrolysis",
+      "int_alpha:starport",
+      "eden_asphodel:encampment",
+      "spc_dwarf:shipyard",
+      "spc_titan:ai_core2",
+      "spc_eris:drone_control",
+      "spc_titan:ai_colonist",
+      "int_blackhole:s_gate",
+      "gxy_gateway:starbase",
+      "spc_triton:fob",
+      "prtl_wasteland:demon_forge",
+      "prtl_wasteland:twisted_lab",
+      "spc_enceladus:operating_base",
+      "spc_enceladus:zero_g_lab",
+      "spc_titan:sam",
+      "gxy_gateway:ship_dock",
+      "prtl_ruins:hell_forge",
+      "int_neutron:stellar_forge",
+      "int_neutron:citadel",
+      "prtl_badlands:mortuary",
+      "tau_home:orbital_station",
+      "tau_red:orbital_platform",
+      "tau_gas:refueling_station",
+      "tau_home:tau_farm",
+      "tau_gas:ore_refinery",
+      "tau_gas:whaling_station",
+      "city:coal_mine",
+      "spc_moon:moon_base",
+      "spc_red:red_tower",
+      "spc_home:nav_beacon",
+      "int_proxima:xfer_station",
+      "gxy_stargate:telemetry_beacon",
+      "int_nebula:nexus",
+      "gxy_stargate:gateway_depot",
+      "spc_dwarf:elerium_contain",
+      "spc_gas:gas_mining",
+      "spc_belt:space_station",
+      "spc_gas_moon:outpost",
+      "gxy_gorddon:embassy",
+      "gxy_gorddon:dormitory",
+      "gxy_alien1:resort",
+      "spc_gas_moon:oil_extractor",
+      "prtl_wasteland:hell_factory",
+      "int_alpha:int_factory",
+      "city:factory",
+      "spc_red:red_factory",
+      "spc_dwarf:world_controller",
+      "prtl_fortress:turret",
+      "prtl_badlands:war_drone",
+      "city:wardenclyffe",
+      "city:biolab",
+      "city:mine",
+      "city:rock_quarry",
+      "city:cement_plant",
+      "city:sawmill",
+      "city:mass_driver",
+      "int_neutron:neutron_miner",
+      "prtl_fortress:war_droid",
+      "prtl_pit:soul_forge",
+      "gxy_chthonian:excavator",
+      "prtl_pit:shadow_mine",
+      "prtl_pit:tavern",
+      "int_blackhole:far_reach",
+      "prtl_badlands:sensor_drone",
+      "prtl_badlands:attractor",
+      "city:metal_refinery",
+      "gxy_stargate:gateway_station",
+      "gxy_alien1:vitreloy_plant",
+      "gxy_alien2:foothold",
+      "gxy_gorddon:symposium",
+      "int_blackhole:mass_ejector",
+      "city:casino",
+      "spc_hell:spc_casino",
+      "tau_home:tauceti_casino",
+      "prtl_wasteland:hell_casino",
+      "prtl_fortress:repair_droid",
+      "gxy_stargate:defense_platform",
+      "prtl_ruins:guard_post",
+      "prtl_lake:cooling_tower",
+      "prtl_lake:harbor",
+      "prtl_spire:purifier",
+      "prtl_ruins:archaeology",
+      "prtl_pit:gun_emplacement",
+      "prtl_gate:gate_turret",
+      "prtl_pit:soul_attractor",
+      "prtl_gate:infernite_mine",
+      "int_sirius:ascension_trigger",
+      "spc_kuiper:orichalcum_mine",
+      "spc_kuiper:elerium_mine",
+      "spc_kuiper:uranium_mine",
+      "spc_kuiper:neutronium_mine",
+      "spc_dwarf:m_relay",
+      "tau_home:tau_factory",
+      "tau_home:infectious_disease_lab",
+      "tau_home:alien_outpost",
+      "tau_gas:womling_station",
+      "spc_red:atmo_terraformer",
+      "tau_star:matrix",
+      "tau_home:tau_cultural_center",
+      "eden_elysium:sacred_smelter",
+      "prtl_pit:soul_capacitor",
+      "prtl_lake:oven_complete",
+      "eden_elysium:elysanite_mine",
+      "eden_elysium:elerium_containment",
+      "eden_elysium:pillbox",
+      "eden_elysium:archive",
+      "eden_elysium:restaurant",
+      "eden_elysium:eden_cement",
+      "eden_isle:spirit_battery",
+      "eden_isle:spirit_vacuum",
+      "city:replicator"
+    ],
+    "support": {
+      "alien2": [
+        "gxy_alien2:armed_miner",
+        "gxy_alien2:ore_processor",
+        "gxy_alien2:scavenger"
+      ],
+      "alpha": [
+        "int_alpha:fusion",
+        "int_alpha:mining_droid",
+        "int_alpha:processing",
+        "int_alpha:laboratory",
+        "int_alpha:g_factory",
+        "int_alpha:exchange",
+        "int_alpha:zoo"
+      ],
+      "asphodel": [
+        "eden_asphodel:soul_engine",
+        "eden_asphodel:bunker",
+        "eden_asphodel:asphodel_harvester",
+        "eden_asphodel:ectoplasm_processor",
+        "eden_asphodel:research_station",
+        "eden_asphodel:bliss_den"
+      ],
+      "belt": [
+        "spc_belt:elerium_ship",
+        "spc_belt:iridium_ship",
+        "spc_belt:iron_ship"
+      ],
+      "enceladus": [
+        "spc_enceladus:water_freighter",
+        "spc_enceladus:operating_base",
+        "spc_enceladus:zero_g_lab"
+      ],
+      "eris": [
+        "spc_eris:shock_trooper",
+        "spc_eris:tank"
+      ],
+      "gateway": [
+        "gxy_gateway:bolognium_ship",
+        "gxy_gateway:dreadnought",
+        "gxy_gateway:cruiser_ship",
+        "gxy_gateway:frigate_ship",
+        "gxy_gateway:corvette_ship",
+        "gxy_gateway:scout_ship"
+      ],
+      "lake": [
+        "prtl_lake:bireme",
+        "prtl_lake:transport"
+      ],
+      "moon": [
+        "spc_moon:helium_mine",
+        "spc_moon:iridium_mine",
+        "spc_moon:observatory"
+      ],
+      "nebula": [
+        "int_nebula:harvester",
+        "int_nebula:elerium_prospector"
+      ],
+      "red": [
+        "spc_red:living_quarters",
+        "spc_red:exotic_lab",
+        "spc_red:red_mine",
+        "spc_red:fabrication",
+        "spc_red:biodome",
+        "spc_red:vr_center"
+      ],
+      "spire": [
+        "prtl_spire:port",
+        "prtl_spire:base_camp",
+        "prtl_spire:mechbay"
+      ],
+      "tau_home": [
+        "tau_home:colony",
+        "tau_home:tau_factory",
+        "tau_home:mining_pit",
+        "tau_home:infectious_disease_lab"
+      ],
+      "tau_red": [
+        "tau_red:womling_village",
+        "tau_red:womling_farm",
+        "tau_red:overseer",
+        "tau_red:womling_mine",
+        "tau_red:womling_fun",
+        "tau_red:womling_lab"
+      ],
+      "tau_roid": [
+        "tau_roid:mining_ship",
+        "tau_roid:whaling_ship"
+      ],
+      "titan": [
+        "spc_titan:titan_quarters",
+        "spc_titan:titan_mine",
+        "spc_titan:g_factory",
+        "spc_titan:decoder"
+      ]
+    }
+  },
+  "metadata": {
+    "new": false,
+    "version": "1.4.10"
+  },
+  "pillars": {},
+  "populationAndCivics": {
+    "archaeologist": {
+      "assigned": 0,
+      "display": false,
+      "impact": 1,
+      "job": "archaeologist",
+      "max": 0,
+      "name": "job_archaeologist",
+      "stress": 1,
+      "workers": 0
+    },
+    "banker": {
+      "assigned": 0,
+      "display": false,
+      "impact": 0.1,
+      "job": "banker",
+      "max": 0,
+      "name": "job_banker",
+      "stress": 6,
+      "workers": 0
+    },
+    "cement_worker": {
+      "assigned": 0,
+      "display": false,
+      "impact": 0.4,
+      "job": "cement_worker",
+      "max": 0,
+      "name": "job_cement_worker",
+      "stress": 5,
+      "workers": 0
+    },
+    "coal_miner": {
+      "assigned": 0,
+      "display": false,
+      "impact": 0.2,
+      "job": "coal_miner",
+      "max": 0,
+      "name": "job_coal_miner",
+      "stress": 4,
+      "workers": 0
+    },
+    "colonist": {
+      "assigned": 0,
+      "display": false,
+      "impact": 1,
+      "job": "colonist",
+      "max": 0,
+      "name": "job_colonist",
+      "stress": 5,
+      "workers": 0
+    },
+    "craftsman": {
+      "assigned": 0,
+      "display": false,
+      "impact": 1,
+      "job": "craftsman",
+      "max": 0,
+      "name": "job_craftsman",
+      "stress": 5,
+      "workers": 0
+    },
+    "crew": {
+      "assigned": 0,
+      "display": false,
+      "impact": 1,
+      "job": "crew",
+      "max": 0,
+      "name": "job_crew",
+      "stress": 4,
+      "workers": 0
+    },
+    "crystal_miner": {
+      "assigned": 0,
+      "display": false,
+      "impact": 0.1,
+      "job": "crystal_miner",
+      "max": 0,
+      "name": "job_crystal_miner",
+      "stress": 5,
+      "workers": 0
+    },
+    "d_job": "unemployed",
+    "elysium_miner": {
+      "assigned": 0,
+      "display": false,
+      "impact": 1,
+      "job": "elysium_miner",
+      "max": 0,
+      "name": "job_elysium_miner",
+      "stress": 3,
+      "workers": 0
+    },
+    "entertainer": {
+      "assigned": 0,
+      "display": false,
+      "impact": 1,
+      "job": "entertainer",
+      "max": 0,
+      "name": "job_entertainer",
+      "stress": 10,
+      "workers": 0
+    },
+    "farmer": {
+      "assigned": 8,
+      "impact": 0.82,
+      "max": 12,
+      "name": "job_farmer",
+      "stress": 5,
+      "workers": 0
+    },
+    "forager": {
+      "assigned": 0,
+      "display": false,
+      "impact": 0,
+      "job": "forager",
+      "max": 0,
+      "name": "job_forager",
+      "stress": 0,
+      "workers": 0
+    },
+    "foreign": {
+      "gov0": {
+        "act": "none",
+        "anx": false,
+        "buy": false,
+        "eco": 75,
+        "esp": 0,
+        "hstl": 100,
+        "mil": 100,
+        "occ": false,
+        "sab": 0,
+        "spy": 0,
+        "trn": 0,
+        "unrest": 0
+      },
+      "gov1": {
+        "act": "none",
+        "anx": false,
+        "buy": false,
+        "eco": 100,
+        "esp": 0,
+        "hstl": 0,
+        "mil": 150,
+        "occ": false,
+        "sab": 0,
+        "spy": 0,
+        "trn": 0,
+        "unrest": 0
+      },
+      "gov2": {
+        "act": "none",
+        "anx": false,
+        "buy": false,
+        "eco": 150,
+        "esp": 0,
+        "hstl": 50,
+        "mil": 250,
+        "occ": false,
+        "sab": 0,
+        "spy": 0,
+        "trn": 0,
+        "unrest": 0
+      }
+    },
+    "garrison": {
+      "crew": 0,
+      "disabled": false,
+      "display": false,
+      "fatigue": 0,
+      "m_use": 0,
+      "max": 0,
+      "mercs": false,
+      "progress": 0,
+      "protest": 0,
+      "raid": 0,
+      "rate": 0,
+      "tactic": 0,
+      "workers": 0,
+      "wounded": 0
+    },
+    "ghost_trapper": {
+      "assigned": 0,
+      "display": false,
+      "impact": 1,
+      "job": "ghost_trapper",
+      "max": 0,
+      "name": "job_ghost_trapper",
+      "stress": 3,
+      "workers": 0
+    },
+    "govern": {
+      "fr": 0,
+      "rev": 0,
+      "type": "oligarchy"
+    },
+    "hell_surveyor": {
+      "assigned": 0,
+      "display": false,
+      "impact": 1,
+      "job": "hell_surveyor",
+      "max": 0,
+      "name": "job_hell_surveyor",
+      "stress": 1,
+      "workers": 0
+    },
+    "homeless": 0,
+    "hunter": {
+      "assigned": 0,
+      "display": false,
+      "impact": 0,
+      "job": "hunter",
+      "max": 0,
+      "name": "job_hunter",
+      "stress": 0,
+      "workers": 0
+    },
+    "lumberjack": {
+      "assigned": 6,
+      "impact": 1,
+      "max": 10,
+      "name": "job_lumberjack",
+      "stress": 5,
+      "workers": 0
+    },
+    "mad": {
+      "armed": true,
+      "display": false
+    },
+    "meditator": {
+      "assigned": 0,
+      "display": false,
+      "impact": 1,
+      "job": "meditator",
+      "max": 0,
+      "name": "job_meditator",
+      "stress": 5,
+      "workers": 0
+    },
+    "miner": {
+      "assigned": 5,
+      "impact": 1,
+      "max": 8,
+      "name": "job_miner",
+      "stress": 4,
+      "workers": 0
+    },
+    "new": 0,
+    "pit_miner": {
+      "assigned": 0,
+      "display": false,
+      "impact": 1,
+      "job": "pit_miner",
+      "max": 0,
+      "name": "job_pit_miner",
+      "stress": 4.5,
+      "workers": 0
+    },
+    "priest": {
+      "assigned": 0,
+      "display": false,
+      "impact": 1,
+      "job": "priest",
+      "max": 0,
+      "name": "job_priest",
+      "stress": 3,
+      "workers": 0
+    },
+    "professor": {
+      "assigned": 0,
+      "display": false,
+      "impact": 0.5,
+      "job": "professor",
+      "max": 0,
+      "name": "job_professor",
+      "stress": 6,
+      "workers": 0
+    },
+    "quarry_worker": {
+      "assigned": 0,
+      "display": false,
+      "impact": 1,
+      "job": "quarry_worker",
+      "max": 0,
+      "name": "job_quarry_worker",
+      "stress": 5,
+      "workers": 0
+    },
+    "scavenger": {
+      "assigned": 0,
+      "display": false,
+      "impact": 0.12,
+      "job": "scavenger",
+      "max": 0,
+      "name": "job_scavenger",
+      "stress": 5,
+      "workers": 0
+    },
+    "scientist": {
+      "assigned": 0,
+      "display": false,
+      "impact": 1,
+      "job": "scientist",
+      "max": 0,
+      "name": "job_scientist",
+      "stress": 5,
+      "workers": 0
+    },
+    "space_miner": {
+      "assigned": 0,
+      "display": false,
+      "impact": 1,
+      "job": "space_miner",
+      "max": 0,
+      "name": "job_space_miner",
+      "stress": 5,
+      "workers": 0
+    },
+    "taxes": {
+      "display": false,
+      "tax_rate": 20
+    },
+    "teamster": {
+      "assigned": 0,
+      "display": false,
+      "impact": 1,
+      "job": "teamster",
+      "max": 0,
+      "name": "job_teamster",
+      "stress": 4,
+      "workers": 0
+    },
+    "titan_colonist": {
+      "assigned": 0,
+      "display": false,
+      "impact": 1,
+      "job": "titan_colonist",
+      "max": 0,
+      "name": "job_colonist_tp",
+      "stress": 5,
+      "workers": 0
+    },
+    "torturer": {
+      "assigned": 0,
+      "display": false,
+      "impact": 1,
+      "job": "torturer",
+      "max": 0,
+      "name": "job_torturer",
+      "stress": 3,
+      "workers": 0
+    },
+    "unemployed": {
+      "assigned": 3,
+      "impact": 0,
+      "name": "job_unemployed",
+      "stress": 0,
+      "workers": 0
+    }
+  },
+  "prestige": {
+    "AICore": {
+      "count": 0
+    },
+    "AntiPlasmid": {
+      "count": 0
+    },
+    "Artifact": {
+      "count": 0
+    },
+    "Blood_Stone": {
+      "count": 0
+    },
+    "Dark": {
+      "count": 0
+    },
+    "Harmony": {
+      "count": 0
+    },
+    "Phage": {
+      "count": 0
+    },
+    "Plasmid": {
+      "count": 0
+    },
+    "Supercoiled": {
+      "count": 0
+    }
+  },
+  "queues": {
+    "build": {
+      "display": false,
+      "max": 0,
+      "pause": false,
+      "queue": [],
+      "rename": false
+    },
+    "research": {
+      "display": false,
+      "max": 0,
+      "pause": false,
+      "queue": []
+    }
+  },
+  "race": {
+    "creative": 1,
+    "deterioration": 0,
+    "diverse": 1,
+    "gene_fortify": 0,
+    "gods": "none",
+    "inactiveTraits": {},
+    "minor": {},
+    "mutation": 0,
+    "old_gods": "none",
+    "p_mutation": 0,
+    "purgatory": {
+      "city": {},
+      "eden": {},
+      "portal": {},
+      "space": {},
+      "tech": {}
+    },
+    "seeded": false,
+    "species": "human",
+    "universe": "standard"
+  },
+  "resources": {
+    "Adamantite": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 0,
+      "rate": 1,
+      "stackable": true,
+      "value": 2250
+    },
+    "Aerogel": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": -1,
+      "rate": 0,
+      "stackable": false,
+      "value": {
+        "$evolve_test_type": "undefined"
+      }
+    },
+    "Alloy": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 50,
+      "rate": 1,
+      "stackable": true,
+      "trade": 0,
+      "value": 350
+    },
+    "Aluminium": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 50,
+      "rate": 1,
+      "stackable": true,
+      "trade": 0,
+      "value": 50
+    },
+    "Asphodel_Powder": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 0,
+      "rate": 1,
+      "stackable": false,
+      "value": 249000
+    },
+    "Authority": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 0,
+      "rate": 0,
+      "stackable": false,
+      "value": {
+        "$evolve_test_type": "undefined"
+      }
+    },
+    "Blessed_Essence": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": -2,
+      "rate": 0,
+      "stackable": false,
+      "value": 0
+    },
+    "Bolognium": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 0,
+      "rate": 1,
+      "stackable": true,
+      "value": 9000
+    },
+    "Brick": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": -1,
+      "rate": 0,
+      "stackable": false,
+      "value": {
+        "$evolve_test_type": "undefined"
+      }
+    },
+    "Cement": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 100,
+      "rate": 1,
+      "stackable": true,
+      "trade": 0,
+      "value": 15
+    },
+    "Chrysotile": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 200,
+      "rate": 1,
+      "stackable": true,
+      "trade": 0,
+      "value": 5
+    },
+    "Cipher": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 0,
+      "rate": 1,
+      "stackable": false,
+      "value": 0
+    },
+    "Coal": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 50,
+      "rate": 1,
+      "stackable": true,
+      "trade": 0,
+      "value": 20
+    },
+    "Codex": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": -2,
+      "rate": 0,
+      "stackable": false,
+      "value": 0
+    },
+    "Containers": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 0,
+      "rate": 0,
+      "stackable": false,
+      "value": {
+        "$evolve_test_type": "undefined"
+      }
+    },
+    "Copper": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 100,
+      "rate": 1,
+      "stackable": true,
+      "trade": 0,
+      "value": 25
+    },
+    "Corrupt_Gem": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": -2,
+      "rate": 0,
+      "stackable": false,
+      "value": 0
+    },
+    "Crates": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 0,
+      "rate": 0,
+      "stackable": false,
+      "value": {
+        "$evolve_test_type": "undefined"
+      }
+    },
+    "Crystal": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 200,
+      "rate": 1,
+      "stackable": true,
+      "trade": 0,
+      "value": 6
+    },
+    "Demonic_Essence": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": -2,
+      "rate": 0,
+      "stackable": false,
+      "value": 0
+    },
+    "Deuterium": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 0,
+      "rate": 1,
+      "stackable": false,
+      "value": 950
+    },
+    "Elerium": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 1,
+      "rate": 1,
+      "stackable": false,
+      "value": 2000
+    },
+    "Elysanite": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 0,
+      "rate": 1,
+      "stackable": true,
+      "value": {
+        "$evolve_test_type": "undefined"
+      }
+    },
+    "Energy": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 0,
+      "rate": 0,
+      "stackable": false,
+      "value": {
+        "$evolve_test_type": "undefined"
+      }
+    },
+    "Food": {
+      "amount": 336.25,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": -22,
+      "display": true,
+      "max": 1000,
+      "rate": 1,
+      "stackable": true,
+      "trade": 0,
+      "value": 5
+    },
+    "Furs": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 100,
+      "rate": 1,
+      "stackable": true,
+      "trade": 0,
+      "value": 8
+    },
+    "Genes": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": -2,
+      "rate": 0,
+      "stackable": false,
+      "value": 0
+    },
+    "Graphene": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 0,
+      "rate": 1,
+      "stackable": true,
+      "value": 3000
+    },
+    "Helium_3": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 0,
+      "rate": 1,
+      "stackable": false,
+      "trade": 0,
+      "value": 620
+    },
+    "Horseshoe": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": -2,
+      "rate": 0,
+      "stackable": false,
+      "value": 0
+    },
+    "Infernite": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 0,
+      "rate": 1,
+      "stackable": false,
+      "value": 2750
+    },
+    "Iridium": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 0,
+      "rate": 1,
+      "stackable": true,
+      "trade": 0,
+      "value": 420
+    },
+    "Iron": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 100,
+      "rate": 1,
+      "stackable": true,
+      "trade": 0,
+      "value": 40
+    },
+    "Knockoff": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": -2,
+      "rate": 0,
+      "stackable": false,
+      "value": {
+        "$evolve_test_type": "undefined"
+      }
+    },
+    "Knowledge": {
+      "amount": 0.7125,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0.85,
+      "display": false,
+      "max": 100,
+      "rate": 1,
+      "stackable": false,
+      "value": {
+        "$evolve_test_type": "undefined"
+      }
+    },
+    "Lumber": {
+      "amount": 260,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": true,
+      "max": 800,
+      "rate": 1,
+      "stackable": true,
+      "trade": 0,
+      "value": 5
+    },
+    "Mana": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "gen": 0,
+      "gen_d": 0,
+      "max": 0,
+      "rate": 1,
+      "stackable": false,
+      "value": {
+        "$evolve_test_type": "undefined"
+      }
+    },
+    "Materials": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 0,
+      "rate": 1,
+      "stackable": false,
+      "value": {
+        "$evolve_test_type": "undefined"
+      }
+    },
+    "Money": {
+      "amount": 420,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": true,
+      "max": 1000,
+      "rate": 1,
+      "stackable": false,
+      "value": {
+        "$evolve_test_type": "undefined"
+      }
+    },
+    "Mythril": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": -1,
+      "rate": 0,
+      "stackable": false,
+      "value": {
+        "$evolve_test_type": "undefined"
+      }
+    },
+    "Nanite": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 0,
+      "rate": 1,
+      "stackable": false,
+      "value": 0
+    },
+    "Nano_Tube": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 0,
+      "rate": 1,
+      "stackable": false,
+      "value": 750
+    },
+    "Nanoweave": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": -1,
+      "rate": 0,
+      "stackable": false,
+      "value": {
+        "$evolve_test_type": "undefined"
+      }
+    },
+    "Neutronium": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 0,
+      "rate": 1,
+      "stackable": false,
+      "value": 1500
+    },
+    "Oil": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 0,
+      "rate": 1,
+      "stackable": false,
+      "trade": 0,
+      "value": 75
+    },
+    "Omniscience": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 100,
+      "rate": 1,
+      "stackable": false,
+      "value": {
+        "$evolve_test_type": "undefined"
+      }
+    },
+    "Orichalcum": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 0,
+      "rate": 1,
+      "stackable": true,
+      "value": 99000
+    },
+    "Plywood": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": -1,
+      "rate": 0,
+      "stackable": false,
+      "value": {
+        "$evolve_test_type": "undefined"
+      }
+    },
+    "Polymer": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 50,
+      "rate": 1,
+      "stackable": true,
+      "trade": 0,
+      "value": 250
+    },
+    "Quantium": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": -1,
+      "rate": 0,
+      "stackable": false,
+      "value": {
+        "$evolve_test_type": "undefined"
+      }
+    },
+    "Scarletite": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": -1,
+      "rate": 0,
+      "stackable": false,
+      "value": {
+        "$evolve_test_type": "undefined"
+      }
+    },
+    "Sheet_Metal": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": -1,
+      "rate": 0,
+      "stackable": false,
+      "value": {
+        "$evolve_test_type": "undefined"
+      }
+    },
+    "Slave": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 0,
+      "rate": 0,
+      "stackable": false,
+      "value": {
+        "$evolve_test_type": "undefined"
+      }
+    },
+    "Soul_Gem": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": -2,
+      "rate": 0,
+      "stackable": false,
+      "value": 0
+    },
+    "Stanene": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 0,
+      "rate": 1,
+      "stackable": true,
+      "value": 3600
+    },
+    "Steel": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 50,
+      "rate": 1,
+      "stackable": true,
+      "trade": 0,
+      "value": 100
+    },
+    "Stone": {
+      "amount": 140,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": true,
+      "max": 600,
+      "rate": 1,
+      "stackable": true,
+      "trade": 0,
+      "value": 5
+    },
+    "Sus": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 0,
+      "rate": 0,
+      "stackable": false,
+      "value": {
+        "$evolve_test_type": "undefined"
+      }
+    },
+    "Thermite": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": -1,
+      "rate": 0,
+      "stackable": false,
+      "value": {
+        "$evolve_test_type": "undefined"
+      }
+    },
+    "Titanium": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 50,
+      "rate": 1,
+      "stackable": true,
+      "trade": 0,
+      "value": 150
+    },
+    "Unobtainium": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 0,
+      "rate": 1,
+      "stackable": false,
+      "value": {
+        "$evolve_test_type": "undefined"
+      }
+    },
+    "Uranium": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 10,
+      "rate": 1,
+      "stackable": false,
+      "trade": 0,
+      "value": 550
+    },
+    "Useless": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": -2,
+      "rate": 0,
+      "stackable": false,
+      "value": {
+        "$evolve_test_type": "undefined"
+      }
+    },
+    "Vitreloy": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 0,
+      "rate": 1,
+      "stackable": true,
+      "value": 10200
+    },
+    "Water": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 0,
+      "rate": 1,
+      "stackable": false,
+      "value": 2
+    },
+    "Wrought_Iron": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": -1,
+      "rate": 0,
+      "stackable": false,
+      "value": {
+        "$evolve_test_type": "undefined"
+      }
+    },
+    "Zen": {
+      "amount": 0,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": false,
+      "max": 0,
+      "rate": 0,
+      "stackable": false,
+      "value": {
+        "$evolve_test_type": "undefined"
+      }
+    },
+    "human": {
+      "amount": 22,
+      "containers": 0,
+      "crates": 0,
+      "delta": 0,
+      "diff": 0,
+      "display": true,
+      "max": 30,
+      "rate": 0,
+      "stackable": false,
+      "value": {
+        "$evolve_test_type": "undefined"
+      }
+    }
+  },
+  "seeds": {
+    "seed": 2364,
+    "warseed": 3692
+  },
+  "simulationSettings": {
+    "at": 0,
+    "boring": false,
+    "pause": false,
+    "qAny": false
+  },
+  "special": {
+    "egg": {
+      "2026": {
+        "egg1": false,
+        "egg10": false,
+        "egg11": false,
+        "egg12": false,
+        "egg13": false,
+        "egg14": false,
+        "egg15": false,
+        "egg16": false,
+        "egg17": false,
+        "egg18": false,
+        "egg2": false,
+        "egg3": false,
+        "egg4": false,
+        "egg5": false,
+        "egg6": false,
+        "egg7": false,
+        "egg8": false,
+        "egg9": false
+      }
+    },
+    "gift": {},
+    "trick": {
+      "2026": {
+        "treat1": false,
+        "treat2": false,
+        "treat3": false,
+        "treat4": false,
+        "treat5": false,
+        "treat6": false,
+        "treat7": false,
+        "trick1": false,
+        "trick2": false,
+        "trick3": false,
+        "trick4": false,
+        "trick5": false,
+        "trick6": false,
+        "trick7": false
+      },
+      "trick1": false,
+      "trick10": false,
+      "trick11": false,
+      "trick12": false,
+      "trick2": false,
+      "trick3": false,
+      "trick4": false,
+      "trick5": false,
+      "trick6": false,
+      "trick7": false,
+      "trick8": false,
+      "trick9": false
+    }
+  },
+  "statistics": {
+    "achieve": {},
+    "aiappoc": 0,
+    "antiplasmid": 0,
+    "apotheosis": 0,
+    "artifact": 0,
+    "ascend": 0,
+    "attacks": 0,
+    "banana": {
+      "b1": {
+        "a": false,
+        "e": false,
+        "h": false,
+        "l": false,
+        "m": false,
+        "mg": false
+      },
+      "b2": {
+        "a": false,
+        "e": false,
+        "h": false,
+        "l": false,
+        "m": false,
+        "mg": false
+      },
+      "b3": {
+        "a": false,
+        "e": false,
+        "h": false,
+        "l": false,
+        "m": false,
+        "mg": false
+      },
+      "b4": {
+        "a": false,
+        "e": false,
+        "h": false,
+        "l": false,
+        "m": false,
+        "mg": false
+      },
+      "b5": {
+        "a": false,
+        "e": false,
+        "h": false,
+        "l": false,
+        "m": false,
+        "mg": false
+      }
+    },
+    "bioseed": 0,
+    "blackhole": 0,
+    "blood": 0,
+    "cataclysm": 0,
+    "cattle": 0,
+    "cfood": 0,
+    "clumber": 0,
+    "cores": 0,
+    "cstone": 0,
+    "dark": 0,
+    "days": 0,
+    "death_tour": {
+      "ai": {
+        "a": 0,
+        "e": 0,
+        "h": 0,
+        "l": 0,
+        "m": 0,
+        "mg": 0
+      },
+      "bh": {
+        "a": 0,
+        "e": 0,
+        "h": 0,
+        "l": 0,
+        "m": 0,
+        "mg": 0
+      },
+      "ct": {
+        "a": 0,
+        "e": 0,
+        "h": 0,
+        "l": 0,
+        "m": 0,
+        "mg": 0
+      },
+      "di": {
+        "a": 0,
+        "e": 0,
+        "h": 0,
+        "l": 0,
+        "m": 0,
+        "mg": 0
+      },
+      "md": {
+        "a": 0,
+        "e": 0,
+        "h": 0,
+        "l": 0,
+        "m": 0,
+        "mg": 0
+      },
+      "vc": {
+        "a": 0,
+        "e": 0,
+        "h": 0,
+        "l": 0,
+        "m": 0,
+        "mg": 0
+      }
+    },
+    "descend": 0,
+    "died": 0,
+    "dkills": 0,
+    "eden": 0,
+    "endless_hunger": {
+      "b1": {
+        "a": false,
+        "e": false,
+        "h": false,
+        "l": false,
+        "m": false,
+        "mg": false
+      },
+      "b2": {
+        "a": false,
+        "e": false,
+        "h": false,
+        "l": false,
+        "m": false,
+        "mg": false
+      },
+      "b3": {
+        "a": false,
+        "e": false,
+        "h": false,
+        "l": false,
+        "m": false,
+        "mg": false
+      },
+      "b4": {
+        "a": false,
+        "e": false,
+        "h": false,
+        "l": false,
+        "m": false,
+        "mg": false
+      },
+      "b5": {
+        "a": false,
+        "e": false,
+        "h": false,
+        "l": false,
+        "m": false,
+        "mg": false
+      }
+    },
+    "feat": {},
+    "geck": 0,
+    "harmony": 0,
+    "know": 0,
+    "mad": 0,
+    "matrix": 0,
+    "murders": 0,
+    "pdebt": 0,
+    "phage": 0,
+    "plasmid": 0,
+    "portals": 0,
+    "psykill": 0,
+    "reset": 0,
+    "retire": 0,
+    "sac": 0,
+    "spire": {},
+    "starved": 0,
+    "supercoiled": 0,
+    "synth": {},
+    "tcattle": 0,
+    "tdays": 0,
+    "tdied": 0,
+    "terraform": 0,
+    "tfood": 0,
+    "tknow": 0,
+    "tlumber": 0,
+    "tmurders": 0,
+    "tpsykill": 0,
+    "tsac": 0,
+    "tstarved": 0,
+    "tstone": 0,
+    "uDead": 0,
+    "universes": 0,
+    "warlord": {
+      "a": false,
+      "g": false,
+      "k": false,
+      "p": false,
+      "r": false
+    },
+    "womling": {
+      "friend": {
+        "l": 0
+      },
+      "god": {
+        "l": 0
+      },
+      "lord": {
+        "l": 0
+      }
+    }
+  },
+  "structures": {
+    "city": {
+      "basic_housing": {
+        "count": 5
+      },
+      "biome": "grassland",
+      "calendar": {
+        "day": 120,
+        "moon": 0,
+        "orbit": 365,
+        "season": 0,
+        "temp": 1,
+        "weather": 2,
+        "wind": 0,
+        "year": 42
+      },
+      "cold": 0,
+      "farm": {
+        "count": 8
+      },
+      "geology": {
+        "Copper": 0.08,
+        "Iron": 0.04
+      },
+      "hot": 0,
+      "market": {
+        "active": false,
+        "mtrade": 0,
+        "qty": 10,
+        "trade": 0
+      },
+      "morale": {
+        "bliss_den": 0,
+        "blood_thirst": 0,
+        "broadcast": 0,
+        "cap": 100,
+        "current": 85,
+        "entertain": 0,
+        "leadership": 0,
+        "potential": 85,
+        "restaurant": 0,
+        "rev": 0,
+        "season": 5,
+        "shrine": 0,
+        "stress": 0,
+        "tavern": 0,
+        "tax": 0,
+        "unemployed": -22,
+        "vr": 0,
+        "warmonger": 0,
+        "weather": 2,
+        "zoo": 0
+      },
+      "power": 0,
+      "power_total": 0,
+      "powered": false,
+      "ptrait": [],
+      "rock_quarry": {
+        "cnvay": 0,
+        "count": 2
+      },
+      "sun": 0
+    },
+    "eden": {},
+    "galaxy": {},
+    "interstellar": {},
+    "portal": {},
+    "space": {},
+    "starDock": {},
+    "tauceti": {}
+  },
+  "technologies": {
+    "agriculture": 1,
+    "construction": 1,
+    "housing": 1,
+    "military": 1,
+    "primitive": 3,
+    "wsc": 0
+  },
+  "transient": {
+    "atrack": {
+      "t": 0
+    },
+    "gal_on": {},
+    "int_on": {},
+    "p_on": {
+      "ai_colonist": 0,
+      "ai_core2": 0,
+      "alien_outpost": 0,
+      "alien_space_station": 0,
+      "apartment": 0,
+      "archaeology": 0,
+      "archive": 0,
+      "arcology": 0,
+      "ascension_trigger": 0,
+      "atmo_terraformer": 0,
+      "attractor": 0,
+      "biolab": 0,
+      "casino": 0,
+      "cement_plant": 0,
+      "citadel": 0,
+      "coal_mine": 0,
+      "coal_power": 0,
+      "cooling_tower": 0,
+      "corruptor": 0,
+      "defense_platform": 0,
+      "demon_forge": 0,
+      "dormitory": 0,
+      "drone_control": 0,
+      "e_reactor": 0,
+      "eden_cement": 0,
+      "electrolysis": 0,
+      "elerium_contain": 0,
+      "elerium_containment": 0,
+      "elerium_mine": 0,
+      "elysanite_mine": 0,
+      "embassy": 0,
+      "encampment": 0,
+      "excavator": 0,
+      "factory": 0,
+      "far_reach": 0,
+      "fission_power": 0,
+      "fob": 0,
+      "foothold": 0,
+      "fusion": 0,
+      "fusion_generator": 0,
+      "gas_mining": 0,
+      "gate_turret": 0,
+      "gateway_depot": 0,
+      "gateway_station": 0,
+      "geothermal": 0,
+      "guard_post": 0,
+      "gun_emplacement": 0,
+      "habitat": 0,
+      "harbor": 0,
+      "hell_casino": 0,
+      "hell_factory": 0,
+      "hell_forge": 0,
+      "infectious_disease_lab": 0,
+      "infernite_mine": 0,
+      "int_factory": 0,
+      "luxury_condo": 0,
+      "m_relay": 0,
+      "mass_driver": 0,
+      "mass_ejector": 0,
+      "matrix": 0,
+      "metal_refinery": 0,
+      "mine": 0,
+      "moon_base": 0,
+      "mortuary": 0,
+      "nav_beacon": 0,
+      "neutron_miner": 0,
+      "neutronium_mine": 0,
+      "nexus": 0,
+      "oil_extractor": 0,
+      "oil_power": 0,
+      "operating_base": 0,
+      "orbital_platform": 0,
+      "orbital_station": 0,
+      "ore_refinery": 0,
+      "orichalcum_mine": 0,
+      "outpost": 0,
+      "oven_complete": 0,
+      "pillbox": 0,
+      "purifier": 0,
+      "rectory": 0,
+      "red_factory": 0,
+      "red_tower": 0,
+      "refueling_station": 0,
+      "repair_droid": 0,
+      "replicator": 0,
+      "resort": 0,
+      "restaurant": 0,
+      "rock_quarry": 0,
+      "s_gate": 0,
+      "sacred_smelter": 0,
+      "sam": 0,
+      "sawmill": 0,
+      "sensor_drone": 0,
+      "shadow_mine": 0,
+      "ship_dock": 0,
+      "shipyard": 0,
+      "soul_attractor": 0,
+      "soul_capacitor": 0,
+      "soul_forge": 0,
+      "space_station": 0,
+      "spaceport": 0,
+      "spc_casino": 0,
+      "spirit_battery": 0,
+      "spirit_vacuum": 0,
+      "starbase": 0,
+      "starport": 0,
+      "stellar_forge": 0,
+      "symposium": 0,
+      "tau_cultural_center": 0,
+      "tau_factory": 0,
+      "tau_farm": 0,
+      "tauceti_casino": 0,
+      "tavern": 0,
+      "telemetry_beacon": 0,
+      "titan_spaceport": 0,
+      "transmitter": 0,
+      "turret": 0,
+      "twisted_lab": 0,
+      "uranium_mine": 0,
+      "vitreloy_plant": 0,
+      "war_droid": 0,
+      "war_drone": 0,
+      "wardenclyffe": 0,
+      "whaling_station": 0,
+      "womling_station": 0,
+      "world_controller": 0,
+      "xfer_station": 0,
+      "zero_g_lab": 0
+    },
+    "power_generated": {
+      "city_coal_power": 0,
+      "city_fission_power": 0,
+      "city_oil_power": 0,
+      "interstellar_fusion_title": 0,
+      "space_dwarf_reactor_title": 0,
+      "space_hell_geothermal_title": 0,
+      "tau_gas2_alien_station": 0,
+      "tech_fusion_generator": 0
+    },
+    "spire_on": {},
+    "support_on": {}
+  }
+}
