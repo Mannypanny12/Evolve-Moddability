@@ -55,6 +55,7 @@ engine
 - [M0C_FIXTURES.md](M0C_FIXTURES.md): representative source-anchored fixture catalog.
 - [M0D_SIMULATION.md](M0D_SIMULATION.md): deterministic legacy simulation oracle and differential harness.
 - [M0E3_FIXTURE_HYDRATION.md](M0E3_FIXTURE_HYDRATION.md): persisted-fixture lifecycle, hydration ownership, and runtime-isolation rules.
+- [BROWSER_SMOKE.md](BROWSER_SMOKE.md): M0E4 real-browser bootstrap, fresh-game interaction, and startup-failure tripwire.
 
 ## Non-goals for early milestones
 
