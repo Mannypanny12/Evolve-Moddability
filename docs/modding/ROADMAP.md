@@ -11,7 +11,7 @@ Every milestone must keep vanilla behavior protected by tests. The roadmap delib
 - CI build gate established;
 - inherited Node runtime-shadowing issue corrected.
 
-### M0B Characterization harness
+### M0B Characterization harness - complete
 
 Build a test environment that can execute legacy logic with controlled:
 
@@ -24,7 +24,7 @@ Build a test environment that can execute legacy logic with controlled:
 
 Add first behavior characterizations before modifying their code.
 
-### M0C Representative legacy fixtures
+### M0C Representative legacy fixtures - complete
 
 Cover at minimum:
 
@@ -45,7 +45,7 @@ Cover at minimum:
 
 Record source version, purpose, invariants, and normalization rules.
 
-### M0D Deterministic differential simulation
+### M0D Deterministic differential simulation - complete
 
 Create a harness around `execGameLoops()` or equivalent legacy entry points.
 

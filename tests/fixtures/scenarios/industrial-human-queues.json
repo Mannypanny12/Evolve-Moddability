@@ -81,6 +81,14 @@
       },
       "warehouse": {
         "count": 12
+      },
+      "mine": {
+        "count": 20,
+        "on": 18
+      },
+      "coal_mine": {
+        "count": 12,
+        "on": 10
       }
     },
     "resource": {
@@ -191,8 +199,8 @@
       }
     },
     "power": [
-      "city:coal_power",
-      "city:factory"
+      "city:factory",
+      "city:mine"
     ],
     "queue": {
       "display": true,
@@ -200,7 +208,7 @@
       "pause": false,
       "queue": [
         {
-          "id": "arpa-railway",
+          "id": "arparailway",
           "action": "arpa",
           "type": "railway",
           "label": "Railway",
@@ -228,6 +236,12 @@
           "qa": false
         }
       ]
+    },
+    "arpa": {
+      "railway": {
+        "complete": 0,
+        "rank": 0
+      }
     }
   },
   "invariants": [
@@ -250,6 +264,18 @@
     {
       "path": "power",
       "includes": "city:factory"
+    },
+    {
+      "path": "city.mine.on",
+      "equals": 18
+    },
+    {
+      "path": "city.coal_mine.on",
+      "equals": 10
+    },
+    {
+      "path": "arpa.railway.complete",
+      "equals": 0
     }
   ]
 }

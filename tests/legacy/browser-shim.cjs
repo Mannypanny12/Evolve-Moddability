@@ -49,9 +49,14 @@ function makeClassList(){
 function makeElement(){
     return {
         style: {},
+        scrollHeight: 0,
+        scrollTop: 0,
+        clientHeight: 0,
+        clientWidth: 0,
         dataset: {},
         classList: makeClassList(),
         children: [],
+        childNodes: [],
         innerHTML: '',
         textContent: '',
         value: '',
@@ -76,11 +81,12 @@ function makeElement(){
 
 function makeJQueryChain(){
     let chain;
+    const element = makeElement();
     const target = function(){ return chain; };
     chain = new Proxy(target, {
         get(_target, prop){
             if (prop === 'length'){ return 0; }
-            if (prop === '0'){ return undefined; }
+            if (prop === '0'){ return element; }
             if (prop === Symbol.iterator){ return function* emptyIterator(){}; }
             if (prop === 'outerHeight' || prop === 'outerWidth'){ return () => 0; }
             if (prop === 'width'){ return () => 1920; }
@@ -91,7 +97,7 @@ function makeJQueryChain(){
             if (prop === 'prop'){ return (...args) => args.length > 1 ? chain : undefined; }
             if (prop === 'hasClass' || prop === 'is'){ return () => false; }
             if (prop === 'each'){ return () => chain; }
-            if (prop === 'get'){ return () => undefined; }
+            if (prop === 'get'){ return index => index === 0 ? element : undefined; }
             if (prop === 'toArray'){ return () => []; }
             return () => chain;
         },
@@ -204,6 +210,16 @@ Object.defineProperty(globalThis, 'navigator', {
     value: { language: 'en-US', userAgent: 'evolve-characterization-tests' }
 });
 
+globalThis.addEventListener = () => {};
+globalThis.removeEventListener = () => {};
+globalThis.matchMedia = query => ({
+    media: String(query),
+    matches: false,
+    addListener(){},
+    removeListener(){},
+    addEventListener(){},
+    removeEventListener(){}
+});
 globalThis.location = { href: '', reload(){} };
 globalThis.screen = { width: 1920, height: 1080 };
 globalThis.Worker = undefined;
@@ -250,6 +266,26 @@ globalThis.Vue = VueStub;
 globalThis.Buefy = {};
 globalThis.Popper = class {
     destroy(){}
+};
+
+const sortableInstances = new WeakMap();
+globalThis.Sortable = {
+    create(element){
+        const instance = {
+            destroy(){
+                sortableInstances.delete(element);
+            }
+        };
+        if (element && typeof element === 'object'){
+            sortableInstances.set(element, instance);
+        }
+        return instance;
+    },
+    get(element){
+        return element && typeof element === 'object'
+            ? sortableInstances.get(element) || null
+            : null;
+    }
 };
 
 globalThis.LZString = {

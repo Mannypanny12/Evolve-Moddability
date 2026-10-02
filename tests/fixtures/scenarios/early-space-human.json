@@ -89,9 +89,9 @@
     },
     "support": {
       "red": [
-        "spc_red:spaceport",
         "spc_red:living_quarters",
-        "spc_red:red_mine"
+        "spc_red:red_mine",
+        "spc_red:fabrication"
       ]
     },
     "resource": {

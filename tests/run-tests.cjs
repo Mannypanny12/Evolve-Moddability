@@ -50,7 +50,9 @@ function main(){
     const suite = process.argv[2] || 'all';
     const testRoot = suite === 'characterization'
         ? path.join(__dirname, 'characterization')
-        : __dirname;
+        : suite === 'simulation'
+            ? path.join(__dirname, 'differential')
+            : __dirname;
 
     buildLegacyBundle();
 

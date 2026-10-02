@@ -96,15 +96,10 @@
       }
     },
     "support": {
-      "tau_home": [
-        "tau_home:orbital_station",
-        "tau_home:refueling_station"
-      ],
-      "tau_red": [
-        "tau_red:orbital_platform"
-      ],
+      "tau_home": [],
+      "tau_red": [],
       "tau_roid": [
-        "tau_roid:patrol_ship"
+        "tau_roid:mining_ship"
       ]
     },
     "resource": {
@@ -144,6 +139,38 @@
         "crates": 0,
         "containers": 0
       }
+    },
+    "civic": {
+      "foreign": {
+        "gov3": {
+          "unrest": 0,
+          "hstl": 45,
+          "mil": 300,
+          "eco": 160,
+          "spy": 0,
+          "esp": 0,
+          "trn": 0,
+          "sab": 0,
+          "act": "none",
+          "occ": false,
+          "anx": false,
+          "buy": false
+        },
+        "gov4": {
+          "unrest": 0,
+          "hstl": 20,
+          "mil": 350,
+          "eco": 190,
+          "spy": 0,
+          "esp": 0,
+          "trn": 0,
+          "sab": 0,
+          "act": "none",
+          "occ": false,
+          "anx": false,
+          "buy": false
+        }
+      }
     }
   },
   "invariants": [
@@ -164,8 +191,16 @@
       "equals": 7
     },
     {
-      "path": "support.tau_home",
-      "includes": "tau_home:orbital_station"
+      "path": "support.tau_roid",
+      "includes": "tau_roid:mining_ship"
+    },
+    {
+      "path": "civic.foreign.gov3.trn",
+      "equals": 0
+    },
+    {
+      "path": "civic.foreign.gov4.trn",
+      "equals": 0
     }
   ]
 }

@@ -65,13 +65,93 @@
       },
       "mechbay": {
         "count": 14,
-        "on": 12
+        "on": 12,
+        "bay": 0,
+        "max": 0,
+        "active": 0,
+        "scouts": 0,
+        "mechs": []
       },
       "purifier": {
         "count": 8,
         "on": 8,
         "supply": 700,
         "sup_max": 1000
+      },
+      "spire": {
+        "count": 50,
+        "progress": 0,
+        "boss": "",
+        "type": "",
+        "status": {}
+      },
+      "observe": {
+        "settings": {
+          "expanded": false,
+          "average": false,
+          "hyperSlow": false,
+          "display": "game_days",
+          "dropKills": true,
+          "dropGems": true
+        },
+        "stats": {
+          "total": {
+            "start": {
+              "year": 3900,
+              "day": 120
+            },
+            "days": 0,
+            "wounded": 0,
+            "died": 0,
+            "revived": 0,
+            "surveyors": 0,
+            "sieges": 0,
+            "kills": {
+              "drones": 0,
+              "patrols": 0,
+              "sieges": 0,
+              "guns": 0,
+              "soul_forge": 0,
+              "turrets": 0
+            },
+            "gems": {
+              "patrols": 0,
+              "guns": 0,
+              "soul_forge": 0,
+              "crafted": 0,
+              "turrets": 0
+            }
+          },
+          "period": {
+            "start": {
+              "year": 3900,
+              "day": 120
+            },
+            "days": 0,
+            "wounded": 0,
+            "died": 0,
+            "revived": 0,
+            "surveyors": 0,
+            "sieges": 0,
+            "kills": {
+              "drones": 0,
+              "patrols": 0,
+              "sieges": 0,
+              "guns": 0,
+              "soul_forge": 0,
+              "turrets": 0
+            },
+            "gems": {
+              "patrols": 0,
+              "guns": 0,
+              "soul_forge": 0,
+              "crafted": 0,
+              "turrets": 0
+            }
+          }
+        },
+        "graphID": 0,
+        "graphs": {}
       }
     },
     "eden": {
@@ -187,6 +267,18 @@
     {
       "path": "support.asphodel",
       "includes": "eden_asphodel:encampment"
+    },
+    {
+      "path": "portal.spire.count",
+      "equals": 50
+    },
+    {
+      "path": "portal.mechbay.mechs",
+      "equals": []
+    },
+    {
+      "path": "portal.observe.stats.period.days",
+      "equals": 0
     }
   ]
 }

@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "source": {
+    "repository": "pmotschmann/Evolve",
+    "commit": "3436358dcd03d9f9e071d51ea071e0a78c0322e4",
+    "version": "1.4.10"
+  },
+  "environment": {
+    "wallClock": "2026-01-01T12:00:00.000Z",
+    "randomSeed": 1,
+    "periods": 20
+  },
+  "snapshots": {
+    "fresh-evolution": {
+      "sha256": "be9cb14ec4a7bf0ce4d9f05544e5e03da9bfac17870a6f15e0a97b55fef258ef"
+    },
+    "early-civilization-human": {
+      "sha256": "1b01fbe8493ba4e598b6db7da48dfd9d812149c38a160f88cddd7262ba74d641"
+    },
+    "industrial-human-queues": {
+      "sha256": "892636b4ff9f03280b5c72076cc7a9b5e1cd31df2049cc25760d1751c568b3a5"
+    },
+    "early-space-human": {
+      "sha256": "e7022369f4c3fe39f071d109c9e89fecb8790a8ccf89a2d9b8b2d32cbf943fc2"
+    },
+    "interstellar-human": {
+      "sha256": "1f9f0c93fe925e684ec88a368291ce460dc8f9f14d3ad2b91e40009621d6b62f"
+    },
+    "portal-hell-balorg": {
+      "sha256": "69db5d3861cde7ffd82cb4ba92c7b68ed2fafbd2a1b1ecb1e44dab9896bf5a84"
+    },
+    "late-eden-human": {
+      "sha256": "bd6aed21abcf2f77a4979ab35ebe947afd1d23f41ec7ecfc4ce93bfda22ee8c0"
+    },
+    "truepath-tauceti-human": {
+      "sha256": "5c3467718bb78978d6318681cb65c43cd35c1695685c5e8a9bae220147258711"
+    },
+    "challenge-steelen-run": {
+      "sha256": "a6426bf20860f179de05aa72efc1777964d21b35f9fbc6f0f8df5b3931b58f87"
+    },
+    "reset-ready-mad": {
+      "sha256": "b3ab7f8ab3f94ece2b85e911c3558e6d4979e66597eb3b2ee67f0c5b65de91d2"
+    },
+    "reset-ready-bioseed": {
+      "sha256": "dfd129ac18ec47735bde4fa6794a5be8f3a3ac7124731721e32c9a895d461c41"
+    }
+  }
+}
