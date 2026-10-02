@@ -2,86 +2,137 @@
 
 ## Definition
 
-A total conversion is a mod/package set that can replace essentially all visible Evolve content and progression while reusing the underlying incremental engine and selected shared services.
+A total conversion replaces the normal visible game content/progression while reusing the refactored engine and selected generic services.
 
-The goal is not that every vanilla subsystem must first become generic. Vanilla-only modules may be disabled or omitted by the conversion.
+Under the full-refactor architecture, total conversion support is not achieved by placing a shell around hard-coded vanilla systems. It is achieved because vanilla itself has already been moved out of the engine core.
 
-## Required capabilities
+## Architectural prerequisite
 
-A practical total conversion needs control over:
+Before total-conversion certification:
+
+- engine core must not import vanilla Evolve content;
+- content identity must be namespaced;
+- start state must be content-defined;
+- navigation must be content/application-defined;
+- persistence must record active content/packages;
+- simulation/calculation systems must not assume specific Evolve IDs;
+- vanilla must load through the same registration/engine boundaries available to other content.
+
+The first-party Evolve package is therefore the primary proof that the engine/content split works.
+
+## Required conversion control
+
+A total conversion needs control over:
+
 - start state;
-- resource set;
+- resources/currencies;
 - population/factions/races;
-- buildings/structures;
-- jobs;
+- jobs/units;
+- structures;
 - technology/progression graph;
-- actions;
+- commands/actions;
 - achievements;
 - challenges;
-- production/capacity/cost modifiers;
+- calculations/modifiers;
 - events;
 - top-level navigation;
 - reset/prestige paths;
-- localization and assets;
-- save namespace/profile requirements.
+- localization;
+- assets;
+- package-specific save data.
 
-## Optional reuse
-
-A conversion may reuse engine services without using corresponding vanilla content.
+## Engine services a conversion may reuse
 
 Examples:
+
+- state store;
+- command bus;
+- conditions/effects;
+- cost engine;
 - queues;
+- simulation scheduler;
 - offline progression;
+- modifier/calculation engine;
+- event bus;
+- statistics;
+- achievements;
+- persistence;
+- localization;
 - numeric formatting;
-- save compression;
-- statistics infrastructure;
-- achievement infrastructure;
-- modifier engine;
-- wiki generation;
-- combat framework, if suitable.
+- generic combat services where suitable.
 
-## Vanilla module exclusion
+A conversion should not be forced to load a vanilla content module merely to obtain a generic service.
 
-Rather than forcing every vanilla subsystem to become generic immediately, total-conversion mode may allow packages to disable content modules such as:
+## First-party modules
+
+Vanilla Evolve may be internally organized into optional content modules such as:
+
 - evolution;
-- vanilla city progression;
-- vanilla space;
+- civilization;
+- space/interstellar;
 - portal/hell;
 - Eden;
-- Tau Ceti.
+- Tau Ceti/Truepath.
 
-The underlying engine services can remain loaded if reused.
+A conversion with no vanilla base simply does not register those modules.
 
-## Content roots
+This is different from disabling hard-coded engine branches after startup.
 
-A total conversion manifest should eventually be able to declare its own progression roots, for example:
+## Manifest direction
+
+Example concept:
 
 ```json
 {
+  "id": "example",
   "type": "total_conversion",
-  "baseContent": false,
-  "start": "example:start",
-  "navigation": ["example:settlement", "example:army", "example:world"]
+  "base": null,
+  "start": "example:start/default",
+  "navigation": [
+    "example:view/settlement",
+    "example:view/army",
+    "example:view/world"
+  ]
 }
 ```
 
-Exact schema is deferred until M10.
+Exact schema waits for M10+ package work.
 
-## Compatibility
+## Save compatibility
 
-A save created under a total conversion records the required conversion package/version constraints.
+A total-conversion save records:
 
-Loading without the required conversion should fail safely or enter an explicit recovery path. It must not silently reinterpret state as vanilla Evolve.
+- conversion/package identity;
+- package versions or compatibility constraints;
+- engine/save schema;
+- required dependencies.
 
-## Success test
+Loading without required content must fail safely or enter explicit recovery tooling. It must never reinterpret a conversion save as vanilla.
 
-The M10 milestone is complete when a demonstration total conversion can:
-1. boot without requiring visible vanilla progression;
-2. define its own resources, buildings, jobs, technology graph, and start state;
-3. persist and reload;
-4. run through the normal tick/offline framework;
-5. expose its own top-level UI;
-6. use hooks/modifiers without patching vanilla source files;
-7. report missing dependencies and incompatible saves clearly.
+## Certification scenario
 
-The demonstration content should be small. The purpose is to prove the architecture, not to build a full game during M10.
+M13 should use a deliberately small test conversion.
+
+Suggested scope:
+
+- two resources;
+- one population type;
+- three or four structures;
+- one job/unit production path;
+- a short technology graph;
+- one event;
+- one modifier;
+- one reset/progression step;
+- custom navigation.
+
+It must:
+
+1. boot without visible vanilla progression;
+2. run normal simulation/offline progression;
+3. save and reload;
+4. expose its own content/navigation;
+5. use only public content/engine APIs;
+6. require no edits to first-party Evolve source;
+7. report missing/incompatible dependencies clearly.
+
+The point is architectural proof, not building a second full game during certification.
