@@ -204,6 +204,16 @@ Object.defineProperty(globalThis, 'navigator', {
     value: { language: 'en-US', userAgent: 'evolve-characterization-tests' }
 });
 
+globalThis.addEventListener = () => {};
+globalThis.removeEventListener = () => {};
+globalThis.matchMedia = query => ({
+    media: String(query),
+    matches: false,
+    addListener(){},
+    removeListener(){},
+    addEventListener(){},
+    removeEventListener(){}
+});
 globalThis.location = { href: '', reload(){} };
 globalThis.screen = { width: 1920, height: 1080 };
 globalThis.Worker = undefined;
