@@ -11,5 +11,5 @@
     "storage": "empty in-memory localStorage"
   },
   "description": "Canonical initialized legacy state produced by the M0B harness before any test replaces global state. Scenario fixtures overlay this deterministic base.",
-  "sha256": "__CAPTURE__"
+  "sha256": "43f6f8edccca1520a24344590b1ba30582239a1e8bddb4a9224ed237844cebb8"
 }
