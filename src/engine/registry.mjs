@@ -180,7 +180,7 @@ export class Registry {
         return this.#entries.has(this.#parseForThisRegistry(id));
     }
 
-    require(id){
+    getRequired(id){
         const canonical = this.#parseForThisRegistry(id);
         const entry = this.#entries.get(canonical);
         if (entry === undefined){
