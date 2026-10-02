@@ -4,6 +4,7 @@ const legacyBase = require('../fixtures/legacy-base.json');
 
 const ORACLE_RESULT_SCHEMA = 1;
 const ORACLE_MANIFEST_SCHEMA = 2;
+const ORACLE_RUNTIME_CONTRACT_SCHEMA = legacyBase.harness.contractSchema;
 
 const ORACLE_SOURCE = Object.freeze({
     repository: legacyBase.source.repository,
@@ -45,6 +46,13 @@ function validateOracleManifest(manifest){
     if (!sameRecord(manifest.environment, ORACLE_ENVIRONMENT)){
         throw new Error(
             'oracle manifest environment does not match canonical legacy base harness'
+        );
+    }
+    if (manifest.runtimeContractSchema !== ORACLE_RUNTIME_CONTRACT_SCHEMA){
+        throw new Error(
+            'oracle manifest runtime contract schema mismatch: expected ' +
+            ORACLE_RUNTIME_CONTRACT_SCHEMA + ' actual ' +
+            String(manifest.runtimeContractSchema)
         );
     }
 }
@@ -89,6 +97,7 @@ function validateOracleResult(result, scenario){
 module.exports = {
     ORACLE_RESULT_SCHEMA,
     ORACLE_MANIFEST_SCHEMA,
+    ORACLE_RUNTIME_CONTRACT_SCHEMA,
     ORACLE_SOURCE,
     ORACLE_ENVIRONMENT,
     validateOracleManifest,

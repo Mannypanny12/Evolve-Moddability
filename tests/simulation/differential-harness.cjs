@@ -7,8 +7,13 @@ const childPath = path.join(__dirname, 'simulation-child.cjs');
 const marker = '__EVOLVE_SIM_RESULT__';
 const { validateOracleResult } = require('./oracle-contract.cjs');
 
-function runLegacyScenario({ fixture, periods }){
-    const result = spawnSync(process.execPath, [childPath, fixture, String(periods)], {
+function runLegacyScenario({ fixture, periods, calls }){
+    const args = [childPath, fixture, String(periods)];
+    if (calls !== undefined){
+        args.push(JSON.stringify(calls));
+    }
+
+    const result = spawnSync(process.execPath, args, {
         cwd: path.resolve(__dirname, '..', '..'),
         env: {
             ...process.env,

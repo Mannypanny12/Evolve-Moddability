@@ -102,5 +102,6 @@
       "snapshot": "oracle-snapshots/reset-ready-bioseed-p20.json",
       "sha256": "cf7081dd51ae4bd00a53aa9182e4a84a91dd8f0f0fe63f996ee58b54e2e5544a"
     }
-  }
+  },
+  "runtimeContractSchema": 1
 }
