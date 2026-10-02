@@ -42,10 +42,10 @@ function isLikelyRegexStart(source, index){
     if (cursor < 0) return true;
 
     const previous = source[cursor];
-    if ('([{:;,=!?&|+-*%^~<>'.includes(previous)) return true;
+    if ('([{:;,=!?&|+-*%^|<>'.includes(previous)) return true;
     if (previous === '>' && source[cursor - 1] === '=') return true;
 
-    let end = cursor + 1;
+    const end = cursor + 1;
     while (cursor >= 0 && /[A-Za-z_$]/.test(source[cursor])) cursor--;
     const word = source.slice(cursor + 1, end);
     return ['return', 'throw', 'case', 'delete', 'void', 'typeof', 'instanceof', 'in', 'of', 'yield', 'await'].includes(word);
@@ -55,6 +55,7 @@ function maskNonCode(source){
     const out = source.split('');
     let mode = 'code';
     const interpolationDepth = [];
+    let regexClass = false;
 
     const mask = index => {
         if (source[index] !== '\n' && source[index] !== '\r') out[index] = ' ';
@@ -106,7 +107,43 @@ function maskNonCode(source){
             else if (ch === '`'){
                 mode = 'code';
             }
-            else if (ch === '
+            else if (ch === '$' && next === '{'){
+                mask(i + 1);
+                i++;
+                interpolationDepth.push(1);
+                mode = 'code';
+            }
+            continue;
+        }
+
+        if (mode === 'regex'){
+            mask(i);
+            if (ch === '\\'){
+                if (i + 1 < source.length){
+                    mask(i + 1);
+                    i++;
+                }
+                continue;
+            }
+            if (ch === '['){
+                regexClass = true;
+                continue;
+            }
+            if (ch === ']' && regexClass){
+                regexClass = false;
+                continue;
+            }
+            if (ch === '/' && !regexClass){
+                while (i + 1 < source.length && /[A-Za-z]/.test(source[i + 1])){
+                    mask(i + 1);
+                    i++;
+                }
+                mode = 'code';
+            }
+            continue;
+        }
+
+        if (ch === '/' && next === '/'){
             mask(i);
             mask(i + 1);
             i++;
@@ -122,6 +159,7 @@ function maskNonCode(source){
         }
         if (ch === '/' && isLikelyRegexStart(source, i)){
             mask(i);
+            regexClass = false;
             mode = 'regex';
             continue;
         }
