@@ -407,7 +407,10 @@ function scanRepository(root, baseline){
 
     const totals = {};
     for (const key of METRIC_KEYS){
-        totals[key] = Object.values(baseline.legacyModules).reduce((sum, metrics) => sum + metrics[key], 0);
+        totals[key] = legacyFiles.reduce((sum, file) => {
+            const metrics = measureLegacySource(fs.readFileSync(file, 'utf8'));
+            return sum + metrics[key];
+        }, 0);
     }
 
     return {
