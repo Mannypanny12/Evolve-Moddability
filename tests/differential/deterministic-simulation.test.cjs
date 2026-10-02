@@ -79,6 +79,18 @@ test('oracle snapshot serialization is deterministic and recursively key-sorted'
     assert.equal(first, '{\n  "a": {\n    "b": 3,\n    "y": 2\n  },\n  "z": 1\n}\n');
 });
 
+test('frozen oracle diagnostics name the exact changed gameplay path', () => {
+    const expected = { resources: { DNA: { amount: 7.25 } } };
+    const actual = structuredClone(expected);
+    actual.resources.DNA.amount += 0.5;
+
+    const result = exactSnapshotDiff(expected, actual);
+
+    assert.equal(result.diffs.length, 1);
+    assert.equal(result.diffs[0].path, 'resources.DNA.amount');
+    assert.match(formatFrozenDiffs(result), /resources\.DNA\.amount/);
+});
+
 test('frozen oracle diff output is bounded and reports omission', () => {
     const expected = {};
     const actual = {};
