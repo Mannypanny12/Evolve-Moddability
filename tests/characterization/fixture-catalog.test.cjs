@@ -50,7 +50,7 @@ test('fixture catalog has unique IDs and required progression/system coverage', 
 
     const species = new Set();
     for (const definition of definitions){
-        const state = fixtures.materializeFixture(definition, legacy);
+        const state = fixtures.materializePersistedFixture(definition, legacy);
         if (state.race && state.race.species){
             species.add(state.race.species);
         }
@@ -58,13 +58,29 @@ test('fixture catalog has unique IDs and required progression/system coverage', 
     assert.ok(species.size >= 3, 'fixture catalog should contain at least three materially different species profiles');
 });
 
+test('installing a persisted fixture clones it into isolated runtime state', () => {
+    const definition = fixtures.loadFixtureById('early-civilization-human');
+    const persisted = fixtures.materializePersistedFixture(definition, legacy);
+    const before = fixtures.fingerprint(persisted);
+
+    const runtimeState = legacy.installLegacyState(persisted);
+
+    assert.notStrictEqual(runtimeState, persisted, 'runtime state must not reuse the persisted fixture object');
+    assert.notStrictEqual(legacy.legacyState(), persisted, 'global runtime must not reuse the persisted fixture object');
+
+    legacy.legacyState().__runtimeMutation = true;
+
+    assert.equal(persisted.__runtimeMutation, undefined, 'runtime mutation leaked into persisted fixture');
+    assert.equal(fixtures.fingerprint(persisted), before, 'persisted fixture changed after runtime installation');
+});
+
 for (const definition of fixtures.listFixtureDefinitions()){
     test(`fixture ${definition.id} validates and satisfies its invariants`, () => {
         const filePath = path.join('tests', 'fixtures', 'scenarios', `${definition.id}.json`);
         fixtures.validateDefinition(definition, filePath);
 
-        const first = fixtures.materializeFixture(definition, legacy);
-        const second = fixtures.materializeFixture(definition, legacy);
+        const first = fixtures.materializePersistedFixture(definition, legacy);
+        const second = fixtures.materializePersistedFixture(definition, legacy);
 
         fixtures.assertFixture(definition, first);
         assert.deepEqual(first, second, `${definition.id}: materialization must be deterministic`);
