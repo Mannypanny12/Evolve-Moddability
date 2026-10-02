@@ -47,9 +47,16 @@ jobs:
           echo "Tracked files changed by build:"
           printf '%s\n' "$changed"
 
-          unexpected="$(printf '%s\n' "$changed" | grep -Ev '^(evolve/main\.js|evolve/evolve\.css|wiki/wiki\.js|wiki/wiki\.css) || true)"
-          if [ -n "$unexpected" ]; then
-            echo "Unexpected tracked files changed by the build:"
-            printf '%s\n' "$unexpected"
-            exit 1
-          fi
+          unexpected=0
+          while IFS= read -r file; do
+            case "$file" in
+              ""|evolve/main.js|evolve/evolve.css|wiki/wiki.js|wiki/wiki.css)
+                ;;
+              *)
+                echo "Unexpected tracked file changed by the build: $file"
+                unexpected=1
+                ;;
+            esac
+          done <<< "$changed"
+
+          test "$unexpected" -eq 0
