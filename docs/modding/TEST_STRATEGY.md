@@ -205,6 +205,8 @@ Where tolerance is necessary:
 - use the narrowest practical tolerance;
 - do not widen tolerances to hide regressions.
 
+Frozen historical oracle snapshots are stricter: their canonical normalized state and SHA-256 must match exactly. Numeric tolerance is reserved for differential comparison between legacy and a migration candidate, not for accepting drift in a frozen golden.
+
 ## Architecture fitness tests
 
 The refactor needs machine-enforced architectural direction.

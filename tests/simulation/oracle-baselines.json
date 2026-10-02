@@ -1,5 +1,5 @@
 {
-  "schema": 1,
+  "schema": 2,
   "source": {
     "repository": "pmotschmann/Evolve",
     "commit": "3436358dcd03d9f9e071d51ea071e0a78c0322e4",
@@ -7,44 +7,76 @@
   },
   "environment": {
     "wallClock": "2026-01-01T12:00:00.000Z",
-    "randomSeed": 1,
-    "periods": 20
-  },
-  "snapshots": {
-    "fresh-evolution": {
-      "sha256": "33a343812d218fb396faf49031998b5891371a3c9e9c8051c13d7561d78616d4"
-    },
-    "early-civilization-human": {
-      "sha256": "7e85e2314bb516493c77a0588390f73e96be8a0e71495179f0343b732c271443"
-    },
-    "industrial-human-queues": {
-      "sha256": "280f8242641a2f616823accb80456a3f4aa00e2f9d8ca999c24be956e4dd98f9"
-    },
-    "early-space-human": {
-      "sha256": "1970bbf926da0c541aa25fb27aabeb22f1be815a9000c0aa3a1b904702c05bab"
-    },
-    "interstellar-human": {
-      "sha256": "bb22935313bac7cff18009a4e34d24fe64151e6663f4dd05a64aab809e07f999"
-    },
-    "portal-hell-balorg": {
-      "sha256": "439ad7d1fb573ca34ce87e60739d7ad6f763682061a628d684e355b5db310ca9"
-    },
-    "late-eden-human": {
-      "sha256": "e4de9b5529d5083d4db5cc0f12a6e5cfe7ac65ba8e0522c3409e1221c5d3c295"
-    },
-    "truepath-tauceti-human": {
-      "sha256": "e03f638c7544f2dc1707a475eaa3e80ac00fedc36d5d8489e7b9f9487a257d77"
-    },
-    "challenge-steelen-run": {
-      "sha256": "3ed19c6162a5b157b933544e3c2dcc2af5da3773b8a0374bd59a4b3483ea078a"
-    },
-    "reset-ready-mad": {
-      "sha256": "c0cca533faa666027171e57e2a17e346aae0e701434a8082714e3a2aa1d6ed2e"
-    },
-    "reset-ready-bioseed": {
-      "sha256": "cf7081dd51ae4bd00a53aa9182e4a84a91dd8f0f0fe63f996ee58b54e2e5544a"
-    }
+    "randomSeed": 1
   },
   "observationSchema": 2,
-  "observationChange": "M0E1 expands authoritative state coverage and explicitly tags verified legacy resource-value NaN."
+  "observationChange": "M0E1 expands authoritative state coverage and explicitly tags verified legacy resource-value NaN.",
+  "scenarios": {
+    "fresh-evolution-p20": {
+      "fixture": "fresh-evolution",
+      "periods": 20,
+      "snapshot": "oracle-snapshots/fresh-evolution-p20.json",
+      "sha256": "33a343812d218fb396faf49031998b5891371a3c9e9c8051c13d7561d78616d4"
+    },
+    "early-civilization-human-p20": {
+      "fixture": "early-civilization-human",
+      "periods": 20,
+      "snapshot": "oracle-snapshots/early-civilization-human-p20.json",
+      "sha256": "7e85e2314bb516493c77a0588390f73e96be8a0e71495179f0343b732c271443"
+    },
+    "industrial-human-queues-p20": {
+      "fixture": "industrial-human-queues",
+      "periods": 20,
+      "snapshot": "oracle-snapshots/industrial-human-queues-p20.json",
+      "sha256": "280f8242641a2f616823accb80456a3f4aa00e2f9d8ca999c24be956e4dd98f9"
+    },
+    "early-space-human-p20": {
+      "fixture": "early-space-human",
+      "periods": 20,
+      "snapshot": "oracle-snapshots/early-space-human-p20.json",
+      "sha256": "1970bbf926da0c541aa25fb27aabeb22f1be815a9000c0aa3a1b904702c05bab"
+    },
+    "interstellar-human-p20": {
+      "fixture": "interstellar-human",
+      "periods": 20,
+      "snapshot": "oracle-snapshots/interstellar-human-p20.json",
+      "sha256": "bb22935313bac7cff18009a4e34d24fe64151e6663f4dd05a64aab809e07f999"
+    },
+    "portal-hell-balorg-p20": {
+      "fixture": "portal-hell-balorg",
+      "periods": 20,
+      "snapshot": "oracle-snapshots/portal-hell-balorg-p20.json",
+      "sha256": "439ad7d1fb573ca34ce87e60739d7ad6f763682061a628d684e355b5db310ca9"
+    },
+    "late-eden-human-p20": {
+      "fixture": "late-eden-human",
+      "periods": 20,
+      "snapshot": "oracle-snapshots/late-eden-human-p20.json",
+      "sha256": "e4de9b5529d5083d4db5cc0f12a6e5cfe7ac65ba8e0522c3409e1221c5d3c295"
+    },
+    "truepath-tauceti-human-p20": {
+      "fixture": "truepath-tauceti-human",
+      "periods": 20,
+      "snapshot": "oracle-snapshots/truepath-tauceti-human-p20.json",
+      "sha256": "e03f638c7544f2dc1707a475eaa3e80ac00fedc36d5d8489e7b9f9487a257d77"
+    },
+    "challenge-steelen-run-p20": {
+      "fixture": "challenge-steelen-run",
+      "periods": 20,
+      "snapshot": "oracle-snapshots/challenge-steelen-run-p20.json",
+      "sha256": "3ed19c6162a5b157b933544e3c2dcc2af5da3773b8a0374bd59a4b3483ea078a"
+    },
+    "reset-ready-mad-p20": {
+      "fixture": "reset-ready-mad",
+      "periods": 20,
+      "snapshot": "oracle-snapshots/reset-ready-mad-p20.json",
+      "sha256": "c0cca533faa666027171e57e2a17e346aae0e701434a8082714e3a2aa1d6ed2e"
+    },
+    "reset-ready-bioseed-p20": {
+      "fixture": "reset-ready-bioseed",
+      "periods": 20,
+      "snapshot": "oracle-snapshots/reset-ready-bioseed-p20.json",
+      "sha256": "cf7081dd51ae4bd00a53aa9182e4a84a91dd8f0f0fe63f996ee58b54e2e5544a"
+    }
+  }
 }

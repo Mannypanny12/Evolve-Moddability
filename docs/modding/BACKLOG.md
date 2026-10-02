@@ -1,6 +1,6 @@
 # Refactor Backlog
 
-GitHub Issues #2 through #9 track the current M0/M1 implementation work. The roadmap now targets a full engine refactor rather than a permanent wrapper around legacy Evolve.
+GitHub Issues #2 through #9 track the original M0/M1 implementation work. Post-M0 audit completion work is tracked by M0E (#16) and its bounded slices #17-#21. The roadmap targets a full engine refactor rather than a permanent wrapper around legacy Evolve.
 
 See [ROADMAP.md](ROADMAP.md) for the complete M0-M14 plan.
 
@@ -107,7 +107,19 @@ M0C fixtures - complete
    |
 M0D deterministic differential simulation - complete
    |
-M1A identity/registry - next
+M0E refactor safety-net completion - in progress
+   |
+M0E1 authoritative state/canonical safety - complete
+   |
+M0E2 inspectable frozen oracle snapshots - current
+   |
+M0E3 fixture hydration/oracle matrix
+   |
+M0E4 real-browser smoke
+   |
+M0E5 architecture/CI guardrails
+   |
+M1A identity/registry - next after M0E
    |
 M1B definition contracts
    |

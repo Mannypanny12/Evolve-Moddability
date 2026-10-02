@@ -21,7 +21,8 @@
     "deploy-win": "(rmdir /S /Q dist || echo recreating dist) && mkdir dist && xcopy /E /I evolve dist\\evolve && xcopy /E /I font dist\\font && xcopy /E /I lib dist\\lib && xcopy /E /I strings dist\\strings && xcopy /E /I wiki dist\\wiki && copy *.html dist && copy *.ico dist && copy LICENSE dist && gh-pages -d dist",
     "test": "node tests/run-tests.cjs",
     "test:characterization": "node tests/run-tests.cjs characterization",
-    "test:simulation": "node tests/run-tests.cjs simulation"
+    "test:simulation": "node tests/run-tests.cjs simulation",
+    "oracle:update": "node tests/simulation/update-oracle-snapshots.cjs"
   },
   "repository": {
     "type": "git",
