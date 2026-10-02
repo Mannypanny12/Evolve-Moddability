@@ -69,7 +69,7 @@
         "crafting": 12
       },
       "trade": {
-        "routes": 6
+        "count": 6
       }
     },
     "resource": {
@@ -217,6 +217,10 @@
     {
       "path": "city.foundry.crafting",
       "equals": 12
+    },
+    {
+      "path": "city.trade.count",
+      "equals": 6
     }
   ]
 }
