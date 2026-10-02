@@ -30,6 +30,8 @@ That returned object represents persisted scenario input. Once materialized, the
 
 Every isolated oracle run fingerprints its persisted input before hydration and verifies the same fingerprint after hydration and after simulation.
 
+The legacy simulation adapter is intentionally **one hydrated fixture per process**. Before hydration, a test may replace an installed state. After `hydrateSimulationState()` imports the real `main.js` graph, module-level simulation state such as `loopTick` exists outside serialized `global` state. `installLegacyState()` therefore rejects attempts to replace the fixture after hydration and requires a fresh isolated process instead.
+
 ## Explicit hydration
 
 `hydrateSimulationState()` is the one explicit transition from installed persisted state to a runnable legacy simulation.
@@ -92,7 +94,14 @@ p4  -> first mid-loop boundary
 p20 -> first long-loop boundary
 ```
 
-The existing worker characterization proves that a 500 ms scheduling delay at the 250 ms worker period produces a three-period catch-up message. The p3 oracle protects what the real game loop does with that batch.
+The worker period and fast/mid/long ratios are frozen in the canonical `legacy-base.json` runtime contract. The legacy adapter verifies the imported production defaults match that contract before any test reset occurs; cadence tests derive their boundaries from the same metadata.
+
+The existing worker characterization proves that a 500 ms scheduling delay at the frozen 250 ms worker period produces a three-period catch-up message. The p3 oracle protects what the real game loop does with that batch.
+
+Additional split-call characterizations prove module-level cadence phase survives real worker-style call boundaries:
+
+- `execGameLoops(2)` followed by `execGameLoops(3)` must equal one `execGameLoops(5)` run, crossing the first mid boundary inside the second call;
+- `execGameLoops(18)` followed by `execGameLoops(3)` must equal one `execGameLoops(21)` run, crossing the first long boundary inside the second call.
 
 `preindustrial-orc-p20` adds a materially different race/profile through the full loop. Exercising it exposed an M0C fixture-shape error: the persisted city trade structure used `routes` where the real legacy structure uses `count`. M0E3 corrects that field and pins `city.trade.count = 6` with an invariant.
 
@@ -124,7 +133,9 @@ M0E3 now guarantees:
 - no mutation of persisted fixture objects through hydration or simulation;
 - generic hydration centralized in the legacy adapter rather than scattered through individual tests;
 - full-loop Orc coverage;
-- explicit p1/p3/p4/p20 cadence coverage;
+- explicit p1/p3/p4/p20 cadence coverage derived from the frozen production cadence contract;
 - a worker-linked catch-up simulation case;
+- cross-call cadence continuity across both mid and long boundaries;
+- enforced one-hydrated-fixture-per-process lifecycle;
 - every oracle scenario produces real normalized state progress;
 - no gameplay-source changes.
