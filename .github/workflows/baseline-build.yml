@@ -88,3 +88,14 @@ jobs:
           done <<< "$changed"
 
           test "$unexpected" -eq 0
+
+      - name: Set up matching ChromeDriver
+        uses: nanasess/setup-chromedriver@v3
+
+      - name: Show browser versions
+        run: |
+          google-chrome --version || chromium --version
+          chromedriver --version
+
+      - name: Run real-browser smoke test
+        run: npm run test:browser
