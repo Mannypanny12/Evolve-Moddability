@@ -23,7 +23,7 @@ Engine imports are also checked for cycles. The clean engine starts acyclic.
 
 The existing top-level `src/*.js` gameplay architecture remains legal only at the exact frozen M0E5 baseline recorded in `tests/architecture/legacy-architecture-baseline.json`.
 
-The baseline measures each legacy module independently for:
+The baseline uses code-aware masking so comments and literal text do not consume architecture budget; executable template expressions still count. It measures each legacy module independently for:
 
 - direct `global` access;
 - browser/UI references;
