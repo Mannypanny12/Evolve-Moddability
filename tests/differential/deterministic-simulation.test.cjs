@@ -17,7 +17,11 @@ const oracleScenarios = [
     { fixture: 'early-space-human', periods: 20 },
     { fixture: 'interstellar-human', periods: 20 },
     { fixture: 'portal-hell-balorg', periods: 20 },
-    { fixture: 'truepath-tauceti-human', periods: 20 }
+    { fixture: 'late-eden-human', periods: 20 },
+    { fixture: 'truepath-tauceti-human', periods: 20 },
+    { fixture: 'challenge-steelen-run', periods: 20 },
+    { fixture: 'reset-ready-mad', periods: 20 },
+    { fixture: 'reset-ready-bioseed', periods: 20 }
 ];
 
 for (const scenario of oracleScenarios){
