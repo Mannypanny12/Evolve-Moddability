@@ -9,7 +9,10 @@ const marker = '__EVOLVE_SIM_RESULT__';
 function runLegacyScenario({ fixture, periods }){
     const result = spawnSync(process.execPath, [childPath, fixture, String(periods)], {
         cwd: path.resolve(__dirname, '..', '..'),
-        env: { ...process.env },
+        env: {
+            ...process.env,
+            NODE_OPTIONS: [process.env.NODE_OPTIONS, '--enable-source-maps'].filter(Boolean).join(' ')
+        },
         encoding: 'utf8',
         timeout: 30000,
         maxBuffer: 32 * 1024 * 1024
