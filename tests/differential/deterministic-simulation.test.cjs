@@ -112,6 +112,12 @@ test('persisted fixture hydration supplies generic defaults before any loop peri
 
     assert.equal(result.before.populationAndCivics.taxes.tax_rate, 20);
     assert.equal(result.before.populationAndCivics.taxes.display, false);
+    assert.equal(result.before.populationAndCivics.garrison.display, false);
+    assert.equal(result.before.populationAndCivics.garrison.disabled, false);
+    assert.equal(result.before.populationAndCivics.garrison.rate, 0);
+    assert.equal(result.before.populationAndCivics.garrison.progress, 0);
+    assert.equal(result.before.populationAndCivics.garrison.tactic, 0);
+    assert.equal(result.before.populationAndCivics.garrison.max, 0);
     assert.equal(result.before.populationAndCivics.garrison.mercs, false);
     assert.equal(result.before.populationAndCivics.garrison.fatigue, 0);
     assert.equal(result.before.populationAndCivics.garrison.protest, 0);
