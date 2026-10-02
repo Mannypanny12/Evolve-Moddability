@@ -5,30 +5,31 @@ const path = require('node:path');
 
 const METRIC_KEYS = ['global', 'browser', 'storage', 'clock', 'random'];
 
-function countMatches(source, pattern){
+function countMatches(code, pattern){
     const matches = source.match(pattern);
     return matches ? matches.length : 0;
 }
 
 function measureLegacySource(source){
+    const code = maskNonCode(source);
     return {
-        global: countMatches(source, /\bglobal\s*(?:\.|\[)/g),
+        global: countMatches(code, /\bglobal\s*(?:\.|\[)/g),
         browser:
-            countMatches(source, /\$\s*\(/g) +
-            countMatches(source, /\bjQuery\b/g) +
-            countMatches(source, /\bdocument\b/g) +
-            countMatches(source, /\bwindow\b/g) +
-            countMatches(source, /\bVue\b/g) +
-            countMatches(source, /\bnavigator\b/g),
+            countMatches(code, /\$\s*\(/g) +
+            countMatches(code, /\bjQuery\b/g) +
+            countMatches(code, /\bdocument\b/g) +
+            countMatches(code, /\bwindow\b/g) +
+            countMatches(code, /\bVue\b/g) +
+            countMatches(code, /\bnavigator\b/g),
         storage:
-            countMatches(source, /\blocalStorage\b/g) +
-            countMatches(source, /\bsave\s*\.\s*(?:getItem|setItem|removeItem|clear)\s*\(/g),
+            countMatches(code, /\blocalStorage\b/g) +
+            countMatches(code, /\bsave\s*\.\s*(?:getItem|setItem|removeItem|clear)\s*\(/g),
         clock:
-            countMatches(source, /\bDate\s*\.\s*now\s*\(/g) +
-            countMatches(source, /\bnew\s+Date\s*\(/g),
+            countMatches(code, /\bDate\s*\.\s*now\s*\(/g) +
+            countMatches(code, /\bnew\s+Date\s*\(/g),
         random:
-            countMatches(source, /\bMath\s*\.\s*random\s*\(/g) +
-            countMatches(source, /\bMath\s*\.\s*rand\s*\(/g),
+            countMatches(code, /\bMath\s*\.\s*random\s*\(/g) +
+            countMatches(code, /\bMath\s*\.\s*rand\s*\(/g),
     };
 }
 
