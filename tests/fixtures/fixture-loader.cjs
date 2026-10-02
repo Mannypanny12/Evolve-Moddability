@@ -107,6 +107,14 @@ function listFixtureDefinitions(){
     return listFixturePaths().map(loadFixtureDefinition);
 }
 
+function loadFixtureById(id){
+    const filePath = path.join(scenarioRoot, `${id}.json`);
+    if (!fs.existsSync(filePath)){
+        throw new Error(`Unknown fixture: ${id}`);
+    }
+    return loadFixtureDefinition(filePath);
+}
+
 function validateDefinition(definition, filePath){
     assert.equal(definition.schema, 1, `${filePath}: unsupported fixture schema`);
     assert.match(definition.id, /^[a-z0-9]+(?:-[a-z0-9]+)*$/, `${filePath}: invalid fixture id`);
@@ -138,6 +146,7 @@ module.exports = {
     canonicalStringify,
     fingerprint,
     listFixtureDefinitions,
+    loadFixtureById,
     validateDefinition,
     materializeFixture,
     assertFixture,
