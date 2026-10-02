@@ -38,7 +38,7 @@ npm ci
 npm run build
 ```
 
-The workflow `.github/workflows/baseline-build.yml` runs the same sequence and then verifies that the build did not leave tracked changes.
+The workflow `.github/workflows/baseline-build.yml` runs the same sequence and then verifies that any tracked changes are restricted to known generated outputs. Upstream keeps generated JS/CSS in the repository but explicitly asks contributors not to submit regenerated bundles, so a clean source build is allowed to rewrite those generated files.
 
 ## Generated artifacts
 
@@ -82,6 +82,6 @@ M0A is complete when automation proves a clean checkout can:
 3. build game CSS;
 4. build the wiki bundle;
 5. build wiki CSS;
-6. finish without an unexpected tracked diff.
+6. change no tracked files other than the known generated game/wiki bundle or CSS outputs.
 
 If the inherited baseline fails, diagnose it and make the smallest explicit build-only correction rather than masking the failure.
