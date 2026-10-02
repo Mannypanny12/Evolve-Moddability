@@ -28,13 +28,14 @@ from `src/main.js`.
 
 It does not reproduce the loop in test code.
 
-For the frozen oracle scenarios, `periods = 20`. With the current legacy cadence this executes:
+The frozen matrix now protects representative cadence boundaries as well as full p20 runs:
 
-- 20 fast-loop periods;
-- 5 mid-loop periods;
-- 1 long-loop period.
+- `p1`: fast-loop only;
+- `p3`: representative multi-period worker catch-up batch;
+- `p4`: first mid-loop boundary;
+- `p20`: first long-loop boundary, containing 20 fast and 5 mid loops.
 
-This deliberately crosses all three major legacy simulation phases.
+The p3 case is linked to the worker characterization that proves 500 ms of scheduling jitter at a 250 ms worker period emits `{ periods: 3 }`. The oracle then protects the real `execGameLoops(3)` result without duplicating worker scheduling logic.
 
 ## Process isolation
 
@@ -70,7 +71,7 @@ Current oracle environment:
 ```text
 Wall clock: 2026-01-01T12:00:00.000Z
 Unseeded RNG seed: 1
-Periods: 20
+Scenario periods: 1, 3, 4, or 20
 ```
 
 The manifest must match that canonical source/environment contract. Every child-process result is also validated before it reaches hashing or snapshot comparison: result schema, fixture ID, period count, wall clock, RNG seed, and presence of before/after state must all match the requested frozen contract.
@@ -81,19 +82,23 @@ Legacy seeded RNG state is part of each materialized game state and is included 
 
 The frozen matrix covers:
 
-| Fixture | Main coverage |
+| Scenario | Main coverage |
 | --- | --- |
-| `fresh-evolution` | evolution and event state |
-| `early-civilization-human` | early resources, jobs and city |
-| `industrial-human-queues` | industrial resources, powered structures, ARPA/build queue, research queue |
-| `early-space-human` | local space and support |
-| `interstellar-human` | Alpha/interstellar systems |
-| `portal-hell-balorg` | Hell, fortress and combat-related state |
-| `late-eden-human` | deep Hell/spire plus Eden |
-| `truepath-tauceti-human` | Truepath and Tau Ceti |
-| `challenge-steelen-run` | challenge-specific state |
-| `reset-ready-mad` | MAD/reset-relevant state |
-| `reset-ready-bioseed` | Bioseed/reset-relevant state |
+| `fresh-evolution-p20` | evolution/event state through the full cadence |
+| `early-civilization-human-p1` | fast-only boundary |
+| `early-civilization-human-p3` | representative worker catch-up batch |
+| `early-civilization-human-p4` | first mid-loop boundary |
+| `early-civilization-human-p20` | early city through the first long-loop boundary |
+| `preindustrial-orc-p20` | distinct Orc traits, crafting/trade, and full-loop race coverage |
+| `industrial-human-queues-p20` | industrial resources, powered structures, ARPA/build queue, research queue |
+| `early-space-human-p20` | local space and support |
+| `interstellar-human-p20` | Alpha/interstellar systems |
+| `portal-hell-balorg-p20` | Hell, fortress and combat-related state |
+| `late-eden-human-p20` | deep Hell/spire plus Eden |
+| `truepath-tauceti-human-p20` | Truepath and Tau Ceti |
+| `challenge-steelen-run-p20` | challenge-specific state |
+| `reset-ready-mad-p20` | MAD/reset-relevant state |
+| `reset-ready-bioseed-p20` | Bioseed/reset-relevant state |
 
 Every matrix entry must both:
 
@@ -285,7 +290,11 @@ This was used while building M0D to identify real fixture hydration requirements
 
 M0E3 classifies those findings by ownership. Generic load/startup defaults belong to explicit hydration; scenario-specific persisted gameplay state remains in the fixture overlays. The adapter does not manufacture powered structures, power/support priority, ARPA progress, Hell observation history, spire/mechbay progress, or Truepath rival state.
 
-No gameplay source is modified. Existing frozen p20 oracle outputs are expected to remain exact while hydration is formalized.
+No gameplay source is modified.
+
+M0E3A initially treated every existing p20 hash as immutable while the lifecycle was formalized. M0E3B's p1 cadence case then exposed that partial synthetic garrison overlays were missing fields from Evolve's own default garrison shape. Correcting that generic hydration intentionally changed five previously frozen p20 scenarios after exact structural review: `early-civilization-human`, `industrial-human-queues`, `portal-hell-balorg`, `challenge-steelen-run`, and `reset-ready-mad`. The other six existing p20 goldens remained unchanged.
+
+The reviewed diffs add the missing default garrison fields and, where the previously undefined garrison capacity had affected early fast-loop morale, the corresponding downstream resource/homeless state. These are fixture/harness corrections, not gameplay-source changes.
 
 ## Commands
 
