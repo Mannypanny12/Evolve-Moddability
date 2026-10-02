@@ -120,7 +120,8 @@
               "soul_forge": 0,
               "crafted": 0,
               "turrets": 0,
-              "compactor": 0
+              "compactor": 0,
+              "surveyors": 0
             }
           },
           "period": {
@@ -148,7 +149,8 @@
               "soul_forge": 0,
               "crafted": 0,
               "turrets": 0,
-              "compactor": 0
+              "compactor": 0,
+              "surveyors": 0
             }
           }
         },
