@@ -46,6 +46,11 @@ jobs:
             early-civilization-human-p3 \
             early-civilization-human-p4 \
             preindustrial-orc-p20 \
+            early-civilization-human-p20 \
+            industrial-human-queues-p20 \
+            portal-hell-balorg-p20 \
+            challenge-steelen-run-p20 \
+            reset-ready-mad-p20 \
             --accept
 
           git add tests/simulation/oracle-baselines.json tests/simulation/oracle-snapshots/
