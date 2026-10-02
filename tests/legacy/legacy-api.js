@@ -45,10 +45,10 @@ import '../../src/seasons.js';
 import '../../src/wiki/change.js';
 import '../../src/debug.js';
 
-const PRISTINE_LEGACY_STATE = JSON.parse(JSON.stringify(global));
+const PRISTINE_LEGACY_STATE = structuredClone(global);
 
 function clone(value){
-    return JSON.parse(JSON.stringify(value));
+    return structuredClone(value);
 }
 
 function numericCosts(costs){

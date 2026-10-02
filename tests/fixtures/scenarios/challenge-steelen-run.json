@@ -58,7 +58,8 @@
         "Wrought_Iron": 2,
         "Sheet_Metal": 0,
         "Mythril": 0,
-        "Aerogel": 0
+        "Aerogel": 0,
+        "crafting": 12
       }
     },
     "resource": {
@@ -116,6 +117,22 @@
         "crates": 0,
         "containers": 0
       }
+    },
+    "civic": {
+      "d_job": "unemployed",
+      "unemployed": {
+        "workers": 0
+      },
+      "craftsman": {
+        "workers": 12,
+        "assigned": 12,
+        "max": 20
+      },
+      "garrison": {
+        "raid": 0,
+        "workers": 0,
+        "wounded": 0
+      }
     }
   },
   "invariants": [
@@ -134,6 +151,14 @@
     {
       "path": "tech.smelting",
       "min": 4
+    },
+    {
+      "path": "city.foundry.crafting",
+      "equals": 12
+    },
+    {
+      "path": "civic.craftsman.workers",
+      "equals": 12
     }
   ]
 }

@@ -65,7 +65,8 @@
         "Wrought_Iron": 5,
         "Sheet_Metal": 0,
         "Mythril": 0,
-        "Aerogel": 0
+        "Aerogel": 0,
+        "crafting": 12
       },
       "trade": {
         "routes": 6
@@ -211,6 +212,10 @@
     },
     {
       "path": "civic.craftsman.workers",
+      "equals": 12
+    },
+    {
+      "path": "city.foundry.crafting",
       "equals": 12
     }
   ]

@@ -72,12 +72,13 @@
       },
       "foundry": {
         "count": 5,
-        "Plywood": 10,
-        "Brick": 8,
-        "Wrought_Iron": 12,
+        "Plywood": 8,
+        "Brick": 6,
+        "Wrought_Iron": 8,
         "Sheet_Metal": 6,
         "Mythril": 0,
-        "Aerogel": 0
+        "Aerogel": 0,
+        "crafting": 28
       },
       "warehouse": {
         "count": 12
@@ -276,6 +277,10 @@
     {
       "path": "arpa.railway.complete",
       "equals": 0
+    },
+    {
+      "path": "city.foundry.crafting",
+      "equals": 28
     }
   ]
 }

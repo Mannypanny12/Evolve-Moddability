@@ -4,6 +4,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const assert = require('node:assert/strict');
+const {
+    canonicalize,
+    canonicalStringify,
+    cloneState
+} = require('../simulation/canonical-state.cjs');
 
 const fixtureRoot = __dirname;
 const scenarioRoot = path.join(fixtureRoot, 'scenarios');
@@ -12,7 +17,7 @@ const baseMetadata = JSON.parse(
 );
 
 function clone(value){
-    return JSON.parse(JSON.stringify(value));
+    return cloneState(value);
 }
 
 function isPlainObject(value){
@@ -29,24 +34,6 @@ function deepMerge(target, patch){
         result[key] = isPlainObject(value) ? deepMerge(result[key], value) : clone(value);
     }
     return result;
-}
-
-function canonicalize(value){
-    if (Array.isArray(value)){
-        return value.map(canonicalize);
-    }
-    if (isPlainObject(value)){
-        const result = {};
-        for (const key of Object.keys(value).sort()){
-            result[key] = canonicalize(value[key]);
-        }
-        return result;
-    }
-    return value;
-}
-
-function canonicalStringify(value){
-    return JSON.stringify(canonicalize(value));
 }
 
 function fingerprint(value){
@@ -143,6 +130,7 @@ function assertBaseFingerprint(legacyApi){
 
 module.exports = {
     baseMetadata,
+    canonicalize,
     canonicalStringify,
     fingerprint,
     listFixtureDefinitions,
