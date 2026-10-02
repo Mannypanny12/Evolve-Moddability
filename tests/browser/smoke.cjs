@@ -11,6 +11,8 @@ const DRIVER_PORT = Number(process.env.CHROMEDRIVER_PORT || 9515);
 const DRIVER_URL = `http://${DRIVER_HOST}:${DRIVER_PORT}`;
 const ELEMENT_KEY = 'element-6066-11e4-a52e-4f735466cecf';
 const DEFAULT_WAIT_MS = 12000;
+const INJECT_STARTUP_FAILURE = process.env.M0E4_INJECT_STARTUP_FAILURE === '1';
+const STARTUP_FAILURE_MARKER = 'M0E4_INJECTED_STARTUP_FAILURE';
 
 const optionalExternalHosts = [
     'fonts.googleapis.com',
@@ -21,6 +23,23 @@ const optionalExternalHosts = [
 
 function delay(ms){
     return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function stopChildProcess(child){
+    if (!child || child.exitCode !== null) return;
+
+    const exited = new Promise(resolve => child.once('exit', resolve));
+    child.kill('SIGTERM');
+
+    const stopped = await Promise.race([
+        exited.then(() => true),
+        delay(2000).then(() => false),
+    ]);
+
+    if (!stopped && child.exitCode === null) {
+        child.kill('SIGKILL');
+        await Promise.race([exited, delay(1000)]);
+    }
 }
 
 function mimeType(file){
@@ -72,11 +91,26 @@ function startStaticServer(){
                 res.end(error.code === 'ENOENT' ? 'Not found' : 'Server error');
                 return;
             }
+            let responseBody = data;
+            if (INJECT_STARTUP_FAILURE && rel === 'index.html') {
+                const html = data.toString('utf8');
+                const mainScript = '<script src="evolve/main.js" type="module"></script>';
+                if (!html.includes(mainScript)) {
+                    res.writeHead(500);
+                    res.end('Unable to inject the M0E4 startup-failure control before the main game module.');
+                    return;
+                }
+                responseBody = Buffer.from(html.replace(
+                    mainScript,
+                    `<script>throw new Error("${STARTUP_FAILURE_MARKER}");</script>\n    ${mainScript}`
+                ));
+            }
+
             res.writeHead(200, {
                 'Content-Type': mimeType(file),
                 'Cache-Control': 'no-store',
             });
-            res.end(data);
+            res.end(responseBody);
         });
     });
 
@@ -371,7 +405,7 @@ async function run(){
         if (sessionId) {
             await webdriver('DELETE', `/session/${sessionId}`).catch(() => {});
         }
-        driver.child.kill('SIGTERM');
+        await stopChildProcess(driver.child);
         await new Promise(resolve => server.close(resolve));
     }
 }
