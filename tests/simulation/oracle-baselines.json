@@ -18,17 +18,41 @@
       "snapshot": "oracle-snapshots/fresh-evolution-p20.json",
       "sha256": "33a343812d218fb396faf49031998b5891371a3c9e9c8051c13d7561d78616d4"
     },
+    "early-civilization-human-p1": {
+      "fixture": "early-civilization-human",
+      "periods": 1,
+      "snapshot": "oracle-snapshots/early-civilization-human-p1.json",
+      "sha256": "2472f8ec3eeaefacc80ff926add7c87c2e1f0bbc3404149e6fbc80ec481af042"
+    },
+    "early-civilization-human-p3": {
+      "fixture": "early-civilization-human",
+      "periods": 3,
+      "snapshot": "oracle-snapshots/early-civilization-human-p3.json",
+      "sha256": "fb9ac01ef58898cec62ea30d85705a9092a25073684a33f6c181a37ab7d26761"
+    },
+    "early-civilization-human-p4": {
+      "fixture": "early-civilization-human",
+      "periods": 4,
+      "snapshot": "oracle-snapshots/early-civilization-human-p4.json",
+      "sha256": "02444de6f71dd7cfa0c5815c3ee9cf09657f78d93e640391fc906874e1b43414"
+    },
     "early-civilization-human-p20": {
       "fixture": "early-civilization-human",
       "periods": 20,
       "snapshot": "oracle-snapshots/early-civilization-human-p20.json",
-      "sha256": "7e85e2314bb516493c77a0588390f73e96be8a0e71495179f0343b732c271443"
+      "sha256": "cae273e51cf810fb7542fb2d798529b9fbe91d6cca532f61d535e2657c0df2b5"
+    },
+    "preindustrial-orc-p20": {
+      "fixture": "preindustrial-orc",
+      "periods": 20,
+      "snapshot": "oracle-snapshots/preindustrial-orc-p20.json",
+      "sha256": "dfa8141fecbec019475ea37bfd630727af2610b42808c4a9d23c6b65766a71a9"
     },
     "industrial-human-queues-p20": {
       "fixture": "industrial-human-queues",
       "periods": 20,
       "snapshot": "oracle-snapshots/industrial-human-queues-p20.json",
-      "sha256": "280f8242641a2f616823accb80456a3f4aa00e2f9d8ca999c24be956e4dd98f9"
+      "sha256": "3f1d7aa76aa2bcfcf78cb9ca58b97ad70e1e212d76cb68a8b5f5e45b5b50543e"
     },
     "early-space-human-p20": {
       "fixture": "early-space-human",
@@ -46,7 +70,7 @@
       "fixture": "portal-hell-balorg",
       "periods": 20,
       "snapshot": "oracle-snapshots/portal-hell-balorg-p20.json",
-      "sha256": "439ad7d1fb573ca34ce87e60739d7ad6f763682061a628d684e355b5db310ca9"
+      "sha256": "67fee50bfb46cb97748c0525b44db7c07d19789a66bbeb1a5667dd46e7624b93"
     },
     "late-eden-human-p20": {
       "fixture": "late-eden-human",
@@ -64,13 +88,13 @@
       "fixture": "challenge-steelen-run",
       "periods": 20,
       "snapshot": "oracle-snapshots/challenge-steelen-run-p20.json",
-      "sha256": "3ed19c6162a5b157b933544e3c2dcc2af5da3773b8a0374bd59a4b3483ea078a"
+      "sha256": "05d49b97bb782539f0d586bdafc5ace85d3929b2e923489b2020c5337937dd20"
     },
     "reset-ready-mad-p20": {
       "fixture": "reset-ready-mad",
       "periods": 20,
       "snapshot": "oracle-snapshots/reset-ready-mad-p20.json",
-      "sha256": "c0cca533faa666027171e57e2a17e346aae0e701434a8082714e3a2aa1d6ed2e"
+      "sha256": "f24ee258c1475750f54a6df2aa942dacec65a9aff346367365d773641c0b9a70"
     },
     "reset-ready-bioseed-p20": {
       "fixture": "reset-ready-bioseed",

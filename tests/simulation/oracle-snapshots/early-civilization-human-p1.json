@@ -4,11 +4,11 @@
   "events": {
     "major": {
       "l": false,
-      "t": 98
+      "t": 99
     },
     "normal": {
       "l": false,
-      "t": 498
+      "t": 499
     }
   },
   "evolution": {
@@ -327,7 +327,7 @@
       "display": false,
       "impact": 0.1,
       "job": "crystal_miner",
-      "max": -1,
+      "max": 0,
       "name": "job_crystal_miner",
       "stress": 5,
       "workers": 0
@@ -354,11 +354,9 @@
       "workers": 0
     },
     "farmer": {
-      "assigned": 0,
-      "display": false,
+      "assigned": 8,
       "impact": 0.82,
-      "job": "farmer",
-      "max": -1,
+      "max": 12,
       "name": "job_farmer",
       "stress": 5,
       "workers": 0
@@ -368,7 +366,7 @@
       "display": false,
       "impact": 0,
       "job": "forager",
-      "max": -1,
+      "max": 0,
       "name": "job_forager",
       "stress": 0,
       "workers": 0
@@ -427,7 +425,7 @@
       "mercs": false,
       "progress": 0,
       "protest": 0,
-      "raid": 25,
+      "raid": 0,
       "rate": 0,
       "tactic": 0,
       "workers": 0,
@@ -446,7 +444,7 @@
     "govern": {
       "fr": 0,
       "rev": 0,
-      "type": "democracy"
+      "type": "oligarchy"
     },
     "hell_surveyor": {
       "assigned": 0,
@@ -458,46 +456,43 @@
       "stress": 1,
       "workers": 0
     },
-    "homeless": 239,
+    "homeless": 0,
     "hunter": {
       "assigned": 0,
       "display": false,
       "impact": 0,
       "job": "hunter",
-      "max": -1,
+      "max": 0,
       "name": "job_hunter",
       "stress": 0,
       "workers": 0
     },
     "lumberjack": {
-      "assigned": 0,
-      "display": false,
+      "assigned": 6,
       "impact": 1,
-      "job": "lumberjack",
-      "max": -1,
+      "max": 10,
       "name": "job_lumberjack",
       "stress": 5,
       "workers": 0
     },
     "mad": {
-      "armed": false
+      "armed": true,
+      "display": false
     },
     "meditator": {
       "assigned": 0,
       "display": false,
       "impact": 1,
       "job": "meditator",
-      "max": -1,
+      "max": 0,
       "name": "job_meditator",
       "stress": 5,
       "workers": 0
     },
     "miner": {
-      "assigned": 0,
-      "display": false,
+      "assigned": 5,
       "impact": 1,
-      "job": "miner",
-      "max": 0,
+      "max": 8,
       "name": "job_miner",
       "stress": 4,
       "workers": 0
@@ -538,7 +533,7 @@
       "display": false,
       "impact": 1,
       "job": "quarry_worker",
-      "max": -1,
+      "max": 0,
       "name": "job_quarry_worker",
       "stress": 5,
       "workers": 0
@@ -548,7 +543,7 @@
       "display": false,
       "impact": 0.12,
       "job": "scavenger",
-      "max": -1,
+      "max": 0,
       "name": "job_scavenger",
       "stress": 5,
       "workers": 0
@@ -582,7 +577,7 @@
       "display": false,
       "impact": 1,
       "job": "teamster",
-      "max": -1,
+      "max": 0,
       "name": "job_teamster",
       "stress": 4,
       "workers": 0
@@ -608,11 +603,8 @@
       "workers": 0
     },
     "unemployed": {
-      "assigned": 0,
-      "display": false,
+      "assigned": 3,
       "impact": 0,
-      "job": "unemployed",
-      "max": -1,
       "name": "job_unemployed",
       "stress": 0,
       "workers": 0
@@ -641,7 +633,7 @@
       "count": 0
     },
     "Plasmid": {
-      "count": 20
+      "count": 0
     },
     "Supercoiled": {
       "count": 0
@@ -756,7 +748,7 @@
       "delta": 0,
       "diff": 0,
       "display": false,
-      "max": 80,
+      "max": 0,
       "rate": 0,
       "stackable": false,
       "value": {
@@ -924,7 +916,7 @@
       "delta": 0,
       "diff": 0,
       "display": false,
-      "max": 10,
+      "max": 200,
       "rate": 1,
       "stackable": true,
       "trade": 0,
@@ -987,7 +979,7 @@
       "delta": 0,
       "diff": 0,
       "display": false,
-      "max": 100,
+      "max": 0,
       "rate": 0,
       "stackable": false,
       "value": {
@@ -995,12 +987,12 @@
       }
     },
     "Food": {
-      "amount": 0,
+      "amount": 344.5,
       "containers": 0,
       "crates": 0,
       "delta": 0,
-      "diff": 0,
-      "display": false,
+      "diff": -22,
+      "display": true,
       "max": 1000,
       "rate": 1,
       "stackable": true,
@@ -1122,12 +1114,12 @@
       }
     },
     "Knowledge": {
-      "amount": 100,
+      "amount": 0.25,
       "containers": 0,
       "crates": 0,
       "delta": 0,
-      "diff": 0.56,
-      "display": true,
+      "diff": 1,
+      "display": false,
       "max": 100,
       "rate": 1,
       "stackable": false,
@@ -1136,13 +1128,13 @@
       }
     },
     "Lumber": {
-      "amount": 0,
+      "amount": 260,
       "containers": 0,
       "crates": 0,
       "delta": 0,
       "diff": 0,
-      "display": false,
-      "max": 200,
+      "display": true,
+      "max": 800,
       "rate": 1,
       "stackable": true,
       "trade": 0,
@@ -1179,7 +1171,7 @@
       }
     },
     "Money": {
-      "amount": 1000,
+      "amount": 420,
       "containers": 0,
       "crates": 0,
       "delta": 0,
@@ -1276,7 +1268,7 @@
       "delta": 0,
       "diff": 0,
       "display": false,
-      "max": 0,
+      "max": 100,
       "rate": 1,
       "stackable": false,
       "value": {
@@ -1416,13 +1408,13 @@
       "value": 100
     },
     "Stone": {
-      "amount": 0,
+      "amount": 140,
       "containers": 0,
       "crates": 0,
       "delta": 0,
       "diff": 0,
-      "display": false,
-      "max": 200,
+      "display": true,
+      "max": 600,
       "rate": 1,
       "stackable": true,
       "trade": 0,
@@ -1435,7 +1427,7 @@
       "delta": 0,
       "diff": 0,
       "display": false,
-      "max": 100,
+      "max": 0,
       "rate": 0,
       "stackable": false,
       "value": {
@@ -1563,13 +1555,13 @@
       }
     },
     "human": {
-      "amount": 0,
+      "amount": 22,
       "containers": 0,
       "crates": 0,
       "delta": 0,
       "diff": 0,
       "display": true,
-      "max": 0,
+      "max": 30,
       "rate": 0,
       "stackable": false,
       "value": {
@@ -1702,7 +1694,7 @@
     "cores": 0,
     "cstone": 0,
     "dark": 0,
-    "days": 1,
+    "days": 0,
     "death_tour": {
       "ai": {
         "a": 0,
@@ -1803,12 +1795,12 @@
     "geck": 0,
     "harmony": 0,
     "know": 0,
-    "mad": 2,
+    "mad": 0,
     "matrix": 0,
     "murders": 0,
     "pdebt": 0,
     "phage": 0,
-    "plasmid": 140,
+    "plasmid": 0,
     "portals": 0,
     "psykill": 0,
     "reset": 0,
@@ -1853,21 +1845,27 @@
   },
   "structures": {
     "city": {
+      "basic_housing": {
+        "count": 5
+      },
       "biome": "grassland",
       "calendar": {
-        "day": 121,
-        "moon": 1,
+        "day": 120,
+        "moon": 0,
         "orbit": 365,
-        "season": 1,
+        "season": 0,
         "temp": 1,
         "weather": 2,
         "wind": 0,
-        "year": 720
+        "year": 42
       },
       "cold": 0,
+      "farm": {
+        "count": 8
+      },
       "geology": {
         "Copper": 0.08,
-        "Iron": 0.06
+        "Iron": 0.04
       },
       "hot": 0,
       "market": {
@@ -1881,10 +1879,10 @@
         "blood_thirst": 0,
         "broadcast": 0,
         "cap": 100,
-        "current": 50,
+        "current": 100,
         "entertain": 0,
         "leadership": 0,
-        "potential": -13,
+        "potential": 104,
         "restaurant": 0,
         "rev": 0,
         "season": 5,
@@ -1892,7 +1890,7 @@
         "stress": 0,
         "tavern": 0,
         "tax": 0,
-        "unemployed": 0,
+        "unemployed": -3,
         "vr": 0,
         "warmonger": 0,
         "weather": 2,
@@ -1902,7 +1900,11 @@
       "power_total": 0,
       "powered": false,
       "ptrait": [],
-      "sun": 1
+      "rock_quarry": {
+        "cnvay": 0,
+        "count": 2
+      },
+      "sun": 0
     },
     "eden": {},
     "galaxy": {},
@@ -1913,10 +1915,11 @@
     "tauceti": {}
   },
   "technologies": {
-    "high_tech": 4,
-    "mass": 1,
-    "military": 5,
-    "primitive": 5,
+    "agriculture": 1,
+    "construction": 1,
+    "housing": 1,
+    "military": 1,
+    "primitive": 3,
     "wsc": 0
   },
   "transient": {

@@ -303,11 +303,9 @@
       "workers": 0
     },
     "craftsman": {
-      "assigned": 0,
-      "display": false,
+      "assigned": 12,
       "impact": 1,
-      "job": "craftsman",
-      "max": 0,
+      "max": 2,
       "name": "job_craftsman",
       "stress": 5,
       "workers": 0
@@ -354,10 +352,8 @@
       "workers": 0
     },
     "farmer": {
-      "assigned": 0,
-      "display": false,
+      "assigned": 22,
       "impact": 0.82,
-      "job": "farmer",
       "max": -1,
       "name": "job_farmer",
       "stress": 5,
@@ -427,7 +423,7 @@
       "mercs": false,
       "progress": 0,
       "protest": 0,
-      "raid": 25,
+      "raid": 8,
       "rate": 0,
       "tactic": 0,
       "workers": 0,
@@ -446,7 +442,7 @@
     "govern": {
       "fr": 0,
       "rev": 0,
-      "type": "democracy"
+      "type": "oligarchy"
     },
     "hell_surveyor": {
       "assigned": 0,
@@ -458,7 +454,7 @@
       "stress": 1,
       "workers": 0
     },
-    "homeless": 239,
+    "homeless": 73,
     "hunter": {
       "assigned": 0,
       "display": false,
@@ -470,17 +466,16 @@
       "workers": 0
     },
     "lumberjack": {
-      "assigned": 0,
-      "display": false,
+      "assigned": 15,
       "impact": 1,
-      "job": "lumberjack",
       "max": -1,
       "name": "job_lumberjack",
       "stress": 5,
       "workers": 0
     },
     "mad": {
-      "armed": false
+      "armed": true,
+      "display": false
     },
     "meditator": {
       "assigned": 0,
@@ -493,11 +488,9 @@
       "workers": 0
     },
     "miner": {
-      "assigned": 0,
-      "display": false,
+      "assigned": 18,
       "impact": 1,
-      "job": "miner",
-      "max": 0,
+      "max": 18,
       "name": "job_miner",
       "stress": 4,
       "workers": 0
@@ -608,10 +601,8 @@
       "workers": 0
     },
     "unemployed": {
-      "assigned": 0,
-      "display": false,
+      "assigned": 4,
       "impact": 0,
-      "job": "unemployed",
       "max": -1,
       "name": "job_unemployed",
       "stress": 0,
@@ -641,7 +632,7 @@
       "count": 0
     },
     "Plasmid": {
-      "count": 20
+      "count": 0
     },
     "Supercoiled": {
       "count": 0
@@ -663,9 +654,9 @@
     }
   },
   "race": {
-    "creative": 1,
+    "angry": 1,
+    "brute": 1,
     "deterioration": 0,
-    "diverse": 1,
     "gene_fortify": 0,
     "gods": "none",
     "inactiveTraits": {},
@@ -681,7 +672,7 @@
       "tech": {}
     },
     "seeded": false,
-    "species": "human",
+    "species": "orc",
     "universe": "standard"
   },
   "resources": {
@@ -788,13 +779,13 @@
       "value": 9000
     },
     "Brick": {
-      "amount": 0,
+      "amount": 210,
       "containers": 0,
       "crates": 0,
       "delta": 0,
       "diff": 0,
-      "display": false,
-      "max": -1,
+      "display": true,
+      "max": 600,
       "rate": 0,
       "stackable": false,
       "value": {
@@ -879,12 +870,12 @@
       }
     },
     "Copper": {
-      "amount": 0,
+      "amount": 100,
       "containers": 0,
       "crates": 0,
       "delta": 0,
       "diff": 0,
-      "display": false,
+      "display": true,
       "max": 100,
       "rate": 1,
       "stackable": true,
@@ -995,12 +986,12 @@
       }
     },
     "Food": {
-      "amount": 0,
+      "amount": 997.7973333333339,
       "containers": 0,
       "crates": 0,
       "delta": 0,
-      "diff": 0,
-      "display": false,
+      "diff": -0.55,
+      "display": true,
       "max": 1000,
       "rate": 1,
       "stackable": true,
@@ -1095,12 +1086,12 @@
       "value": 420
     },
     "Iron": {
-      "amount": 0,
+      "amount": 100,
       "containers": 0,
       "crates": 0,
       "delta": 0,
       "diff": 0,
-      "display": false,
+      "display": true,
       "max": 100,
       "rate": 1,
       "stackable": true,
@@ -1122,12 +1113,12 @@
       }
     },
     "Knowledge": {
-      "amount": 100,
+      "amount": 3.6749999999999985,
       "containers": 0,
       "crates": 0,
       "delta": 0,
-      "diff": 0.56,
-      "display": true,
+      "diff": 0.7,
+      "display": false,
       "max": 100,
       "rate": 1,
       "stackable": false,
@@ -1136,12 +1127,12 @@
       }
     },
     "Lumber": {
-      "amount": 0,
+      "amount": 200,
       "containers": 0,
       "crates": 0,
       "delta": 0,
       "diff": 0,
-      "display": false,
+      "display": true,
       "max": 200,
       "rate": 1,
       "stackable": true,
@@ -1296,13 +1287,13 @@
       "value": 99000
     },
     "Plywood": {
-      "amount": 0,
+      "amount": 130,
       "containers": 0,
       "crates": 0,
       "delta": 0,
       "diff": 0,
-      "display": false,
-      "max": -1,
+      "display": true,
+      "max": 500,
       "rate": 0,
       "stackable": false,
       "value": {
@@ -1416,12 +1407,12 @@
       "value": 100
     },
     "Stone": {
-      "amount": 0,
+      "amount": 200,
       "containers": 0,
       "crates": 0,
       "delta": 0,
       "diff": 0,
-      "display": false,
+      "display": true,
       "max": 200,
       "rate": 1,
       "stackable": true,
@@ -1535,13 +1526,13 @@
       "value": 2
     },
     "Wrought_Iron": {
-      "amount": 0,
+      "amount": 90,
       "containers": 0,
       "crates": 0,
       "delta": 0,
       "diff": 0,
-      "display": false,
-      "max": -1,
+      "display": true,
+      "max": 350,
       "rate": 0,
       "stackable": false,
       "value": {
@@ -1562,7 +1553,7 @@
         "$evolve_test_type": "undefined"
       }
     },
-    "human": {
+    "orc": {
       "amount": 0,
       "containers": 0,
       "crates": 0,
@@ -1803,12 +1794,12 @@
     "geck": 0,
     "harmony": 0,
     "know": 0,
-    "mad": 2,
+    "mad": 0,
     "matrix": 0,
     "murders": 0,
     "pdebt": 0,
     "phage": 0,
-    "plasmid": 140,
+    "plasmid": 0,
     "portals": 0,
     "psykill": 0,
     "reset": 0,
@@ -1853,7 +1844,7 @@
   },
   "structures": {
     "city": {
-      "biome": "grassland",
+      "biome": "savanna",
       "calendar": {
         "day": 121,
         "moon": 1,
@@ -1862,29 +1853,54 @@
         "temp": 1,
         "weather": 2,
         "wind": 0,
-        "year": 720
+        "year": 190
       },
       "cold": 0,
+      "farm": {
+        "bn": "Money",
+        "count": 24,
+        "time": "time_never"
+      },
+      "foundry": {
+        "Aerogel": 0,
+        "Brick": 0,
+        "Mythril": 0,
+        "Plywood": 0,
+        "Sheet_Metal": 0,
+        "Wrought_Iron": 0,
+        "bn": "Money",
+        "count": 2,
+        "crafting": 0,
+        "time": "time_never"
+      },
       "geology": {
-        "Copper": 0.08,
-        "Iron": 0.06
+        "Aluminium": -0.03,
+        "Copper": 0.12,
+        "Iron": 0.09
       },
       "hot": 0,
       "market": {
         "active": false,
-        "mtrade": 0,
+        "mtrade": 12,
         "qty": 10,
         "trade": 0
+      },
+      "mine": {
+        "bn": "Money",
+        "count": 18,
+        "cpow": 0,
+        "ipow": 0,
+        "time": "time_never"
       },
       "morale": {
         "bliss_den": 0,
         "blood_thirst": 0,
         "broadcast": 0,
         "cap": 100,
-        "current": 50,
+        "current": 70,
         "entertain": 0,
         "leadership": 0,
-        "potential": -13,
+        "potential": 70,
         "restaurant": 0,
         "rev": 0,
         "season": 5,
@@ -1901,8 +1917,15 @@
       "power": 0,
       "power_total": 0,
       "powered": false,
-      "ptrait": [],
-      "sun": 1
+      "ptrait": [
+        "dense"
+      ],
+      "sun": 1,
+      "trade": {
+        "bn": "Money",
+        "count": 6,
+        "time": "time_never"
+      }
     },
     "eden": {},
     "galaxy": {},
@@ -1913,10 +1936,14 @@
     "tauceti": {}
   },
   "technologies": {
-    "high_tech": 4,
-    "mass": 1,
-    "military": 5,
+    "agriculture": 3,
+    "construction": 3,
+    "housing": 2,
+    "military": 3,
+    "mining": 3,
     "primitive": 5,
+    "smelting": 3,
+    "trade": 1,
     "wsc": 0
   },
   "transient": {

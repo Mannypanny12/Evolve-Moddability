@@ -148,11 +148,27 @@ function eventEffect(id){
 
 let simulationModule = null;
 
+function hydrateGarrisonDefaults(){
+    const persisted = global.civic.garrison
+        ? clone(global.civic.garrison)
+        : null;
+
+    if (persisted){
+        delete global.civic.garrison;
+    }
+
+    commisionGarrison();
+
+    if (persisted){
+        Object.assign(global.civic.garrison, persisted);
+    }
+}
+
 async function hydrateSimulationState(){
     if (!simulationModule){
         if (global.race.species !== 'protoplasm'){
             defineGovernment(true);
-            commisionGarrison();
+            hydrateGarrisonDefaults();
         }
         simulationModule = await import('../../src/main.js');
     }

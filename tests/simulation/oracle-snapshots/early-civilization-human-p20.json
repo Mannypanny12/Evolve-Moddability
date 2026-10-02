@@ -417,12 +417,17 @@
     },
     "garrison": {
       "crew": 0,
+      "disabled": false,
+      "display": false,
       "fatigue": 0,
       "m_use": 0,
       "max": 0,
       "mercs": false,
+      "progress": 0,
       "protest": 0,
       "raid": 0,
+      "rate": 0,
+      "tactic": 0,
       "workers": 0,
       "wounded": 0
     },
@@ -983,7 +988,7 @@
       }
     },
     "Food": {
-      "amount": 335,
+      "amount": 318.5,
       "containers": 0,
       "crates": 0,
       "delta": 0,
@@ -1110,7 +1115,7 @@
       }
     },
     "Knowledge": {
-      "amount": 3.84,
+      "amount": 4.802499999999999,
       "containers": 0,
       "crates": 0,
       "delta": 0,

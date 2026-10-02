@@ -37,7 +37,7 @@ Every isolated oracle run fingerprints its persisted input before hydration and 
 It currently:
 
 1. supplies generic government defaults through Evolve's own `defineGovernment(true)`;
-2. supplies generic garrison/MAD defaults through Evolve's own `commisionGarrison()`;
+2. reconstructs Evolve's complete generic garrison/MAD default shape through `commisionGarrison()`, then overlays any persisted scenario-specific garrison values;
 3. imports the real `src/main.js` startup path.
 
 `runGameLoops()` no longer silently performs hydration. Calling it before hydration is an error.
@@ -79,10 +79,52 @@ For `early-civilization-human`:
 
 This distinguishes load/startup reconstruction from actual loop behavior.
 
-## Frozen-oracle rule
+## M0E3B oracle matrix
 
-M0E3A is structural test-harness work. It must not change the existing eleven p20 historical oracle results.
+The final M0E3 matrix contains 15 frozen scenarios.
 
-Any existing p20 SHA-256 change is treated as a regression to investigate, not a golden to accept.
+The early Human fixture isolates cadence as the variable:
 
-M0E3B may add new Orc/cadence/catch-up scenarios after this hydration contract is proven.
+```text
+p1  -> fast only
+p3  -> representative multi-period worker catch-up
+p4  -> first mid-loop boundary
+p20 -> first long-loop boundary
+```
+
+The existing worker characterization proves that a 500 ms scheduling delay at the 250 ms worker period produces a three-period catch-up message. The p3 oracle protects what the real game loop does with that batch.
+
+`preindustrial-orc-p20` adds a materially different race/profile through the full loop. Exercising it exposed an M0C fixture-shape error: the persisted city trade structure used `routes` where the real legacy structure uses `count`. M0E3 corrects that field and pins `city.trade.count = 6` with an invariant.
+
+Every matrix scenario is required to change normalized state and to match in two independent child processes.
+
+## Reviewed historical-golden correction
+
+M0E3A initially required all eleven existing p20 hashes to remain unchanged. The new p1 cadence probe provided new evidence that partial garrison overlays were not legacy-compatible persisted inputs: Evolve's fast loop read missing `garrison.max` before later cadence phases could mask the problem.
+
+Hydration now builds Evolve's complete default garrison shape and overlays persisted scenario values such as workers, raid, and wounded.
+
+That correction changed five existing p20 goldens after exact path-by-path review:
+
+- `early-civilization-human-p20`;
+- `industrial-human-queues-p20`;
+- `portal-hell-balorg-p20`;
+- `challenge-steelen-run-p20`;
+- `reset-ready-mad-p20`.
+
+The other six historical p20 goldens did not change. The affected diffs consist of missing generic garrison defaults becoming explicit plus the limited downstream state that had previously been influenced by undefined garrison capacity.
+
+The recapture was targeted to those five scenarios only. It was not a blanket `--accept --all`.
+
+## M0E3 completion
+
+M0E3 now guarantees:
+
+- explicit persisted-fixture -> cloned runtime -> hydration -> simulation ownership;
+- no mutation of persisted fixture objects through hydration or simulation;
+- generic hydration centralized in the legacy adapter rather than scattered through individual tests;
+- full-loop Orc coverage;
+- explicit p1/p3/p4/p20 cadence coverage;
+- a worker-linked catch-up simulation case;
+- every oracle scenario produces real normalized state progress;
+- no gameplay-source changes.

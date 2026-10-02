@@ -9,6 +9,7 @@ const baselines = require('../simulation/oracle-baselines.json');
 const legacyBase = require('../fixtures/legacy-base.json');
 const earlyCivilizationFixture = require('../fixtures/scenarios/early-civilization-human.json');
 const { oracleScenarios } = require('../simulation/oracle-scenarios.cjs');
+const { LEGACY_CADENCE } = require('../simulation/legacy-cadence.cjs');
 const {
     ORACLE_RESULT_SCHEMA,
     ORACLE_SOURCE,
@@ -111,6 +112,12 @@ test('persisted fixture hydration supplies generic defaults before any loop peri
 
     assert.equal(result.before.populationAndCivics.taxes.tax_rate, 20);
     assert.equal(result.before.populationAndCivics.taxes.display, false);
+    assert.equal(result.before.populationAndCivics.garrison.display, false);
+    assert.equal(result.before.populationAndCivics.garrison.disabled, false);
+    assert.equal(result.before.populationAndCivics.garrison.rate, 0);
+    assert.equal(result.before.populationAndCivics.garrison.progress, 0);
+    assert.equal(result.before.populationAndCivics.garrison.tactic, 0);
+    assert.equal(result.before.populationAndCivics.garrison.max, 0);
     assert.equal(result.before.populationAndCivics.garrison.mercs, false);
     assert.equal(result.before.populationAndCivics.garrison.fatigue, 0);
     assert.equal(result.before.populationAndCivics.garrison.protest, 0);
@@ -121,6 +128,28 @@ test('persisted fixture hydration supplies generic defaults before any loop peri
         result.after,
         result.before,
         'zero periods must expose hydration only, not simulation progress'
+    );
+});
+
+test('oracle matrix protects fast, catch-up, mid, long, and Orc full-loop coverage', () => {
+    const earlyPeriods = oracleScenarios
+        .filter(scenario => scenario.fixture === 'early-civilization-human')
+        .map(scenario => scenario.periods)
+        .sort((a, b) => a - b);
+
+    assert.deepEqual(earlyPeriods, [
+        LEGACY_CADENCE.fastOnlyPeriods,
+        LEGACY_CADENCE.representativeCatchUpPeriods,
+        LEGACY_CADENCE.firstMidPeriods,
+        LEGACY_CADENCE.firstLongPeriods
+    ]);
+
+    assert.ok(
+        oracleScenarios.some(scenario =>
+            scenario.fixture === 'preindustrial-orc' &&
+            scenario.periods === LEGACY_CADENCE.firstLongPeriods
+        ),
+        'preindustrial Orc must execute through the full p20 cadence'
     );
 });
 
