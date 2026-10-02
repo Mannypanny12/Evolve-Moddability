@@ -102,16 +102,67 @@ function loadFixtureById(id){
     return loadFixtureDefinition(filePath);
 }
 
+const INVARIANT_OPERATORS = Object.freeze([
+    'exists',
+    'equals',
+    'min',
+    'includes',
+    'lengthMin'
+]);
+
+function validateInvariant(invariant, fixtureId, index){
+    const prefix = `${fixtureId}: invariant[${index}]`;
+
+    assert.ok(isPlainObject(invariant), `${prefix}: invariant must be an object`);
+    assert.ok(
+        typeof invariant.path === 'string' && invariant.path.length > 0,
+        `${prefix}: non-empty path required`
+    );
+
+    const keys = Object.keys(invariant);
+    const unknown = keys.filter(key => key !== 'path' && !INVARIANT_OPERATORS.includes(key));
+    assert.deepEqual(unknown, [], `${prefix}: unknown invariant operator(s): ${unknown.join(', ')}`);
+
+    const operators = INVARIANT_OPERATORS.filter(key =>
+        Object.prototype.hasOwnProperty.call(invariant, key)
+    );
+    assert.ok(operators.length > 0, `${prefix}: at least one invariant operator required`);
+
+    if (Object.prototype.hasOwnProperty.call(invariant, 'exists')){
+        assert.equal(typeof invariant.exists, 'boolean', `${prefix}: exists must be boolean`);
+    }
+    if (Object.prototype.hasOwnProperty.call(invariant, 'min')){
+        assert.equal(typeof invariant.min, 'number', `${prefix}: min must be numeric`);
+        assert.ok(Number.isFinite(invariant.min), `${prefix}: min must be finite`);
+    }
+    if (Object.prototype.hasOwnProperty.call(invariant, 'lengthMin')){
+        assert.ok(
+            Number.isInteger(invariant.lengthMin) && invariant.lengthMin >= 0,
+            `${prefix}: lengthMin must be a non-negative integer`
+        );
+    }
+}
+
 function validateDefinition(definition, filePath){
     assert.equal(definition.schema, 1, `${filePath}: unsupported fixture schema`);
     assert.match(definition.id, /^[a-z0-9]+(?:-[a-z0-9]+)*$/, `${filePath}: invalid fixture id`);
+    assert.equal(
+        path.basename(filePath),
+        `${definition.id}.json`,
+        `${definition.id}: fixture filename must match fixture id`
+    );
     assert.equal(definition.source.commit, baseMetadata.source.commit, `${definition.id}: source commit mismatch`);
     assert.equal(definition.source.version, baseMetadata.source.version, `${definition.id}: source version mismatch`);
     assert.equal(definition.origin, 'synthetic-overlay', `${definition.id}: origin must be synthetic-overlay`);
     assert.ok(typeof definition.purpose === 'string' && definition.purpose.length > 10, `${definition.id}: purpose required`);
     assert.ok(Array.isArray(definition.coverage) && definition.coverage.length > 0, `${definition.id}: coverage required`);
+    assert.equal(new Set(definition.coverage).size, definition.coverage.length, `${definition.id}: coverage tags must be unique`);
+    for (const tag of definition.coverage){
+        assert.match(tag, /^[a-z0-9]+(?:-[a-z0-9]+)*$/, `${definition.id}: invalid coverage tag ${tag}`);
+    }
     assert.ok(isPlainObject(definition.patch), `${definition.id}: patch required`);
     assert.ok(Array.isArray(definition.invariants) && definition.invariants.length > 0, `${definition.id}: invariants required`);
+    definition.invariants.forEach((invariant, index) => validateInvariant(invariant, definition.id, index));
 }
 
 function materializePersistedFixture(definition, legacyApi){
@@ -136,6 +187,8 @@ module.exports = {
     listFixtureDefinitions,
     loadFixtureById,
     validateDefinition,
+    validateInvariant,
+    INVARIANT_OPERATORS,
     materializePersistedFixture,
     assertFixture,
     assertBaseFingerprint

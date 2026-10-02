@@ -118,11 +118,17 @@ Automated tests require the catalog to cover:
 - support ordering;
 - crafting;
 - trade;
+- event-ready state;
+- at least two reset-ready contexts, including MAD and Bioseed;
 - at least three species profiles.
 
 ## Invariants
 
 Each fixture defines facts that make the scenario meaningful.
+
+The fixture loader now validates invariant syntax fail-closed. Every invariant must have a non-empty `path`, at least one supported operator (`exists`, `equals`, `min`, `includes`, or `lengthMin`), and no unknown operator names. This prevents misspellings such as `equlas` from silently turning a claimed invariant into a no-op.
+
+Fixture filenames must also exactly match their declared IDs (`<id>.json`), coverage tags must be unique valid slugs, and malformed catalog metadata fails before materialization.
 
 Examples:
 

@@ -33,7 +33,10 @@ const requiredCoverage = [
     'power',
     'support',
     'crafting',
-    'trade'
+    'trade',
+    'event-ready',
+    'mad',
+    'bioseed'
 ];
 
 test('canonical initialized legacy base is frozen by fingerprint', () => {
@@ -66,6 +69,42 @@ test('fixture catalog has unique IDs and required progression/system coverage', 
         }
     }
     assert.ok(species.size >= 3, 'fixture catalog should contain at least three materially different species profiles');
+
+    const resetReady = definitions.filter(definition => definition.coverage.includes('reset-ready'));
+    assert.ok(resetReady.length >= 2, 'fixture catalog should contain multiple reset-ready contexts');
+    assert.ok(
+        resetReady.some(definition => definition.coverage.includes('mad')),
+        'fixture catalog should include a MAD reset-ready context'
+    );
+    assert.ok(
+        resetReady.some(definition => definition.coverage.includes('bioseed')),
+        'fixture catalog should include a Bioseed reset-ready context'
+    );
+
+    const eventReady = definitions.filter(definition => definition.coverage.includes('event-ready'));
+    assert.ok(eventReady.length >= 1, 'fixture catalog should contain an event-ready state');
+});
+
+test('fixture definition schema rejects silent invariant typos and filename drift', () => {
+    const definition = structuredClone(fixtures.loadFixtureById('early-civilization-human'));
+
+    definition.invariants = [{ path: 'race.species', equlas: 'human' }];
+    assert.throws(
+        () => fixtures.validateDefinition(definition, 'tests/fixtures/scenarios/early-civilization-human.json'),
+        /unknown invariant operator/
+    );
+
+    definition.invariants = [{ path: 'race.species' }];
+    assert.throws(
+        () => fixtures.validateDefinition(definition, 'tests/fixtures/scenarios/early-civilization-human.json'),
+        /at least one invariant operator required/
+    );
+
+    definition.invariants = [{ path: 'race.species', equals: 'human' }];
+    assert.throws(
+        () => fixtures.validateDefinition(definition, 'tests/fixtures/scenarios/wrong-name.json'),
+        /fixture filename must match fixture id/
+    );
 });
 
 test('game loops refuse to run before explicit simulation hydration', async () => {
