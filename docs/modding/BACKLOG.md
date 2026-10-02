@@ -40,7 +40,7 @@ Fixture coverage expands to include:
 - multiple race/trait profiles;
 - queue/power/crafting states.
 
-### M0D - Deterministic differential simulation ([#5](../../issues/5))
+### M0D - Deterministic differential simulation ([#5](../../issues/5)) - complete
 
 Run controlled legacy loop steps and capture normalized state.
 
@@ -105,9 +105,9 @@ M0B harness - complete
    |
 M0C fixtures - complete
    |
-M0D deterministic differential simulation - next
+M0D deterministic differential simulation - complete
    |
-M1A identity/registry
+M1A identity/registry - next
    |
 M1B definition contracts
    |
