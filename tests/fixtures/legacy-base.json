@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "source": {
+    "repository": "pmotschmann/Evolve",
+    "commit": "3436358dcd03d9f9e071d51ea071e0a78c0322e4",
+    "version": "1.4.10"
+  },
+  "harness": {
+    "clock": "2026-01-01T12:00:00.000Z",
+    "rngSeed": 1,
+    "storage": "empty in-memory localStorage"
+  },
+  "description": "Canonical initialized legacy state produced by the M0B harness before any test replaces global state. Scenario fixtures overlay this deterministic base.",
+  "sha256": "__CAPTURE__"
+}
