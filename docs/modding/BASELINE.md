@@ -62,14 +62,16 @@ Upstream's `.gitignore` broadly ignores `docs` and dot-directories. This fork ha
 
 The broader upstream ignore behavior remains intact.
 
-## Package metadata observation
+## Inherited build-tooling correction
 
-At this baseline:
+The first clean CI build exposed two inherited package metadata problems:
 
-- `package.json` reports version `1.4.10`;
-- root metadata in `package-lock.json` reports `1.4.7`.
+- `package.json` listed the Node runtime itself as a normal dependency (`"node": "^16.1.0"`), which caused `npm run` to shadow the CI runner's Node 20 runtime with a locally installed Node 16.6.1 binary;
+- the root `package-lock.json` metadata still reported application version `1.4.7` while `package.json` reports `1.4.10`.
 
-M0A records this inherited mismatch but does not alter dependency metadata unless it prevents a clean locked install/build. Build-system corrections must be minimal and explicitly non-gameplay.
+M0A removes the `node` package dependency and declares `"engines": { "node": ">=18" }`, matching the minimum required by the checked-in esbuild 0.25 dependency. The stale lockfile root version is synchronized to `1.4.10`.
+
+This is a build-tooling correction only. No gameplay/runtime source files are changed.
 
 ## Acceptance
 
