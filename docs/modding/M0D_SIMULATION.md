@@ -134,7 +134,8 @@ It includes:
 - normal and major event state;
 - prestige;
 - genes and blood state;
-- the simulation-relevant subset of settings;
+- the simulation-relevant subset of settings under an explicit fail-closed settings policy;
+- simulation-challenge snapshot state (`sim`) when present;
 - transient power/support activation maps and accelerated-time tracking.
 
 Object keys are recursively sorted for stable hashing. Array order is preserved because queue and grid ordering can affect behavior.
@@ -152,10 +153,10 @@ M0E1 makes top-level state coverage fail closed. `tests/simulation/legacy-state-
 | `queue`, `r_queue`, `power`, `support`, `arpa`, `govern` | include | queues, projects, priority and automation state |
 | `custom` | include | custom/hybrid race data used by gameplay |
 | `version`, `new` | include | save/lifecycle metadata |
-| `settings` | mixed | only behavior-affecting fields are part of the simulation oracle |
+| `settings` | mixed | every known top-level setting is explicitly classified; gameplay/action settings are observed and presentation/input settings are excluded |
+| `sim` | include when present | simulation-challenge snapshot changes evolution, unlocks, reset/save behavior, and restores meta state |
 | `lastMsg` | exclude | message history/presentation only |
-| `sim` | exclude | temporary simulation/debug flag, not normal authoritative save state |
-| `revision`, `beta` | exclude | obsolete migration markers deleted at the current version |
+| `revision`, `beta` | exclude | obsolete/current-version migration or dev markers deleted during current initialization |
 
 If a future/current legacy state presents a top-level root not in that policy, normalization fails with an `Unclassified legacy top-level state root` error. New state cannot silently disappear from the oracle.
 
@@ -174,14 +175,23 @@ For legacy `resource.*.value` metadata, `NaN` is only accepted when the resource
 
 ### Mixed settings policy
 
-The passive simulation oracle currently records these settings:
+M0E1's corrective audit makes the mixed `settings` root fail closed at its top level.
+
+Every known top-level setting is explicitly classified in `SIMULATION_SETTING_POLICY`. Unknown future settings fail normalization with an `Unclassified legacy top-level setting` error instead of silently disappearing.
+
+Gameplay/action settings currently observed include:
 
 - `pause`;
 - `at` (accelerated-time state);
-- `boring` (changes seasonal/event behavior);
-- `qAny` (used by governor queue automation).
+- `boring` (seasonal gameplay effects);
+- `qAny` and `qAny_res` (build/research queue selection and resource timing);
+- `lowPowerBalance` (power-shortage allocation);
+- `alwaysPower` (automatic activation of newly completed powered structures);
+- `q_merge` and `qKey` (authoritative queue/action behavior);
+- `mtorder` (persisted minor-trait ordering);
+- `showCivic` because production technology conditions directly read it.
 
-Presentation/input settings such as themes, visible tabs, labels, message filters and key mappings are intentionally not part of passive simulation output. If later migration work proves another setting changes authoritative simulation behavior, it must be added explicitly rather than captured accidentally.
+Presentation/input settings such as themes, selected tabs, labels, message filters, localization, and purely visual `show*` flags remain explicit exclusions. A setting is not excluded merely because its name sounds presentational; production behavior is checked first.
 
 ## Canonical value safety
 
@@ -295,6 +305,8 @@ This was used while building M0D to identify real fixture hydration requirements
 M0E3 classifies those findings by ownership. Generic load/startup defaults belong to explicit hydration; scenario-specific persisted gameplay state remains in the fixture overlays. The adapter does not manufacture powered structures, power/support priority, ARPA progress, Hell observation history, spire/mechbay progress, or Truepath rival state.
 
 No gameplay source is modified.
+
+M0E1 corrective audit later expanded observation schema from 2 to 3 after source review proved that `sim` and several gameplay-active settings were missing from the comparison surface. That change is an observation-contract correction only; gameplay source remains unchanged.
 
 M0E3A initially treated every existing p20 hash as immutable while the lifecycle was formalized. M0E3B's p1 cadence case then exposed that partial synthetic garrison overlays were missing fields from Evolve's own default garrison shape. Correcting that generic hydration intentionally changed five previously frozen p20 scenarios after exact structural review: `early-civilization-human`, `industrial-human-queues`, `portal-hell-balorg`, `challenge-steelen-run`, and `reset-ready-mad`. The other six existing p20 goldens remained unchanged.
 
