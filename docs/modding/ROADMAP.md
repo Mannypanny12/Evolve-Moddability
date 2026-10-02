@@ -85,7 +85,7 @@ Exit: the safety foundation is complete and M1 can create new engine code behind
 
 M1 creates primitives, not a public Mod API.
 
-### M1A Identity and registry kernel
+### M1A Identity and registry kernel - complete
 
 Implement:
 
