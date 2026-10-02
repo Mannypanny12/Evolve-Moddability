@@ -1,0 +1,192 @@
+{
+  "schema": 1,
+  "source": {
+    "commit": "3436358dcd03d9f9e071d51ea071e0a78c0322e4",
+    "version": "1.4.10"
+  },
+  "origin": "synthetic-overlay",
+  "id": "late-eden-human",
+  "purpose": "High-complexity late-game state spanning deep Hell and Eden/Asphodel systems with large resources and prestige history.",
+  "coverage": [
+    "late-game",
+    "eden",
+    "hell",
+    "human",
+    "high-complexity",
+    "prestige-history"
+  ],
+  "patch": {
+    "race": {
+      "species": "human",
+      "universe": "standard",
+      "seeded": true,
+      "ascended": true,
+      "creative": 1,
+      "diverse": 1
+    },
+    "tech": {
+      "space": 6,
+      "alpha": 5,
+      "hell": 1,
+      "hell_spire": 11,
+      "edenic": 4,
+      "elysium": 3,
+      "asphodel": 4,
+      "high_tech": 15,
+      "science": 15
+    },
+    "city": {
+      "calendar": {
+        "day": 120,
+        "year": 3900,
+        "weather": 2,
+        "temp": 1,
+        "moon": 0,
+        "wind": 0,
+        "orbit": 365
+      },
+      "biome": "forest",
+      "ptrait": [
+        "mellow",
+        "magnetic"
+      ],
+      "geology": {
+        "Copper": 0.16,
+        "Iron": 0.13,
+        "Aluminium": 0.08
+      }
+    },
+    "portal": {
+      "fortress": {
+        "count": 1,
+        "garrison": 120,
+        "patrols": 5,
+        "patrol_size": 10
+      },
+      "mechbay": {
+        "count": 14,
+        "on": 12
+      },
+      "purifier": {
+        "count": 8,
+        "on": 8,
+        "supply": 700,
+        "sup_max": 1000
+      }
+    },
+    "eden": {
+      "encampment": {
+        "count": 10,
+        "on": 10,
+        "support": 18
+      },
+      "mech_station": {
+        "count": 8,
+        "on": 7
+      },
+      "spirit_vacuum": {
+        "count": 5,
+        "on": 5
+      },
+      "spirit_battery": {
+        "count": 12,
+        "on": 11
+      },
+      "corruptor": {
+        "count": 5,
+        "on": 5
+      }
+    },
+    "support": {
+      "asphodel": [
+        "eden_asphodel:encampment",
+        "eden_asphodel:mech_station",
+        "eden_asphodel:corruptor"
+      ]
+    },
+    "resource": {
+      "Money": {
+        "amount": 180000000,
+        "max": 300000000,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Knowledge": {
+        "amount": 120000000,
+        "max": 200000000,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Soul_Gem": {
+        "amount": 1800,
+        "max": 3500,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Asphodel_Powder": {
+        "amount": 450000,
+        "max": 900000,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "human": {
+        "amount": 1800,
+        "max": 2100,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      }
+    },
+    "stats": {
+      "mad": 18,
+      "bioseed": 8,
+      "blackhole": 3,
+      "ascend": 1,
+      "achieve": {
+        "blackhole": {
+          "l": 3
+        },
+        "ascended": {
+          "l": 1
+        }
+      },
+      "feat": {}
+    }
+  },
+  "invariants": [
+    {
+      "path": "tech.edenic",
+      "min": 4
+    },
+    {
+      "path": "tech.hell_spire",
+      "min": 11
+    },
+    {
+      "path": "eden.encampment.count",
+      "equals": 10
+    },
+    {
+      "path": "stats.ascend",
+      "min": 1
+    },
+    {
+      "path": "support.asphodel",
+      "includes": "eden_asphodel:encampment"
+    }
+  ]
+}

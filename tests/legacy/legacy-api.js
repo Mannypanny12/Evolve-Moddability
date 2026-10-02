@@ -45,6 +45,12 @@ import '../../src/seasons.js';
 import '../../src/wiki/change.js';
 import '../../src/debug.js';
 
+const PRISTINE_LEGACY_STATE = JSON.parse(JSON.stringify(global));
+
+function clone(value){
+    return JSON.parse(JSON.stringify(value));
+}
+
 function numericCosts(costs){
     const result = {};
     Object.keys(costs).forEach(resource => {
@@ -88,6 +94,10 @@ function installLegacyState(state){
 
 function legacyState(){
     return global;
+}
+
+function pristineLegacyState(){
+    return clone(PRISTINE_LEGACY_STATE);
 }
 
 function applyResourceDelta(resource, amount, notrack = true){
@@ -160,6 +170,7 @@ function resetRandom(){
 globalThis.__EVOLVE_LEGACY_TEST_API__ = {
     installLegacyState,
     legacyState,
+    pristineLegacyState,
     applyResourceDelta,
     canAfford,
     pay,

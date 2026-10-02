@@ -1,0 +1,146 @@
+{
+  "schema": 1,
+  "source": {
+    "commit": "3436358dcd03d9f9e071d51ea071e0a78c0322e4",
+    "version": "1.4.10"
+  },
+  "origin": "synthetic-overlay",
+  "id": "reset-ready-bioseed",
+  "purpose": "Spacefaring civilization poised for Bioseed, including probes, planetary context, geology, and existing prestige state used by reset logic.",
+  "coverage": [
+    "reset-ready",
+    "bioseed",
+    "space",
+    "human",
+    "prestige"
+  ],
+  "patch": {
+    "race": {
+      "species": "human",
+      "universe": "standard",
+      "seeded": true,
+      "creative": 1,
+      "diverse": 1
+    },
+    "tech": {
+      "space": 6,
+      "space_explore": 4,
+      "bioseed": 1,
+      "high_tech": 8,
+      "science": 10,
+      "world_control": 1
+    },
+    "city": {
+      "calendar": {
+        "day": 120,
+        "year": 1320,
+        "weather": 2,
+        "temp": 1,
+        "moon": 0,
+        "wind": 0,
+        "orbit": 365
+      },
+      "biome": "forest",
+      "ptrait": [
+        "ozone",
+        "dense"
+      ],
+      "geology": {
+        "Copper": 0.12,
+        "Iron": 0.1,
+        "Aluminium": 0.06,
+        "Coal": 0.04
+      }
+    },
+    "space": {
+      "spaceport": {
+        "count": 8,
+        "on": 8
+      },
+      "living_quarters": {
+        "count": 10,
+        "on": 10
+      }
+    },
+    "starDock": {
+      "probes": {
+        "count": 5
+      },
+      "geck": {
+        "count": 1
+      }
+    },
+    "resource": {
+      "Money": {
+        "amount": 2400000,
+        "max": 4000000,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Knowledge": {
+        "amount": 1600000,
+        "max": 2600000,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "human": {
+        "amount": 520,
+        "max": 600,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      }
+    },
+    "prestige": {
+      "Plasmid": {
+        "count": 340
+      },
+      "AntiPlasmid": {
+        "count": 0
+      },
+      "Phage": {
+        "count": 12
+      }
+    },
+    "stats": {
+      "mad": 6,
+      "bioseed": 2,
+      "blackhole": 0,
+      "ascend": 0,
+      "plasmid": 1100,
+      "phage": 18,
+      "achieve": {
+        "explorer": {
+          "l": 2
+        }
+      },
+      "feat": {}
+    }
+  },
+  "invariants": [
+    {
+      "path": "tech.space",
+      "min": 6
+    },
+    {
+      "path": "starDock.probes.count",
+      "equals": 5
+    },
+    {
+      "path": "stats.bioseed",
+      "min": 2
+    },
+    {
+      "path": "city.ptrait",
+      "includes": "dense"
+    }
+  ]
+}

@@ -10,7 +10,7 @@ See [ROADMAP.md](ROADMAP.md) for the complete M0-M14 plan.
 
 Established exact baseline, locked build, CI, and build-tooling correction.
 
-### M0B - Characterization test harness ([#3](../../issues/3))
+### M0B - Characterization test harness ([#3](../../issues/3)) - complete
 
 Add a test environment able to control:
 
@@ -23,7 +23,7 @@ Add a test environment able to control:
 
 Initial characterization targets should include a resource mutation/cost behavior and one progression behavior.
 
-### M0C - Representative state/save fixtures ([#4](../../issues/4))
+### M0C - Representative state/save fixtures ([#4](../../issues/4)) - complete
 
 Fixture coverage expands to include:
 
@@ -101,11 +101,11 @@ Document removal rules for every adapter.
 ```text
 M0A complete
    |
-M0B harness
+M0B harness - complete
    |
-M0C fixtures
+M0C fixtures - complete
    |
-M0D deterministic differential simulation
+M0D deterministic differential simulation - next
    |
 M1A identity/registry
    |

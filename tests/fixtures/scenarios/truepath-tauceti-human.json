@@ -1,0 +1,171 @@
+{
+  "schema": 1,
+  "source": {
+    "commit": "3436358dcd03d9f9e071d51ea071e0a78c0322e4",
+    "version": "1.4.10"
+  },
+  "origin": "synthetic-overlay",
+  "id": "truepath-tauceti-human",
+  "purpose": "Alternate Truepath/Tau Ceti state with isolation progression, Tau support grids, refueling, patrol, and distinct Truepath behavior flags.",
+  "coverage": [
+    "truepath",
+    "tauceti",
+    "human",
+    "alternate-progression",
+    "support"
+  ],
+  "patch": {
+    "race": {
+      "species": "human",
+      "universe": "standard",
+      "seeded": true,
+      "truepath": 1,
+      "lone_survivor": 1,
+      "creative": 1,
+      "diverse": 1
+    },
+    "tech": {
+      "space": 6,
+      "space_explore": 4,
+      "high_tech": 13,
+      "science": 13,
+      "hell": 1,
+      "tauceti": 4,
+      "tau_home": 6,
+      "tau_red": 4,
+      "tau_roid": 4,
+      "isolation": 1,
+      "world_control": 1
+    },
+    "city": {
+      "calendar": {
+        "day": 120,
+        "year": 2700,
+        "weather": 2,
+        "temp": 1,
+        "moon": 0,
+        "wind": 0,
+        "orbit": 365
+      },
+      "biome": "ashland",
+      "ptrait": [
+        "trashed"
+      ],
+      "geology": {
+        "Copper": 0.04,
+        "Iron": -0.05
+      }
+    },
+    "space": {
+      "shipyard": {
+        "count": 4,
+        "on": 4,
+        "ships": [],
+        "blueprint": {
+          "name": "Scout",
+          "class": "corvette"
+        }
+      },
+      "g_factory": {
+        "count": 5,
+        "on": 5
+      }
+    },
+    "tauceti": {
+      "orbital_station": {
+        "count": 6,
+        "on": 6,
+        "support": 12
+      },
+      "refueling_station": {
+        "count": 7,
+        "on": 7
+      },
+      "patrol_ship": {
+        "count": 5,
+        "on": 5
+      },
+      "orbital_platform": {
+        "count": 4,
+        "on": 4,
+        "support": 8
+      },
+      "mining_ship": {
+        "count": 3,
+        "on": 3
+      }
+    },
+    "support": {
+      "tau_home": [
+        "tau_home:orbital_station",
+        "tau_home:refueling_station"
+      ],
+      "tau_red": [
+        "tau_red:orbital_platform"
+      ],
+      "tau_roid": [
+        "tau_roid:patrol_ship"
+      ]
+    },
+    "resource": {
+      "Money": {
+        "amount": 65000000,
+        "max": 100000000,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Knowledge": {
+        "amount": 48000000,
+        "max": 80000000,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Graphene": {
+        "amount": 190000,
+        "max": 350000,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "human": {
+        "amount": 1200,
+        "max": 1400,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      }
+    }
+  },
+  "invariants": [
+    {
+      "path": "race.truepath",
+      "equals": 1
+    },
+    {
+      "path": "tech.tauceti",
+      "min": 4
+    },
+    {
+      "path": "tech.isolation",
+      "equals": 1
+    },
+    {
+      "path": "tauceti.refueling_station.count",
+      "equals": 7
+    },
+    {
+      "path": "support.tau_home",
+      "includes": "tau_home:orbital_station"
+    }
+  ]
+}

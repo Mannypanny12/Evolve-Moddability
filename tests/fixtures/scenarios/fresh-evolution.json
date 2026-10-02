@@ -1,0 +1,74 @@
+{
+  "schema": 1,
+  "source": {
+    "commit": "3436358dcd03d9f9e071d51ea071e0a78c0322e4",
+    "version": "1.4.10"
+  },
+  "origin": "synthetic-overlay",
+  "id": "fresh-evolution",
+  "purpose": "Fresh evolutionary-stage state with RNA/DNA progression and event timers, before civilization selection.",
+  "coverage": [
+    "evolution",
+    "fresh-run",
+    "event-ready",
+    "protoplasm"
+  ],
+  "patch": {
+    "race": {
+      "species": "protoplasm",
+      "gods": "none",
+      "old_gods": "none",
+      "seeded": false
+    },
+    "evolution": {
+      "rna": 2,
+      "dna": 1
+    },
+    "resource": {
+      "RNA": {
+        "amount": 18,
+        "max": 100,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "DNA": {
+        "amount": 7,
+        "max": 100,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      }
+    },
+    "event": {
+      "t": 5,
+      "l": false
+    },
+    "m_event": {
+      "t": 30,
+      "l": false
+    }
+  },
+  "invariants": [
+    {
+      "path": "race.species",
+      "equals": "protoplasm"
+    },
+    {
+      "path": "resource.RNA.amount",
+      "equals": 18
+    },
+    {
+      "path": "resource.DNA.amount",
+      "equals": 7
+    },
+    {
+      "path": "event.t",
+      "equals": 5
+    }
+  ]
+}

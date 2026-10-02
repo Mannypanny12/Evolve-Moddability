@@ -1,0 +1,162 @@
+{
+  "schema": 1,
+  "source": {
+    "commit": "3436358dcd03d9f9e071d51ea071e0a78c0322e4",
+    "version": "1.4.10"
+  },
+  "origin": "synthetic-overlay",
+  "id": "interstellar-human",
+  "purpose": "Interstellar Human state with Alpha Centauri infrastructure, graphene production, starport support, and advanced science progression.",
+  "coverage": [
+    "interstellar",
+    "human",
+    "support",
+    "graphene",
+    "advanced-production"
+  ],
+  "patch": {
+    "race": {
+      "species": "human",
+      "universe": "standard",
+      "seeded": true,
+      "creative": 1,
+      "diverse": 1
+    },
+    "tech": {
+      "space": 6,
+      "science": 11,
+      "alpha": 3,
+      "high_tech": 10,
+      "graphene": 1,
+      "quantum": 2
+    },
+    "city": {
+      "calendar": {
+        "day": 120,
+        "year": 1450,
+        "weather": 2,
+        "temp": 1,
+        "moon": 0,
+        "wind": 0,
+        "orbit": 365
+      },
+      "biome": "grassland",
+      "ptrait": [
+        "ozone"
+      ],
+      "geology": {
+        "Copper": 0.11,
+        "Iron": 0.09
+      }
+    },
+    "space": {
+      "spaceport": {
+        "count": 8,
+        "on": 8
+      },
+      "g_factory": {
+        "count": 2,
+        "on": 2
+      }
+    },
+    "interstellar": {
+      "starport": {
+        "count": 5,
+        "on": 5,
+        "support": 10
+      },
+      "habitat": {
+        "count": 8,
+        "on": 7
+      },
+      "luxury_condo": {
+        "count": 4,
+        "on": 4
+      },
+      "mining_droid": {
+        "count": 12,
+        "on": 10
+      },
+      "g_factory": {
+        "count": 6,
+        "on": 5
+      },
+      "fusion": {
+        "count": 3,
+        "on": 3
+      }
+    },
+    "support": {
+      "alpha": [
+        "int_alpha:starport",
+        "int_alpha:habitat",
+        "int_alpha:g_factory"
+      ]
+    },
+    "resource": {
+      "Money": {
+        "amount": 4200000,
+        "max": 8000000,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Knowledge": {
+        "amount": 3100000,
+        "max": 5000000,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Graphene": {
+        "amount": 28000,
+        "max": 60000,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Bolognium": {
+        "amount": 9000,
+        "max": 22000,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "human": {
+        "amount": 640,
+        "max": 720,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      }
+    }
+  },
+  "invariants": [
+    {
+      "path": "tech.alpha",
+      "min": 3
+    },
+    {
+      "path": "interstellar.starport.count",
+      "equals": 5
+    },
+    {
+      "path": "interstellar.g_factory.on",
+      "equals": 5
+    },
+    {
+      "path": "support.alpha",
+      "includes": "int_alpha:starport"
+    }
+  ]
+}

@@ -1,0 +1,139 @@
+{
+  "schema": 1,
+  "source": {
+    "commit": "3436358dcd03d9f9e071d51ea071e0a78c0322e4",
+    "version": "1.4.10"
+  },
+  "origin": "synthetic-overlay",
+  "id": "challenge-steelen-run",
+  "purpose": "Active Steelen challenge run with reduced metal availability and a nontrivial civilization state for challenge-specific calculations.",
+  "coverage": [
+    "challenge",
+    "steelen",
+    "human",
+    "race-profile",
+    "resource-pressure"
+  ],
+  "patch": {
+    "race": {
+      "species": "human",
+      "universe": "standard",
+      "seeded": true,
+      "creative": 1,
+      "diverse": 1,
+      "steelen": 1
+    },
+    "tech": {
+      "primitive": 5,
+      "mining": 4,
+      "smelting": 4,
+      "construction": 4,
+      "military": 4
+    },
+    "city": {
+      "calendar": {
+        "day": 120,
+        "year": 510,
+        "weather": 2,
+        "temp": 1,
+        "moon": 0,
+        "wind": 0,
+        "orbit": 365
+      },
+      "biome": "tundra",
+      "ptrait": [
+        "permafrost"
+      ],
+      "geology": {
+        "Copper": -0.08,
+        "Iron": -0.12
+      },
+      "mine": {
+        "count": 26
+      },
+      "foundry": {
+        "count": 4,
+        "Plywood": 4,
+        "Brick": 6,
+        "Wrought_Iron": 2,
+        "Sheet_Metal": 0,
+        "Mythril": 0,
+        "Aerogel": 0
+      }
+    },
+    "resource": {
+      "Money": {
+        "amount": 48000,
+        "max": 90000,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Stone": {
+        "amount": 15000,
+        "max": 25000,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Copper": {
+        "amount": 120,
+        "max": 240,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Iron": {
+        "amount": 90,
+        "max": 200,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Steel": {
+        "amount": 35,
+        "max": 100,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "human": {
+        "amount": 130,
+        "max": 150,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      }
+    }
+  },
+  "invariants": [
+    {
+      "path": "race.steelen",
+      "equals": 1
+    },
+    {
+      "path": "resource.Iron.max",
+      "equals": 200
+    },
+    {
+      "path": "city.foundry.count",
+      "equals": 4
+    },
+    {
+      "path": "tech.smelting",
+      "min": 4
+    }
+  ]
+}
