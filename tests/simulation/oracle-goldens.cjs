@@ -55,7 +55,8 @@ function exactSnapshotDiff(expected, actual, maxDiffs = 25){
 }
 
 function renderValue(value, maxLength = 400){
-    const rendered = JSON.stringify(value);
+    const encoded = JSON.stringify(value);
+    const rendered = encoded === undefined ? String(value) : encoded;
     if (rendered.length <= maxLength){
         return rendered;
     }
