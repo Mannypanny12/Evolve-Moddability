@@ -1,0 +1,163 @@
+{
+  "schema": 1,
+  "source": {
+    "commit": "3436358dcd03d9f9e071d51ea071e0a78c0322e4",
+    "version": "1.4.10"
+  },
+  "origin": "synthetic-overlay",
+  "id": "early-space-human",
+  "purpose": "Early space-era Human state with launch progression, red-planet infrastructure, active support ordering, and helium/iridium extraction.",
+  "coverage": [
+    "space",
+    "human",
+    "power",
+    "support",
+    "colonization"
+  ],
+  "patch": {
+    "race": {
+      "species": "human",
+      "universe": "standard",
+      "seeded": true,
+      "creative": 1,
+      "diverse": 1
+    },
+    "tech": {
+      "high_tech": 5,
+      "science": 8,
+      "space": 4,
+      "luna": 1,
+      "mars": 3,
+      "helium": 1
+    },
+    "city": {
+      "calendar": {
+        "day": 120,
+        "year": 980,
+        "weather": 2,
+        "temp": 1,
+        "moon": 0,
+        "wind": 0,
+        "orbit": 365
+      },
+      "biome": "grassland",
+      "ptrait": [
+        "magnetic"
+      ],
+      "geology": {
+        "Copper": 0.1,
+        "Iron": 0.08
+      },
+      "factory": {
+        "count": 8,
+        "on": 8
+      }
+    },
+    "space": {
+      "spaceport": {
+        "count": 4,
+        "on": 4,
+        "support": 8
+      },
+      "living_quarters": {
+        "count": 6,
+        "on": 5
+      },
+      "garage": {
+        "count": 2
+      },
+      "red_mine": {
+        "count": 8,
+        "on": 7
+      },
+      "helium_mine": {
+        "count": 5,
+        "on": 5
+      },
+      "iridium_mine": {
+        "count": 3,
+        "on": 3
+      },
+      "fabrication": {
+        "count": 2,
+        "on": 2
+      },
+      "laboratory": {
+        "count": 4,
+        "on": 4
+      }
+    },
+    "support": {
+      "red": [
+        "spc_red:spaceport",
+        "spc_red:living_quarters",
+        "spc_red:red_mine"
+      ]
+    },
+    "resource": {
+      "Money": {
+        "amount": 650000,
+        "max": 900000,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Knowledge": {
+        "amount": 420000,
+        "max": 600000,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Helium_3": {
+        "amount": 6200,
+        "max": 12000,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Iridium": {
+        "amount": 1800,
+        "max": 4500,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "human": {
+        "amount": 310,
+        "max": 360,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      }
+    }
+  },
+  "invariants": [
+    {
+      "path": "tech.space",
+      "min": 4
+    },
+    {
+      "path": "space.spaceport.count",
+      "equals": 4
+    },
+    {
+      "path": "space.red_mine.on",
+      "equals": 7
+    },
+    {
+      "path": "support.red",
+      "includes": "spc_red:red_mine"
+    }
+  ]
+}

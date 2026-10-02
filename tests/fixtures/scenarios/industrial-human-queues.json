@@ -1,0 +1,255 @@
+{
+  "schema": 1,
+  "source": {
+    "commit": "3436358dcd03d9f9e071d51ea071e0a78c0322e4",
+    "version": "1.4.10"
+  },
+  "origin": "synthetic-overlay",
+  "id": "industrial-human-queues",
+  "purpose": "Industrial Human state with factories, electricity, active build/research queues, crafting allocation, and nontrivial power ordering.",
+  "coverage": [
+    "industrial",
+    "human",
+    "build-queue",
+    "research-queue",
+    "power",
+    "crafting",
+    "trade"
+  ],
+  "patch": {
+    "race": {
+      "species": "human",
+      "universe": "standard",
+      "seeded": true,
+      "creative": 1,
+      "diverse": 1
+    },
+    "tech": {
+      "primitive": 5,
+      "construction": 5,
+      "housing": 3,
+      "mining": 5,
+      "smelting": 5,
+      "high_tech": 4,
+      "science": 7,
+      "electricity": 4,
+      "industry": 3,
+      "trade": 3,
+      "queue": 2
+    },
+    "city": {
+      "calendar": {
+        "day": 120,
+        "year": 640,
+        "weather": 2,
+        "temp": 1,
+        "moon": 0,
+        "wind": 0,
+        "orbit": 365
+      },
+      "biome": "forest",
+      "ptrait": [
+        "mellow"
+      ],
+      "geology": {
+        "Copper": 0.1,
+        "Iron": 0.12,
+        "Aluminium": 0.05
+      },
+      "factory": {
+        "count": 5,
+        "on": 4,
+        "Lux": 2,
+        "Furs": 1,
+        "Alloy": 1,
+        "Polymer": 0,
+        "Nano": 0,
+        "Stanene": 0
+      },
+      "coal_power": {
+        "count": 7,
+        "on": 6
+      },
+      "foundry": {
+        "count": 5,
+        "Plywood": 10,
+        "Brick": 8,
+        "Wrought_Iron": 12,
+        "Sheet_Metal": 6,
+        "Mythril": 0,
+        "Aerogel": 0
+      },
+      "warehouse": {
+        "count": 12
+      }
+    },
+    "resource": {
+      "Money": {
+        "amount": 185000,
+        "max": 300000,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Food": {
+        "amount": 22000,
+        "max": 30000,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Lumber": {
+        "amount": 18000,
+        "max": 25000,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Stone": {
+        "amount": 15500,
+        "max": 22000,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Coal": {
+        "amount": 9000,
+        "max": 14000,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Iron": {
+        "amount": 8400,
+        "max": 12000,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Steel": {
+        "amount": 3200,
+        "max": 6000,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Knowledge": {
+        "amount": 95000,
+        "max": 150000,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "human": {
+        "amount": 168,
+        "max": 190,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      }
+    },
+    "civic": {
+      "d_job": "unemployed",
+      "unemployed": {
+        "workers": 8
+      },
+      "farmer": {
+        "workers": 35,
+        "max": 45
+      },
+      "miner": {
+        "workers": 34,
+        "max": 45
+      },
+      "craftsman": {
+        "workers": 28,
+        "assigned": 28,
+        "max": 35
+      },
+      "garrison": {
+        "raid": 20,
+        "workers": 24,
+        "wounded": 2
+      }
+    },
+    "power": [
+      "city:coal_power",
+      "city:factory"
+    ],
+    "queue": {
+      "display": true,
+      "max": 4,
+      "pause": false,
+      "queue": [
+        {
+          "id": "arpa-railway",
+          "action": "arpa",
+          "type": "railway",
+          "label": "Railway",
+          "cna": false,
+          "time": 32,
+          "q": 1,
+          "qs": 1,
+          "t_max": 100
+        }
+      ]
+    },
+    "r_queue": {
+      "display": true,
+      "max": 3,
+      "pause": false,
+      "queue": [
+        {
+          "id": "rq1",
+          "action": "tech",
+          "type": "electronics",
+          "label": "Electronics",
+          "cna": false,
+          "req": true,
+          "time": 18,
+          "qa": false
+        }
+      ]
+    }
+  },
+  "invariants": [
+    {
+      "path": "tech.electricity",
+      "min": 4
+    },
+    {
+      "path": "city.factory.count",
+      "equals": 5
+    },
+    {
+      "path": "queue.queue",
+      "lengthMin": 1
+    },
+    {
+      "path": "r_queue.queue",
+      "lengthMin": 1
+    },
+    {
+      "path": "power",
+      "includes": "city:factory"
+    }
+  ]
+}

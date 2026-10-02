@@ -1,0 +1,151 @@
+{
+  "schema": 1,
+  "source": {
+    "commit": "3436358dcd03d9f9e071d51ea071e0a78c0322e4",
+    "version": "1.4.10"
+  },
+  "origin": "synthetic-overlay",
+  "id": "early-civilization-human",
+  "purpose": "Early Human civilization with basic food/lumber/stone economy, initial housing, jobs, and military progression.",
+  "coverage": [
+    "civilization",
+    "early-city",
+    "human",
+    "population",
+    "jobs"
+  ],
+  "patch": {
+    "race": {
+      "species": "human",
+      "universe": "standard",
+      "seeded": false,
+      "creative": 1,
+      "diverse": 1
+    },
+    "tech": {
+      "primitive": 3,
+      "agriculture": 1,
+      "construction": 1,
+      "housing": 1,
+      "military": 1
+    },
+    "city": {
+      "calendar": {
+        "day": 120,
+        "year": 42,
+        "weather": 2,
+        "temp": 1,
+        "moon": 0,
+        "wind": 0,
+        "orbit": 365
+      },
+      "biome": "grassland",
+      "ptrait": [],
+      "geology": {
+        "Copper": 0.08,
+        "Iron": 0.04
+      },
+      "farm": {
+        "count": 8
+      },
+      "basic_housing": {
+        "count": 5
+      },
+      "rock_quarry": {
+        "count": 2
+      }
+    },
+    "resource": {
+      "Money": {
+        "amount": 420,
+        "max": 1000,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Food": {
+        "amount": 350,
+        "max": 1000,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Lumber": {
+        "amount": 260,
+        "max": 800,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Stone": {
+        "amount": 140,
+        "max": 600,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "human": {
+        "amount": 22,
+        "max": 30,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      }
+    },
+    "civic": {
+      "d_job": "unemployed",
+      "unemployed": {
+        "workers": 3
+      },
+      "farmer": {
+        "workers": 8,
+        "max": 12
+      },
+      "lumberjack": {
+        "workers": 6,
+        "max": 10
+      },
+      "miner": {
+        "workers": 5,
+        "max": 8
+      },
+      "garrison": {
+        "raid": 0,
+        "workers": 0,
+        "wounded": 0
+      }
+    }
+  },
+  "invariants": [
+    {
+      "path": "race.species",
+      "equals": "human"
+    },
+    {
+      "path": "tech.primitive",
+      "min": 3
+    },
+    {
+      "path": "city.farm.count",
+      "equals": 8
+    },
+    {
+      "path": "civic.farmer.workers",
+      "equals": 8
+    },
+    {
+      "path": "resource.human.amount",
+      "equals": 22
+    }
+  ]
+}

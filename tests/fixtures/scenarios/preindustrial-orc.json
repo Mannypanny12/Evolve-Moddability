@@ -1,0 +1,217 @@
+{
+  "schema": 1,
+  "source": {
+    "commit": "3436358dcd03d9f9e071d51ea071e0a78c0322e4",
+    "version": "1.4.10"
+  },
+  "origin": "synthetic-overlay",
+  "id": "preindustrial-orc",
+  "purpose": "Established pre-industrial Orc civilization with smelting, foundry crafting, trade-era resources, and a distinct racial trait profile.",
+  "coverage": [
+    "civilization",
+    "pre-industrial",
+    "orc",
+    "crafting",
+    "trade",
+    "race-profile"
+  ],
+  "patch": {
+    "race": {
+      "species": "orc",
+      "universe": "standard",
+      "seeded": false,
+      "brute": 1,
+      "angry": 1
+    },
+    "tech": {
+      "primitive": 5,
+      "agriculture": 3,
+      "construction": 3,
+      "housing": 2,
+      "mining": 3,
+      "smelting": 3,
+      "military": 3,
+      "trade": 1
+    },
+    "city": {
+      "calendar": {
+        "day": 120,
+        "year": 190,
+        "weather": 2,
+        "temp": 1,
+        "moon": 0,
+        "wind": 0,
+        "orbit": 365
+      },
+      "biome": "savanna",
+      "ptrait": [
+        "dense"
+      ],
+      "geology": {
+        "Copper": 0.12,
+        "Iron": 0.09,
+        "Aluminium": -0.03
+      },
+      "farm": {
+        "count": 24
+      },
+      "mine": {
+        "count": 18
+      },
+      "foundry": {
+        "count": 2,
+        "Plywood": 3,
+        "Brick": 4,
+        "Wrought_Iron": 5,
+        "Sheet_Metal": 0,
+        "Mythril": 0,
+        "Aerogel": 0
+      },
+      "trade": {
+        "routes": 6
+      }
+    },
+    "resource": {
+      "Money": {
+        "amount": 5200,
+        "max": 12000,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Food": {
+        "amount": 4200,
+        "max": 7000,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Lumber": {
+        "amount": 3100,
+        "max": 6000,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Stone": {
+        "amount": 2800,
+        "max": 5000,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Copper": {
+        "amount": 420,
+        "max": 1000,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Iron": {
+        "amount": 700,
+        "max": 1400,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Plywood": {
+        "amount": 130,
+        "max": 500,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Brick": {
+        "amount": 210,
+        "max": 600,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "Wrought_Iron": {
+        "amount": 90,
+        "max": 350,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      },
+      "orc": {
+        "amount": 74,
+        "max": 90,
+        "display": true,
+        "delta": 0,
+        "diff": 0,
+        "crates": 0,
+        "containers": 0
+      }
+    },
+    "civic": {
+      "d_job": "unemployed",
+      "unemployed": {
+        "workers": 4
+      },
+      "farmer": {
+        "workers": 22,
+        "max": 30
+      },
+      "lumberjack": {
+        "workers": 15,
+        "max": 24
+      },
+      "miner": {
+        "workers": 18,
+        "max": 22
+      },
+      "craftsman": {
+        "workers": 12,
+        "assigned": 12,
+        "max": 20
+      },
+      "garrison": {
+        "raid": 8,
+        "workers": 8,
+        "wounded": 1
+      }
+    }
+  },
+  "invariants": [
+    {
+      "path": "race.species",
+      "equals": "orc"
+    },
+    {
+      "path": "race.brute",
+      "equals": 1
+    },
+    {
+      "path": "tech.smelting",
+      "min": 3
+    },
+    {
+      "path": "city.foundry.count",
+      "equals": 2
+    },
+    {
+      "path": "civic.craftsman.workers",
+      "equals": 12
+    }
+  ]
+}
