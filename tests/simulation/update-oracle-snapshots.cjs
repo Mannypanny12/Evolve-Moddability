@@ -12,6 +12,7 @@ const legacyBundle = path.join(generatedDir, 'legacy-api.cjs');
 const manifestPath = path.join(__dirname, 'oracle-baselines.json');
 
 const { oracleScenarios } = require('./oracle-scenarios.cjs');
+const { validateOracleManifest } = require('./oracle-contract.cjs');
 const {
     snapshotRoot,
     serializeSnapshot,
@@ -101,9 +102,7 @@ function main(){
     const nextManifest = structuredClone(manifest);
     const scenarios = selectedScenarios(args);
 
-    if (manifest.schema !== 2){
-        throw new Error('Unsupported oracle manifest schema: ' + manifest.schema);
-    }
+    validateOracleManifest(manifest);
 
     buildLegacyBundle();
     const { runLegacyScenario } = require('./differential-harness.cjs');
