@@ -57,9 +57,10 @@ async function main(){
 
     const encoded = Buffer.from(JSON.stringify(result), 'utf8').toString('base64');
     process.stdout.write(`${marker}${encoded}\n`);
+    process.exit(0);
 }
 
 main().catch(error => {
     console.error(error && error.stack ? error.stack : error);
-    process.exitCode = 1;
+    process.exit(1);
 });
