@@ -338,11 +338,15 @@ npm run oracle:update -- --all --accept
 
 With `--accept`, the updater:
 
-1. runs the real deterministic legacy simulation;
-2. reports bounded structural differences against an existing snapshot;
-3. rewrites canonical pretty JSON with deterministic key ordering;
-4. updates the corresponding manifest SHA-256.
+1. runs every selected scenario twice in independent child processes;
+2. requires both runs to produce the same exact canonical SHA-256 before a new golden can be accepted;
+3. validates every selected scenario before writing any snapshot or manifest file;
+4. reports bounded structural differences against an existing snapshot;
+5. rewrites canonical pretty JSON with deterministic key ordering;
+6. updates the corresponding manifest SHA-256.
 
-Review the JSON diff, not only the new fingerprint.
+Without `--accept`, a behavioral mismatch is refused and its structural diff is printed immediately when a committed snapshot is available.
+
+The test suite also enforces that the scenario list, manifest entries and committed snapshot files remain in exact catalog sync, and that every committed snapshot is already in canonical byte form. Review the JSON diff, not only the new fingerprint.
 
 Never use `--accept` merely to make CI green. During architecture-only migration, the normal expected result is **no frozen oracle change**.

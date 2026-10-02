@@ -64,6 +64,12 @@ function compareSnapshots(expected, actual, options = {}){
     const maxDiffs = options.maxDiffs ?? 100;
     const diffs = [];
 
+    function addDiff(diff){
+        if (diffs.length < maxDiffs){
+            diffs.push(diff);
+        }
+    }
+
     function visit(exp, act, parts){
         if (diffs.length >= maxDiffs){
             return;
@@ -73,7 +79,7 @@ function compareSnapshots(expected, actual, options = {}){
 
         if (typeof exp === 'number' && typeof act === 'number'){
             if (!numberEqual(exp, act, absTolerance, relTolerance)){
-                diffs.push({
+                addDiff({
                     path: currentPath,
                     expected: exp,
                     actual: act,
@@ -86,11 +92,11 @@ function compareSnapshots(expected, actual, options = {}){
 
         if (Array.isArray(exp) || Array.isArray(act)){
             if (!Array.isArray(exp) || !Array.isArray(act)){
-                diffs.push({ path: currentPath, expected: exp, actual: act, reason: 'type' });
+                addDiff({ path: currentPath, expected: exp, actual: act, reason: 'type' });
                 return;
             }
             if (exp.length !== act.length){
-                diffs.push({
+                addDiff({
                     path: currentPath,
                     expected: `length ${exp.length}`,
                     actual: `length ${act.length}`,
@@ -98,7 +104,7 @@ function compareSnapshots(expected, actual, options = {}){
                 });
             }
             const max = Math.max(exp.length, act.length);
-            for (let i = 0; i < max; i++){
+            for (let i = 0; i < max && diffs.length < maxDiffs; i++){
                 visit(exp[i], act[i], [...parts, String(i)]);
             }
             return;
@@ -109,19 +115,23 @@ function compareSnapshots(expected, actual, options = {}){
 
         if (expObject || actObject){
             if (!expObject || !actObject){
-                diffs.push({ path: currentPath, expected: exp, actual: act, reason: 'type' });
+                addDiff({ path: currentPath, expected: exp, actual: act, reason: 'type' });
                 return;
             }
 
             const keys = new Set([...Object.keys(exp), ...Object.keys(act)]);
             for (const key of Array.from(keys).sort()){
+                if (diffs.length >= maxDiffs){
+                    break;
+                }
+
                 const nextPath = [...parts, key].join('.');
                 if (!Object.prototype.hasOwnProperty.call(exp, key)){
-                    diffs.push({ path: nextPath, expected: '<missing>', actual: act[key], reason: 'added' });
+                    addDiff({ path: nextPath, expected: '<missing>', actual: act[key], reason: 'added' });
                     continue;
                 }
                 if (!Object.prototype.hasOwnProperty.call(act, key)){
-                    diffs.push({ path: nextPath, expected: exp[key], actual: '<missing>', reason: 'removed' });
+                    addDiff({ path: nextPath, expected: exp[key], actual: '<missing>', reason: 'removed' });
                     continue;
                 }
                 visit(exp[key], act[key], [...parts, key]);
@@ -130,7 +140,7 @@ function compareSnapshots(expected, actual, options = {}){
         }
 
         if (!Object.is(exp, act)){
-            diffs.push({ path: currentPath, expected: exp, actual: act, reason: 'value' });
+            addDiff({ path: currentPath, expected: exp, actual: act, reason: 'value' });
         }
     }
 

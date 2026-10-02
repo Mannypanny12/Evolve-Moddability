@@ -111,9 +111,9 @@ M0E refactor safety-net completion - in progress
    |
 M0E1 authoritative state/canonical safety - complete
    |
-M0E2 inspectable frozen oracle snapshots - current
+M0E2 inspectable frozen oracle snapshots - complete
    |
-M0E3 fixture hydration/oracle matrix
+M0E3 fixture hydration/oracle matrix - current
    |
 M0E4 real-browser smoke
    |
