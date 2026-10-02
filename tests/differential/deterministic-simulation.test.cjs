@@ -3,6 +3,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
+const fixtures = require('../fixtures/fixture-loader.cjs');
+const baselines = require('../simulation/oracle-baselines.json');
+
 const {
     runLegacyScenario,
     compareSnapshots,
@@ -39,6 +42,15 @@ for (const scenario of oracleScenarios){
         assert.ok(
             progressed.length > 0,
             `${scenario.fixture}: requested loop execution produced no normalized state change`
+        );
+
+        const expected = baselines.snapshots[scenario.fixture];
+        assert.ok(expected, `${scenario.fixture}: missing frozen oracle baseline`);
+        const actualHash = fixtures.fingerprint(first.after);
+        assert.equal(
+            actualHash,
+            expected.sha256,
+            `${scenario.fixture}: frozen oracle changed; actual SHA-256=${actualHash}`
         );
     });
 }
