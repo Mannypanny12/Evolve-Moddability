@@ -4,6 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const { createWorkerHarness } = require('../legacy/worker-harness.cjs');
+const { LEGACY_CADENCE } = require('../simulation/legacy-cadence.cjs');
 
 test('timer worker schedules the first main-loop callback at the requested period', () => {
     const worker = createWorkerHarness();
@@ -28,7 +29,7 @@ test('timer worker reports catch-up periods after large scheduling jitter', () =
     worker.runNext(500);
 
     assert.deepEqual(worker.messages, [
-        { loop: 'main', periods: 3 }
+        { loop: 'main', periods: LEGACY_CADENCE.representativeCatchUpPeriods }
     ]);
 });
 
