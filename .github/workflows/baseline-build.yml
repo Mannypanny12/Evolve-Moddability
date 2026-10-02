@@ -90,12 +90,29 @@ jobs:
           test "$unexpected" -eq 0
 
       - name: Set up matching ChromeDriver
-        uses: nanasess/setup-chromedriver@v3
+        uses: nanasess/setup-chromedriver@e913548694400f275b4070efcd90f47dbbc8914c # v3
 
       - name: Show browser versions
         run: |
           google-chrome --version || chromium --version
           chromedriver --version
+
+      - name: Prove real-browser smoke rejects startup exceptions
+        shell: bash
+        run: |
+          set +e
+          M0E4_INJECT_STARTUP_FAILURE=1 npm run test:browser > /tmp/m0e4-negative-control.log 2>&1
+          status=$?
+          set -e
+
+          cat /tmp/m0e4-negative-control.log
+
+          if [ "$status" -eq 0 ]; then
+            echo "Browser smoke unexpectedly passed with an injected Evolve startup exception."
+            exit 1
+          fi
+
+          grep -q "M0E4_INJECTED_STARTUP_FAILURE" /tmp/m0e4-negative-control.log
 
       - name: Run real-browser smoke test
         run: npm run test:browser
