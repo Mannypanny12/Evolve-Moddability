@@ -65,13 +65,25 @@
       },
       "mechbay": {
         "count": 14,
-        "on": 12
+        "on": 12,
+        "bay": 0,
+        "max": 0,
+        "active": 0,
+        "scouts": 0,
+        "mechs": []
       },
       "purifier": {
         "count": 8,
         "on": 8,
         "supply": 700,
         "sup_max": 1000
+      },
+      "spire": {
+        "count": 50,
+        "progress": 0,
+        "boss": "",
+        "type": "",
+        "status": {}
       }
     },
     "eden": {
@@ -187,6 +199,14 @@
     {
       "path": "support.asphodel",
       "includes": "eden_asphodel:encampment"
+    },
+    {
+      "path": "portal.spire.count",
+      "equals": 50
+    },
+    {
+      "path": "portal.mechbay.mechs",
+      "equals": []
     }
   ]
 }
