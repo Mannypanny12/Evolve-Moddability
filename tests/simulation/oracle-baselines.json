@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "source": {
+    "repository": "pmotschmann/Evolve",
+    "commit": "3436358dcd03d9f9e071d51ea071e0a78c0322e4",
+    "version": "1.4.10"
+  },
+  "environment": {
+    "wallClock": "2026-01-01T12:00:00.000Z",
+    "randomSeed": 1,
+    "periods": 20
+  },
+  "snapshots": {
+    "fresh-evolution": {
+      "sha256": "__CAPTURE__"
+    },
+    "early-civilization-human": {
+      "sha256": "__CAPTURE__"
+    },
+    "industrial-human-queues": {
+      "sha256": "__CAPTURE__"
+    },
+    "early-space-human": {
+      "sha256": "__CAPTURE__"
+    },
+    "interstellar-human": {
+      "sha256": "__CAPTURE__"
+    },
+    "portal-hell-balorg": {
+      "sha256": "__CAPTURE__"
+    },
+    "late-eden-human": {
+      "sha256": "__CAPTURE__"
+    },
+    "truepath-tauceti-human": {
+      "sha256": "__CAPTURE__"
+    },
+    "challenge-steelen-run": {
+      "sha256": "__CAPTURE__"
+    },
+    "reset-ready-mad": {
+      "sha256": "__CAPTURE__"
+    },
+    "reset-ready-bioseed": {
+      "sha256": "__CAPTURE__"
+    }
+  }
+}
