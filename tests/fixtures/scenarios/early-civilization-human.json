@@ -123,10 +123,6 @@
         "raid": 0,
         "workers": 0,
         "wounded": 0
-      },
-      "taxes": {
-        "tax_rate": 20,
-        "display": false
       }
     }
   },
