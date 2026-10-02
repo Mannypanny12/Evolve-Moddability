@@ -22,7 +22,7 @@ import '../../src/races.js';
 import '../../src/resources.js';
 import '../../src/jobs.js';
 import '../../src/industry.js';
-import '../../src/civics.js';
+import { defineGovernment } from '../../src/civics.js';
 import {
     actions,
     checkCosts,
@@ -147,6 +147,9 @@ let simulationModule = null;
 
 async function initializeSimulation(){
     if (!simulationModule){
+        if (global.race.species !== 'protoplasm'){
+            defineGovernment(true);
+        }
         simulationModule = await import('../../src/main.js');
     }
     return simulationModule;
