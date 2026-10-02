@@ -9,10 +9,10 @@ const { LEGACY_CADENCE } = require('../simulation/legacy-cadence.cjs');
 test('timer worker schedules the first main-loop callback at the requested period', () => {
     const worker = createWorkerHarness();
 
-    worker.send({ loop: 'start', period: 250 });
+    worker.send({ loop: 'start', period: LEGACY_CADENCE.mainPeriodMs });
 
     assert.equal(worker.pendingTimerCount(), 1);
-    assert.equal(worker.nextDelay(), 250);
+    assert.equal(worker.nextDelay(), LEGACY_CADENCE.mainPeriodMs);
 
     worker.runNext();
 
@@ -25,8 +25,8 @@ test('timer worker schedules the first main-loop callback at the requested perio
 test('timer worker reports catch-up periods after large scheduling jitter', () => {
     const worker = createWorkerHarness();
 
-    worker.send({ loop: 'start', period: 250 });
-    worker.runNext(500);
+    worker.send({ loop: 'start', period: LEGACY_CADENCE.mainPeriodMs });
+    worker.runNext(LEGACY_CADENCE.representativeCatchUpJitterMs);
 
     assert.deepEqual(worker.messages, [
         { loop: 'main', periods: LEGACY_CADENCE.representativeCatchUpPeriods }
@@ -36,7 +36,7 @@ test('timer worker reports catch-up periods after large scheduling jitter', () =
 test('timer worker clear message cancels the pending timer', () => {
     const worker = createWorkerHarness();
 
-    worker.send({ loop: 'start', period: 250 });
+    worker.send({ loop: 'start', period: LEGACY_CADENCE.mainPeriodMs });
     assert.equal(worker.pendingTimerCount(), 1);
 
     worker.send({ loop: 'clear' });
