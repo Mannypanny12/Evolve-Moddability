@@ -7,3 +7,16 @@ node_modules/*
 docs
 dist
 *.map
+
+# Evolve Moddability project metadata
+# Upstream ignores docs and dot-directories broadly; retain those defaults
+# while allowing this fork's design docs and GitHub workflows to be tracked.
+!docs/
+docs/*
+!docs/modding/
+!docs/modding/**
+
+!.github/
+.github/*
+!.github/workflows/
+!.github/workflows/**

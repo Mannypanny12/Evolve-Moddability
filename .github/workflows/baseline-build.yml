@@ -1,0 +1,44 @@
+name: Baseline build
+
+on:
+  push:
+    branches:
+      - master
+      - modding-foundation
+      - "m0*"
+      - "m1*"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Node 20 full build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Show tool versions
+        run: |
+          node --version
+          npm --version
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Build game and wiki
+        run: npm run build
+
+      - name: Ensure build left no tracked diff
+        run: git diff --exit-code
