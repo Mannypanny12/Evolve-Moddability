@@ -6,7 +6,7 @@ const path = require('node:path');
 const METRIC_KEYS = ['global', 'browser', 'storage', 'clock', 'random'];
 
 function countMatches(code, pattern){
-    const matches = source.match(pattern);
+    const matches = code.match(pattern);
     return matches ? matches.length : 0;
 }
 
