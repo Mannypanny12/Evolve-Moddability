@@ -7,6 +7,7 @@ const assert = require('node:assert/strict');
 require(process.env.EVOLVE_LEGACY_TEST_BUNDLE);
 const legacy = globalThis.__EVOLVE_LEGACY_TEST_API__;
 const fixtures = require('../fixtures/fixture-loader.cjs');
+const { LEGACY_CADENCE } = require('../simulation/legacy-cadence.cjs');
 
 if (!legacy){
     throw new Error('Legacy test API did not initialize');
@@ -36,6 +37,14 @@ const requiredCoverage = [
 
 test('canonical initialized legacy base is frozen by fingerprint', () => {
     fixtures.assertBaseFingerprint(legacy);
+});
+
+test('legacy adapter cadence matches the frozen harness contract', () => {
+    assert.deepEqual(legacy.legacyCadence(), {
+        mainMs: LEGACY_CADENCE.mainPeriodMs,
+        midRatio: LEGACY_CADENCE.midRatio,
+        longRatio: LEGACY_CADENCE.longRatio
+    });
 });
 
 test('fixture catalog has unique IDs and required progression/system coverage', () => {
@@ -96,3 +105,18 @@ for (const definition of fixtures.listFixtureDefinitions()){
         assert.equal(second.__testMutation, undefined, `${definition.id}: materializations must be isolated`);
     });
 }
+
+test('hydrated legacy process refuses replacement with another fixture state', async () => {
+    const firstDefinition = fixtures.loadFixtureById('early-civilization-human');
+    const first = fixtures.materializePersistedFixture(firstDefinition, legacy);
+    legacy.installLegacyState(first);
+    await legacy.hydrateSimulationState();
+
+    const secondDefinition = fixtures.loadFixtureById('preindustrial-orc');
+    const second = fixtures.materializePersistedFixture(secondDefinition, legacy);
+
+    assert.throws(
+        () => legacy.installLegacyState(second),
+        /cannot be replaced after hydration/
+    );
+});
