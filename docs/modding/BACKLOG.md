@@ -107,7 +107,7 @@ M0C fixtures - complete
    |
 M0D deterministic differential simulation - complete
    |
-M0E refactor safety-net completion - in progress
+M0E refactor safety-net completion - complete
    |
 M0E1 authoritative state/canonical safety - complete
    |
@@ -117,9 +117,9 @@ M0E3 fixture hydration/oracle matrix - complete
    |
 M0E4 real-browser smoke - complete
    |
-M0E5 architecture/CI guardrails - current
+M0E5 architecture/CI guardrails - complete
    |
-M1A identity/registry - next after M0E
+M1A identity/registry - current
    |
 M1B definition contracts
    |
