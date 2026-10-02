@@ -158,7 +158,7 @@ For canonical lookup:
 - malformed IDs are validation errors;
 - IDs of the wrong content family are type errors;
 - a valid but unregistered ID returns `undefined` from `get()`;
-- `require()` converts the valid-but-missing case into `UNKNOWN_CONTENT_ID`.
+- `getRequired()` converts the valid-but-missing case into `UNKNOWN_CONTENT_ID`.
 
 This keeps malformed identity separate from ordinary absence.
 
