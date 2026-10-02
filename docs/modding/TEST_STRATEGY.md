@@ -262,7 +262,8 @@ Every behavior-moving PR should state:
 
 - build;
 - harness/unit tests;
-- characterization tests.
+- characterization tests;
+- minimal real-browser bootstrap/UI smoke with a proven startup-exception negative control.
 
 ### M2-M5
 

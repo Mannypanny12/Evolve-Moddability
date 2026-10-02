@@ -9,11 +9,12 @@ After `npm run build`, the smoke test:
 1. serves the checked-out game over a local HTTP server;
 2. launches a fresh headless Chrome session through ChromeDriver;
 3. proves uncaught JavaScript exceptions are visible to the harness with a deliberate throw-probe;
-4. loads the real built `index.html` and generated game assets;
-5. requires the main game surface and Evolution tab to render;
-6. requires the fresh-game RNA action to be visible;
-7. clicks RNA twice and requires the DNA action to unlock;
-8. fails on severe browser/application errors.
+4. CI performs a negative-control run that injects `M0E4_INJECTED_STARTUP_FAILURE` into the served real `index.html` and requires the normal smoke command to exit nonzero;
+5. loads the real built `index.html` and generated game assets;
+6. requires the main game surface and Evolution tab to render;
+7. requires the fresh-game RNA action to be visible;
+8. clicks RNA twice and requires the DNA action to unlock;
+9. fails on severe browser/application errors.
 
 It does **not** validate simulation math through the UI. The M0E1-M0E3 simulation/oracle work remains authoritative for that.
 
@@ -42,7 +43,7 @@ Then make sure a compatible Chrome/Chromium and `chromedriver` are on `PATH`, an
 npm run test:browser
 ```
 
-GitHub Actions provisions a matching ChromeDriver automatically and runs the smoke test after the normal build verification.
+GitHub Actions provisions a matching ChromeDriver, first proves the smoke command rejects an injected exception in the actual served Evolve startup page, and then runs the normal passing smoke test after the normal build verification.
 
 ## Boundaries
 
