@@ -208,7 +208,7 @@
       "pause": false,
       "queue": [
         {
-          "id": "arpa-railway",
+          "id": "arparailway",
           "action": "arpa",
           "type": "railway",
           "label": "Railway",
@@ -236,6 +236,12 @@
           "qa": false
         }
       ]
+    },
+    "arpa": {
+      "railway": {
+        "complete": 0,
+        "rank": 0
+      }
     }
   },
   "invariants": [
@@ -266,6 +272,10 @@
     {
       "path": "city.coal_mine.on",
       "equals": 10
+    },
+    {
+      "path": "arpa.railway.complete",
+      "equals": 0
     }
   ]
 }
