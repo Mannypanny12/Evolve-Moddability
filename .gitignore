@@ -20,3 +20,6 @@ docs/*
 .github/*
 !.github/workflows/
 !.github/workflows/**
+
+# Generated characterization-test bundles
+tests/generated/

@@ -37,6 +37,9 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
+      - name: Run test suite
+        run: npm test
+
       - name: Build game and wiki
         run: npm run build
 
