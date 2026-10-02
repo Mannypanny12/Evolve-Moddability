@@ -58,6 +58,13 @@ test('fixture catalog has unique IDs and required progression/system coverage', 
     assert.ok(species.size >= 3, 'fixture catalog should contain at least three materially different species profiles');
 });
 
+test('game loops refuse to run before explicit simulation hydration', async () => {
+    await assert.rejects(
+        legacy.runGameLoops(1),
+        /must be hydrated before running game loops/
+    );
+});
+
 test('installing a persisted fixture clones it into isolated runtime state', () => {
     const definition = fixtures.loadFixtureById('early-civilization-human');
     const persisted = fixtures.materializePersistedFixture(definition, legacy);
