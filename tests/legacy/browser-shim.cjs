@@ -56,6 +56,7 @@ function makeElement(){
         dataset: {},
         classList: makeClassList(),
         children: [],
+        childNodes: [],
         innerHTML: '',
         textContent: '',
         value: '',
@@ -96,7 +97,7 @@ function makeJQueryChain(){
             if (prop === 'prop'){ return (...args) => args.length > 1 ? chain : undefined; }
             if (prop === 'hasClass' || prop === 'is'){ return () => false; }
             if (prop === 'each'){ return () => chain; }
-            if (prop === 'get'){ return () => undefined; }
+            if (prop === 'get'){ return index => index === 0 ? element : undefined; }
             if (prop === 'toArray'){ return () => []; }
             return () => chain;
         },
