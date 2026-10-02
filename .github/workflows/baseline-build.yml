@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -46,6 +46,17 @@ jobs:
           name: m0e2-oracle-snapshots
           path: tests/simulation/oracle-snapshots
           if-no-files-found: error
+
+      - name: Commit bootstrapped M0E2 snapshots
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/simulation/oracle-snapshots
+          if ! git diff --cached --quiet; then
+            git commit -m "M0E2: commit inspectable oracle snapshots"
+            git push origin HEAD:m0e2-inspectable-oracle-snapshots
+          fi
 
       - name: Run test suite
         run: npm test
