@@ -49,6 +49,10 @@ function makeClassList(){
 function makeElement(){
     return {
         style: {},
+        scrollHeight: 0,
+        scrollTop: 0,
+        clientHeight: 0,
+        clientWidth: 0,
         dataset: {},
         classList: makeClassList(),
         children: [],
@@ -76,11 +80,12 @@ function makeElement(){
 
 function makeJQueryChain(){
     let chain;
+    const element = makeElement();
     const target = function(){ return chain; };
     chain = new Proxy(target, {
         get(_target, prop){
             if (prop === 'length'){ return 0; }
-            if (prop === '0'){ return undefined; }
+            if (prop === '0'){ return element; }
             if (prop === Symbol.iterator){ return function* emptyIterator(){}; }
             if (prop === 'outerHeight' || prop === 'outerWidth'){ return () => 0; }
             if (prop === 'width'){ return () => 1920; }
