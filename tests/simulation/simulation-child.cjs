@@ -5,6 +5,10 @@ const path = require('node:path');
 const fixtureId = process.argv[2];
 const periods = Number(process.argv[3]);
 const marker = '__EVOLVE_SIM_RESULT__';
+const {
+    ORACLE_RESULT_SCHEMA,
+    ORACLE_ENVIRONMENT
+} = require('./oracle-contract.cjs');
 
 if (!fixtureId || !Number.isInteger(periods) || periods < 0){
     throw new Error('Usage: simulation-child.cjs <fixture-id> <periods>');
@@ -16,8 +20,8 @@ const fixtures = require('../fixtures/fixture-loader.cjs');
 const { normalizeSimulationState } = require('./normalize-simulation.cjs');
 
 async function main(){
-    legacy.seedRandom(1);
-    legacy.setWallClock(Date.UTC(2026, 0, 1, 12, 0, 0));
+    legacy.seedRandom(ORACLE_ENVIRONMENT.randomSeed);
+    legacy.setWallClock(Date.parse(ORACLE_ENVIRONMENT.wallClock));
 
     const definition = fixtures.loadFixtureById(fixtureId);
     fixtures.validateDefinition(
@@ -44,13 +48,10 @@ async function main(){
     );
 
     const result = {
-        schema: 1,
+        schema: ORACLE_RESULT_SCHEMA,
         fixture: fixtureId,
         periods,
-        environment: {
-            wallClock: '2026-01-01T12:00:00.000Z',
-            randomSeed: 1
-        },
+        environment: { ...ORACLE_ENVIRONMENT },
         before,
         after
     };

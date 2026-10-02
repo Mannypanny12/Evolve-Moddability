@@ -6,7 +6,15 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const baselines = require('../simulation/oracle-baselines.json');
+const legacyBase = require('../fixtures/legacy-base.json');
 const { oracleScenarios } = require('../simulation/oracle-scenarios.cjs');
+const {
+    ORACLE_RESULT_SCHEMA,
+    ORACLE_SOURCE,
+    ORACLE_ENVIRONMENT,
+    validateOracleManifest,
+    validateOracleResult
+} = require('../simulation/oracle-contract.cjs');
 
 const {
     runLegacyScenario,
@@ -23,6 +31,70 @@ const {
     exactSnapshotDiff,
     formatFrozenDiffs
 } = require('../simulation/oracle-goldens.cjs');
+
+test('oracle manifest provenance matches the canonical legacy base contract', () => {
+    assert.doesNotThrow(() => validateOracleManifest(baselines));
+    assert.deepEqual(baselines.source, ORACLE_SOURCE);
+    assert.deepEqual(baselines.environment, ORACLE_ENVIRONMENT);
+    assert.deepEqual(baselines.source, legacyBase.source);
+    assert.equal(baselines.environment.wallClock, legacyBase.harness.clock);
+    assert.equal(baselines.environment.randomSeed, legacyBase.harness.rngSeed);
+});
+
+test('oracle child-result metadata validation fails closed on provenance drift', () => {
+    const scenario = oracleScenarios[0];
+    const valid = {
+        schema: ORACLE_RESULT_SCHEMA,
+        fixture: scenario.fixture,
+        periods: scenario.periods,
+        environment: { ...ORACLE_ENVIRONMENT },
+        before: {},
+        after: {}
+    };
+
+    assert.equal(validateOracleResult(valid, scenario), valid);
+
+    const mutations = [
+        [{ ...valid, schema: ORACLE_RESULT_SCHEMA + 1 }, /schema mismatch/],
+        [{ ...valid, fixture: 'wrong-fixture' }, /fixture mismatch/],
+        [{ ...valid, periods: scenario.periods + 1 }, /period mismatch/],
+        [{
+            ...valid,
+            environment: {
+                ...ORACLE_ENVIRONMENT,
+                wallClock: '2030-01-01T00:00:00.000Z'
+            }
+        }, /environment does not match/],
+        [{
+            ...valid,
+            environment: {
+                ...ORACLE_ENVIRONMENT,
+                randomSeed: ORACLE_ENVIRONMENT.randomSeed + 1
+            }
+        }, /environment does not match/],
+        [{
+            schema: valid.schema,
+            fixture: valid.fixture,
+            periods: valid.periods,
+            environment: valid.environment,
+            after: {}
+        }, /missing before state/],
+        [{
+            schema: valid.schema,
+            fixture: valid.fixture,
+            periods: valid.periods,
+            environment: valid.environment,
+            before: {}
+        }, /missing after state/]
+    ];
+
+    for (const pair of mutations){
+        assert.throws(
+            () => validateOracleResult(pair[0], scenario),
+            pair[1]
+        );
+    }
+});
 
 for (const scenario of oracleScenarios){
     test('legacy simulation matches frozen oracle for ' + scenario.key, () => {
@@ -106,8 +178,22 @@ test('oracle scenario manifest and committed snapshot catalog stay in exact sync
         );
     }
 
-    const actualFiles = fs.readdirSync(snapshotRoot, { withFileTypes: true })
-        .filter(entry => entry.isFile() && entry.name.endsWith('.json'))
+    const directoryEntries = fs.readdirSync(snapshotRoot, { withFileTypes: true });
+
+    for (const entry of directoryEntries){
+        assert.equal(
+            entry.isFile(),
+            true,
+            'oracle snapshot directory must not contain subdirectories: ' + entry.name
+        );
+        assert.match(
+            entry.name,
+            /\.json$/,
+            'oracle snapshot directory must contain JSON files only: ' + entry.name
+        );
+    }
+
+    const actualFiles = directoryEntries
         .map(entry => entry.name)
         .sort();
 

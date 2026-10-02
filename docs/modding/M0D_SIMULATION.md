@@ -61,6 +61,8 @@ The immediate exit is intentional. Browser-oriented legacy code may leave housek
 
 ## Frozen environment
 
+The frozen source/environment contract is centralized in `tests/simulation/oracle-contract.cjs` and derives source, wall clock, and unseeded RNG seed from the canonical `tests/fixtures/legacy-base.json` metadata.
+
 Current oracle environment:
 
 ```text
@@ -68,6 +70,8 @@ Wall clock: 2026-01-01T12:00:00.000Z
 Unseeded RNG seed: 1
 Periods: 20
 ```
+
+The manifest must match that canonical source/environment contract. Every child-process result is also validated before it reaches hashing or snapshot comparison: result schema, fixture ID, period count, wall clock, RNG seed, and presence of before/after state must all match the requested frozen contract.
 
 Legacy seeded RNG state is part of each materialized game state and is included in normalized output.
 
@@ -205,7 +209,7 @@ M0E2 stores the full canonical normalized post-simulation state for every frozen
 
 Scenario identity includes the period count (for example `fresh-evolution-p20`) so later cadence coverage can add other period counts without changing the manifest model.
 
-The committed JSON snapshot is the review surface. The hash remains an integrity guard, not the only golden.
+The committed JSON snapshot is the review surface. The hash remains an integrity guard, not the only golden. The test suite also requires the snapshot directory to contain only the manifest-declared top-level JSON files; nested or unrelated files fail the catalog check.
 
 A frozen scenario passes only when:
 
