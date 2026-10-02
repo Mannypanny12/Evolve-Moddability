@@ -14,7 +14,7 @@ function countMatches(code, pattern){
 }
 
 function measureLegacySource(source){
-    const code = maskNonCode(source);
+    const code = maskNonCode(source, { maskRegex: false });
     return {
         global: countMatches(code, /\bglobal\s*(?:\.|\[)/g),
         browser:
@@ -51,7 +51,7 @@ function isLikelyRegexStart(source, index){
     return ['return', 'throw', 'case', 'delete', 'void', 'typeof', 'instanceof', 'in', 'of', 'yield', 'await'].includes(word);
 }
 
-function maskNonCode(source){
+function maskNonCode(source, { maskRegex = true } = {}){
     const out = source.split('');
     let mode = 'code';
     const interpolationDepth = [];
@@ -157,7 +157,7 @@ function maskNonCode(source){
             mode = 'block-comment';
             continue;
         }
-        if (ch === '/' && isLikelyRegexStart(source, i)){
+        if (maskRegex && ch === '/' && isLikelyRegexStart(source, i)){
             mask(i);
             regexClass = false;
             mode = 'regex';
@@ -206,7 +206,10 @@ function extractModuleReferences(source, sourcefile = 'architecture-source.js'){
             resolveDir: path.dirname(path.resolve(sourcefile)),
             loader: 'js',
         },
-        bundle: false,
+        bundle: true,
+        external: ['*'],
+        platform: 'neutral',
+        format: 'esm',
         write: false,
         metafile: true,
         logLevel: 'silent',
