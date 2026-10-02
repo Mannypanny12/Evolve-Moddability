@@ -420,12 +420,17 @@
     },
     "garrison": {
       "crew": 0,
+      "disabled": false,
+      "display": false,
       "fatigue": 0,
       "m_use": 0,
       "max": 0,
       "mercs": false,
+      "progress": 0,
       "protest": 0,
       "raid": 20,
+      "rate": 0,
+      "tactic": 0,
       "workers": 0,
       "wounded": 1
     },

@@ -419,12 +419,17 @@
     },
     "garrison": {
       "crew": 0,
+      "disabled": false,
+      "display": false,
       "fatigue": 0,
       "m_use": 0,
       "max": 0,
       "mercs": false,
+      "progress": 0,
       "protest": 0,
       "raid": 25,
+      "rate": 0,
+      "tactic": 0,
       "workers": 0,
       "wounded": 0
     },
@@ -453,7 +458,7 @@
       "stress": 1,
       "workers": 0
     },
-    "homeless": 240,
+    "homeless": 239,
     "hunter": {
       "assigned": 0,
       "display": false,
