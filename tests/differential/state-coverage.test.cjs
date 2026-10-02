@@ -122,6 +122,81 @@ test('resource observation is fail-closed by default and excludes only classifie
     assert.equal(RESOURCE_FIELD_POLICY.bar.mode, 'exclude');
 });
 
+test('every root classified as include is actually observed by normalization', () => {
+    const baselineState = minimalState();
+    const baseline = normalizeSimulationState(baselineState);
+
+    for (const [root, policy] of Object.entries(ROOT_POLICY)){
+        if (policy.mode !== 'include'){
+            continue;
+        }
+
+        const changed = structuredClone(baselineState);
+
+        if (root === 'seed' || root === 'warseed'){
+            changed[root] += 1000;
+        }
+        else if (root === 'version'){
+            changed[root] = `${changed[root]}-probe`;
+        }
+        else if (root === 'new'){
+            changed[root] = !changed[root];
+        }
+        else if (root === 'power'){
+            changed[root].push('m0e1:probe');
+        }
+        else if (root === 'resource'){
+            changed[root].M0E1_Probe = {
+                amount: 1,
+                max: 1,
+                value: 1,
+                diff: 0,
+                delta: 0,
+                rate: 0,
+                display: false,
+                crates: 0,
+                containers: 0,
+                stackable: false
+            };
+        }
+        else {
+            assert.ok(
+                changed[root] && typeof changed[root] === 'object',
+                `${root}: test fixture needs an object-like included root`
+            );
+            changed[root].__m0e1_probe = 1;
+        }
+
+        const diffs = compareSnapshots(
+            baseline,
+            normalizeSimulationState(changed)
+        );
+
+        assert.ok(
+            diffs.length > 0,
+            `${root}: policy says include but normalization did not observe a change`
+        );
+    }
+});
+
+test('roots classified as exclude do not enter passive simulation output', () => {
+    const baseline = minimalState();
+    baseline.sim = false;
+    baseline.revision = 'old';
+    baseline.beta = true;
+
+    const changed = structuredClone(baseline);
+    changed.lastMsg = { all: ['different presentation history'] };
+    changed.sim = true;
+    changed.revision = 'different';
+    changed.beta = false;
+
+    assert.deepEqual(
+        normalizeSimulationState(changed),
+        normalizeSimulationState(baseline)
+    );
+});
+
 test('normalizer observes newly covered authoritative state', () => {
     const normalized = normalizeSimulationState(minimalState());
 
