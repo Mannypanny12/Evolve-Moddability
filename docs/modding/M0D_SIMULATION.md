@@ -35,7 +35,11 @@ The frozen matrix now protects representative cadence boundaries as well as full
 - `p4`: first mid-loop boundary;
 - `p20`: first long-loop boundary, containing 20 fast and 5 mid loops.
 
-The p3 case is linked to the worker characterization that proves 500 ms of scheduling jitter at a 250 ms worker period emits `{ periods: 3 }`. The oracle then protects the real `execGameLoops(3)` result without duplicating worker scheduling logic.
+The frozen main period and mid/long ratios live in the canonical `legacy-base.json` runtime contract. The legacy adapter verifies the imported production defaults match that contract before resetting test state, and the cadence scenario boundaries derive from the same metadata.
+
+The p3 case is linked to the worker characterization that proves 500 ms of scheduling jitter at the frozen 250 ms worker period emits `{ periods: 3 }`. The oracle then protects the real `execGameLoops(3)` result without duplicating worker scheduling logic.
+
+M0E3 also protects cadence continuity across repeated worker messages. Split-call runs `[2,3]` and `[18,3]` must exactly match single-call totals `[5]` and `[21]`, respectively, so a future candidate cannot reset its mid/long phase on every worker message.
 
 ## Process isolation
 
@@ -43,7 +47,7 @@ Every oracle execution runs in a fresh Node child process.
 
 This is required because the legacy runtime has mutable module-level state that is not contained in the serialized save object, including loop counters, first-run flags, caches, callbacks, and other transients.
 
-Reusing one imported legacy module graph for multiple oracle runs would risk state leaking between tests.
+Reusing one imported legacy module graph for multiple oracle runs would risk state leaking between tests. The legacy adapter enforces this limitation after hydration: once `main.js` has been hydrated for a fixture, installing another fixture in that process is rejected.
 
 Each child process:
 
@@ -74,7 +78,7 @@ Unseeded RNG seed: 1
 Scenario periods: 1, 3, 4, or 20
 ```
 
-The manifest must match that canonical source/environment contract. Every child-process result is also validated before it reaches hashing or snapshot comparison: result schema, fixture ID, period count, wall clock, RNG seed, and presence of before/after state must all match the requested frozen contract.
+The manifest must match that canonical source/environment contract and its `runtimeContractSchema`. Every child-process result is also validated before it reaches hashing or snapshot comparison: result schema, fixture ID, period count, wall clock, RNG seed, and presence of before/after state must all match the requested frozen contract.
 
 Legacy seeded RNG state is part of each materialized game state and is included in normalized output.
 
