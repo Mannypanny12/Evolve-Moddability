@@ -12,37 +12,39 @@
   },
   "snapshots": {
     "fresh-evolution": {
-      "sha256": "be9cb14ec4a7bf0ce4d9f05544e5e03da9bfac17870a6f15e0a97b55fef258ef"
+      "sha256": "33a343812d218fb396faf49031998b5891371a3c9e9c8051c13d7561d78616d4"
     },
     "early-civilization-human": {
-      "sha256": "1b01fbe8493ba4e598b6db7da48dfd9d812149c38a160f88cddd7262ba74d641"
+      "sha256": "7e85e2314bb516493c77a0588390f73e96be8a0e71495179f0343b732c271443"
     },
     "industrial-human-queues": {
-      "sha256": "892636b4ff9f03280b5c72076cc7a9b5e1cd31df2049cc25760d1751c568b3a5"
+      "sha256": "280f8242641a2f616823accb80456a3f4aa00e2f9d8ca999c24be956e4dd98f9"
     },
     "early-space-human": {
-      "sha256": "e7022369f4c3fe39f071d109c9e89fecb8790a8ccf89a2d9b8b2d32cbf943fc2"
+      "sha256": "1970bbf926da0c541aa25fb27aabeb22f1be815a9000c0aa3a1b904702c05bab"
     },
     "interstellar-human": {
-      "sha256": "1f9f0c93fe925e684ec88a368291ce460dc8f9f14d3ad2b91e40009621d6b62f"
+      "sha256": "bb22935313bac7cff18009a4e34d24fe64151e6663f4dd05a64aab809e07f999"
     },
     "portal-hell-balorg": {
-      "sha256": "69db5d3861cde7ffd82cb4ba92c7b68ed2fafbd2a1b1ecb1e44dab9896bf5a84"
+      "sha256": "439ad7d1fb573ca34ce87e60739d7ad6f763682061a628d684e355b5db310ca9"
     },
     "late-eden-human": {
-      "sha256": "bd6aed21abcf2f77a4979ab35ebe947afd1d23f41ec7ecfc4ce93bfda22ee8c0"
+      "sha256": "e4de9b5529d5083d4db5cc0f12a6e5cfe7ac65ba8e0522c3409e1221c5d3c295"
     },
     "truepath-tauceti-human": {
-      "sha256": "5c3467718bb78978d6318681cb65c43cd35c1695685c5e8a9bae220147258711"
+      "sha256": "e03f638c7544f2dc1707a475eaa3e80ac00fedc36d5d8489e7b9f9487a257d77"
     },
     "challenge-steelen-run": {
-      "sha256": "a6426bf20860f179de05aa72efc1777964d21b35f9fbc6f0f8df5b3931b58f87"
+      "sha256": "3ed19c6162a5b157b933544e3c2dcc2af5da3773b8a0374bd59a4b3483ea078a"
     },
     "reset-ready-mad": {
-      "sha256": "b3ab7f8ab3f94ece2b85e911c3558e6d4979e66597eb3b2ee67f0c5b65de91d2"
+      "sha256": "c0cca533faa666027171e57e2a17e346aae0e701434a8082714e3a2aa1d6ed2e"
     },
     "reset-ready-bioseed": {
-      "sha256": "dfd129ac18ec47735bde4fa6794a5be8f3a3ac7124731721e32c9a895d461c41"
+      "sha256": "cf7081dd51ae4bd00a53aa9182e4a84a91dd8f0f0fe63f996ee58b54e2e5544a"
     }
-  }
+  },
+  "observationSchema": 2,
+  "observationChange": "M0E1 expands authoritative state coverage and explicitly tags verified legacy resource-value NaN."
 }
