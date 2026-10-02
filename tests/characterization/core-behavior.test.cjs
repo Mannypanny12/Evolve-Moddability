@@ -3,7 +3,12 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const legacy = require(process.env.EVOLVE_LEGACY_TEST_BUNDLE);
+require(process.env.EVOLVE_LEGACY_TEST_BUNDLE);
+const legacy = globalThis.__EVOLVE_LEGACY_TEST_API__;
+
+if (!legacy){
+    throw new Error('Legacy test API did not initialize');
+}
 
 function baseState(){
     return {

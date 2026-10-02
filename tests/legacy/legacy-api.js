@@ -1,5 +1,12 @@
 import { global, setGlobal, tmp_vars } from '../../src/vars.js';
+import '../../src/locale.js';
+import '../../src/achieve.js';
 import { modRes } from '../../src/functions.js';
+import '../../src/races.js';
+import '../../src/resources.js';
+import '../../src/jobs.js';
+import '../../src/industry.js';
+import '../../src/civics.js';
 import {
     actions,
     checkCosts,
@@ -7,6 +14,20 @@ import {
     checkTechQualifications,
     checkTechRequirements
 } from '../../src/actions.js';
+import '../../src/space.js';
+import '../../src/portal.js';
+import '../../src/edenic.js';
+import '../../src/truepath.js';
+import '../../src/arpa.js';
+import '../../src/events.js';
+import '../../src/governor.js';
+import '../../src/prod.js';
+import '../../src/tech.js';
+import '../../src/resets.js';
+import '../../src/index.js';
+import '../../src/seasons.js';
+import '../../src/wiki/change.js';
+import '../../src/debug.js';
 
 function numericCosts(costs){
     const result = {};
@@ -21,33 +42,33 @@ function clearObject(object){
     Object.keys(object).forEach(key => delete object[key]);
 }
 
-export function installLegacyState(state){
+function installLegacyState(state){
     setGlobal(state);
     clearObject(tmp_vars);
     tmp_vars.resource = {};
 }
 
-export function legacyState(){
+function legacyState(){
     return global;
 }
 
-export function applyResourceDelta(resource, amount, notrack = true){
+function applyResourceDelta(resource, amount, notrack = true){
     return modRes(resource, amount, notrack);
 }
 
-export function canAfford(costs){
+function canAfford(costs){
     return checkCosts(numericCosts(costs));
 }
 
-export function pay(costs){
+function pay(costs){
     return payCosts({}, numericCosts(costs));
 }
 
-export function technologyRequirements(id, predictionList){
+function technologyRequirements(id, predictionList){
     return checkTechRequirements(id, predictionList);
 }
 
-export function technologyQualifies(id){
+function technologyQualifies(id){
     const definition = actions.tech[id];
     if (!definition){
         throw new Error(`Unknown legacy technology: ${id}`);
@@ -55,6 +76,17 @@ export function technologyQualifies(id){
     return checkTechQualifications(definition, 'tech');
 }
 
-export function technologyDefinition(id){
+function technologyDefinition(id){
     return actions.tech[id];
 }
+
+globalThis.__EVOLVE_LEGACY_TEST_API__ = {
+    installLegacyState,
+    legacyState,
+    applyResourceDelta,
+    canAfford,
+    pay,
+    technologyRequirements,
+    technologyQualifies,
+    technologyDefinition
+};

@@ -35,9 +35,9 @@ function buildLegacyBundle(){
         entryPoints: [legacyEntry],
         outfile: legacyBundle,
         bundle: true,
-        platform: 'node',
-        format: 'cjs',
-        target: 'node20',
+        platform: 'browser',
+        format: 'iife',
+        target: ['es2020'],
         sourcemap: 'inline',
         logLevel: 'warning',
         banner: {

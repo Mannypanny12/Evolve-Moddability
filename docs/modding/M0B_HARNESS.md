@@ -10,7 +10,7 @@ The harness therefore uses:
 
 - Node.js 20's built-in `node:test` runner;
 - the project's existing esbuild dependency;
-- a bundled legacy test entry;
+- a browser-format legacy bundle whose import ordering mirrors the production `main.js` dependency graph;
 - a small browser compatibility shim;
 - in-memory localStorage;
 - explicit state replacement through the existing `setGlobal()` seam.
@@ -66,7 +66,7 @@ If a characterization requires real DOM behavior, that should be added deliberat
 
 ## Legacy API boundary
 
-`tests/legacy/legacy-api.js` is a test-only adapter around selected existing exports.
+`tests/legacy/legacy-api.js` is a test-only adapter around selected existing exports. Its imports deliberately follow the production `main.js` module order because the legacy graph contains circular imports whose initialization order is significant.
 
 It currently exposes characterization seams for:
 
