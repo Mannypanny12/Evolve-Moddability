@@ -12,7 +12,12 @@ const {
 
 const oracleScenarios = [
     { fixture: 'fresh-evolution', periods: 20 },
-    { fixture: 'early-civilization-human', periods: 20 }
+    { fixture: 'early-civilization-human', periods: 20 },
+    { fixture: 'industrial-human-queues', periods: 20 },
+    { fixture: 'early-space-human', periods: 20 },
+    { fixture: 'interstellar-human', periods: 20 },
+    { fixture: 'portal-hell-balorg', periods: 20 },
+    { fixture: 'truepath-tauceti-human', periods: 20 }
 ];
 
 for (const scenario of oracleScenarios){
@@ -20,11 +25,16 @@ for (const scenario of oracleScenarios){
         const first = runLegacyScenario(scenario);
         const second = runLegacyScenario(scenario);
         const diffs = compareSnapshots(first.after, second.after);
+        const progressed = compareSnapshots(first.before, first.after);
 
         assert.equal(
             diffs.length,
             0,
             `determinism failure:\n${formatDiffs(diffs)}`
+        );
+        assert.ok(
+            progressed.length > 0,
+            `${scenario.fixture}: requested loop execution produced no normalized state change`
         );
     });
 }
