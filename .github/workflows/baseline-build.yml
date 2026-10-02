@@ -5,8 +5,7 @@ on:
     branches:
       - master
       - modding-foundation
-      - "m0*"
-      - "m1*"
+      - "m*"
   pull_request:
   workflow_dispatch:
 
@@ -64,6 +63,9 @@ jobs:
 
       - name: Run test suite
         run: npm test
+
+      - name: Run architecture fitness gate
+        run: npm run test:architecture
 
       - name: Build game and wiki
         run: npm run build
