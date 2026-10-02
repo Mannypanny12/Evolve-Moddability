@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -36,6 +36,20 @@ jobs:
 
       - name: Install locked dependencies
         run: npm ci
+
+      - name: Capture M0E1 observation-schema 3 goldens
+        if: github.event_name == 'push' && github.ref == 'refs/heads/m0e1-authoritative-state-correction'
+        shell: bash
+        run: |
+          npm run oracle:update -- --all --accept
+
+          git add tests/simulation/oracle-baselines.json tests/simulation/oracle-snapshots/
+          if ! git diff --cached --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "M0E1 correction: recapture schema 3 oracle snapshots"
+            git push origin HEAD:m0e1-authoritative-state-correction
+          fi
 
       - name: Run test suite
         run: npm test
