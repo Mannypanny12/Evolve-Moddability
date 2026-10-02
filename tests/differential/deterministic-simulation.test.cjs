@@ -3,8 +3,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const fixtures = require('../fixtures/fixture-loader.cjs');
 const baselines = require('../simulation/oracle-baselines.json');
+const { oracleScenarios } = require('../simulation/oracle-scenarios.cjs');
 
 const {
     runLegacyScenario,
@@ -12,48 +12,86 @@ const {
     compareImplementations,
     formatDiffs
 } = require('../simulation/differential-harness.cjs');
-
-const oracleScenarios = [
-    { fixture: 'fresh-evolution', periods: 20 },
-    { fixture: 'early-civilization-human', periods: 20 },
-    { fixture: 'industrial-human-queues', periods: 20 },
-    { fixture: 'early-space-human', periods: 20 },
-    { fixture: 'interstellar-human', periods: 20 },
-    { fixture: 'portal-hell-balorg', periods: 20 },
-    { fixture: 'late-eden-human', periods: 20 },
-    { fixture: 'truepath-tauceti-human', periods: 20 },
-    { fixture: 'challenge-steelen-run', periods: 20 },
-    { fixture: 'reset-ready-mad', periods: 20 },
-    { fixture: 'reset-ready-bioseed', periods: 20 }
-];
+const {
+    serializeSnapshot,
+    fingerprintSnapshot,
+    loadSnapshot,
+    exactSnapshotDiff,
+    formatFrozenDiffs
+} = require('../simulation/oracle-goldens.cjs');
 
 for (const scenario of oracleScenarios){
-    test(`legacy simulation is deterministic for ${scenario.fixture} over ${scenario.periods} periods`, () => {
+    test('legacy simulation matches frozen oracle for ' + scenario.key, () => {
         const first = runLegacyScenario(scenario);
         const second = runLegacyScenario(scenario);
-        const diffs = compareSnapshots(first.after, second.after);
         const progressed = compareSnapshots(first.before, first.after);
 
-        assert.equal(
-            diffs.length,
-            0,
-            `determinism failure:\n${formatDiffs(diffs)}`
-        );
         assert.ok(
             progressed.length > 0,
-            `${scenario.fixture}: requested loop execution produced no normalized state change`
+            scenario.fixture + ': requested loop execution produced no normalized state change'
         );
 
-        const expected = baselines.snapshots[scenario.fixture];
-        assert.ok(expected, `${scenario.fixture}: missing frozen oracle baseline`);
-        const actualHash = fixtures.fingerprint(first.after);
+        const expected = baselines.scenarios[scenario.key];
+        assert.ok(expected, scenario.key + ': missing frozen oracle manifest entry');
+        assert.equal(expected.fixture, scenario.fixture, scenario.key + ': fixture mismatch in manifest');
+        assert.equal(expected.periods, scenario.periods, scenario.key + ': period mismatch in manifest');
+
+        const frozenSnapshot = loadSnapshot(expected);
+        const frozenHash = fingerprintSnapshot(frozenSnapshot);
         assert.equal(
-            actualHash,
+            frozenHash,
             expected.sha256,
-            `${scenario.fixture}: frozen oracle changed; actual SHA-256=${actualHash}`
+            scenario.key + ': committed snapshot does not match its manifest SHA-256'
         );
+
+        for (const pair of [['first', first], ['second', second]]){
+            const label = pair[0];
+            const run = pair[1];
+            const actualHash = fingerprintSnapshot(run.after);
+            if (actualHash !== expected.sha256){
+                const differences = exactSnapshotDiff(frozenSnapshot, run.after);
+                assert.fail(
+                    scenario.key + ': ' + label + ' independent run changed frozen legacy behavior; ' +
+                    'expected SHA-256=' + expected.sha256 + ' actual SHA-256=' + actualHash + '\n' +
+                    formatFrozenDiffs(differences)
+                );
+            }
+        }
     });
 }
+
+test('frozen oracle comparison is exact even where differential comparison uses tolerance', () => {
+    const expected = { value: 100 };
+    const near = { value: 100 + 1e-11 };
+
+    assert.equal(compareSnapshots(expected, near).length, 0);
+
+    const exact = exactSnapshotDiff(expected, near);
+    assert.equal(exact.diffs.length, 1);
+    assert.equal(exact.diffs[0].path, 'value');
+});
+
+test('oracle snapshot serialization is deterministic and recursively key-sorted', () => {
+    const first = serializeSnapshot({ z: 1, a: { y: 2, b: 3 } });
+    const second = serializeSnapshot({ a: { b: 3, y: 2 }, z: 1 });
+
+    assert.equal(first, second);
+    assert.equal(first, '{\n  "a": {\n    "b": 3,\n    "y": 2\n  },\n  "z": 1\n}\n');
+});
+
+test('frozen oracle diff output is bounded and reports omission', () => {
+    const expected = {};
+    const actual = {};
+    for (let i = 0; i < 30; i++){
+        expected['key' + i] = i;
+        actual['key' + i] = i + 1;
+    }
+
+    const result = exactSnapshotDiff(expected, actual, 5);
+    assert.equal(result.diffs.length, 5);
+    assert.equal(result.truncated, true);
+    assert.match(formatFrozenDiffs(result), /Additional differences omitted\./);
+});
 
 test('differential harness reports a precise state path for a deliberate mutation', () => {
     const scenario = { fixture: 'fresh-evolution', periods: 20 };
