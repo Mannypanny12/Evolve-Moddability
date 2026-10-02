@@ -143,6 +143,33 @@ function eventEffect(id){
     return events[id].effect();
 }
 
+let simulationModule = null;
+
+async function initializeSimulation(){
+    if (!simulationModule){
+        simulationModule = await import('../../src/main.js');
+    }
+    return simulationModule;
+}
+
+async function runGameLoops(periods){
+    const simulation = await initializeSimulation();
+    webWorker.s = true;
+    simulation.execGameLoops(periods);
+}
+
+function transientSimulationState(){
+    return clone({
+        power_generated,
+        p_on,
+        support_on,
+        int_on,
+        gal_on,
+        spire_on,
+        atrack
+    });
+}
+
 function loopTiming(){
     return loopTimers();
 }
@@ -179,6 +206,9 @@ globalThis.__EVOLVE_LEGACY_TEST_API__ = {
     technologyDefinition,
     actionCondition,
     eventEffect,
+    initializeSimulation,
+    runGameLoops,
+    transientSimulationState,
     loopTiming,
     setWallClock,
     resetWallClock,
