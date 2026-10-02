@@ -12,6 +12,7 @@ const { oracleScenarios } = require('../simulation/oracle-scenarios.cjs');
 const { LEGACY_CADENCE } = require('../simulation/legacy-cadence.cjs');
 const {
     ORACLE_RESULT_SCHEMA,
+    ORACLE_RUNTIME_CONTRACT_SCHEMA,
     ORACLE_SOURCE,
     ORACLE_ENVIRONMENT,
     validateOracleManifest,
@@ -41,6 +42,8 @@ test('oracle manifest provenance matches the canonical legacy base contract', ()
     assert.deepEqual(baselines.source, legacyBase.source);
     assert.equal(baselines.environment.wallClock, legacyBase.harness.clock);
     assert.equal(baselines.environment.randomSeed, legacyBase.harness.rngSeed);
+    assert.equal(baselines.runtimeContractSchema, ORACLE_RUNTIME_CONTRACT_SCHEMA);
+    assert.equal(ORACLE_RUNTIME_CONTRACT_SCHEMA, legacyBase.harness.contractSchema);
 });
 
 test('oracle child-result metadata validation fails closed on provenance drift', () => {
@@ -151,6 +154,52 @@ test('oracle matrix protects fast, catch-up, mid, long, and Orc full-loop covera
         ),
         'preindustrial Orc must execute through the full p20 cadence'
     );
+});
+
+test('legacy cadence contract is derived from canonical base metadata', () => {
+    assert.equal(LEGACY_CADENCE.mainPeriodMs, legacyBase.harness.cadence.mainMs);
+    assert.equal(LEGACY_CADENCE.midRatio, legacyBase.harness.cadence.midRatio);
+    assert.equal(LEGACY_CADENCE.longRatio, legacyBase.harness.cadence.longRatio);
+    assert.equal(LEGACY_CADENCE.firstMidPeriods, legacyBase.harness.cadence.midRatio);
+    assert.equal(LEGACY_CADENCE.firstLongPeriods, legacyBase.harness.cadence.longRatio);
+    assert.equal(
+        LEGACY_CADENCE.representativeCatchUpPeriods,
+        1 + Math.floor(
+            LEGACY_CADENCE.representativeCatchUpJitterMs /
+            LEGACY_CADENCE.mainPeriodMs
+        )
+    );
+});
+
+test('split worker calls preserve cadence phase across mid and long boundaries', () => {
+    const fixture = 'early-civilization-human';
+    const cases = [
+        { calls: [2, 3], total: 5, label: 'mid boundary' },
+        { calls: [18, 3], total: 21, label: 'long boundary' }
+    ];
+
+    for (const item of cases){
+        const split = runLegacyScenario({
+            fixture,
+            periods: item.total,
+            calls: item.calls
+        });
+        const single = runLegacyScenario({
+            fixture,
+            periods: item.total
+        });
+
+        assert.deepEqual(
+            split.before,
+            single.before,
+            item.label + ': split and single runs must start from the same hydrated state'
+        );
+        assert.deepEqual(
+            split.after,
+            single.after,
+            item.label + ': cadence phase must persist across worker calls'
+        );
+    }
 });
 
 for (const scenario of oracleScenarios){
