@@ -100,26 +100,75 @@ Every matrix entry must both:
 
 It includes:
 
+- save metadata: `version` and legacy `new` lifecycle state;
 - RNG seeds;
-- resources, including amount, max, diff, delta, rate and container/storage metadata;
+- resources, including amount, max, base economic `value`, diff, delta, rate, storage/container metadata, trade state, and Mana generation fields;
+- evolution progression;
 - population/civics/jobs;
 - city, space, interstellar, galaxy, Portal, Eden, Tau Ceti and star-dock structures;
 - technologies;
+- ARPA project progress/ranks;
 - race/trait state;
+- custom/hybrid race definitions;
+- pillar progression;
+- governor/candidate/policy state;
+- seasonal/special progression flags;
 - build and research queues;
 - power and support ordering;
 - statistics;
 - normal and major event state;
 - prestige;
 - genes and blood state;
-- simulation-relevant settings;
+- the simulation-relevant subset of settings;
 - transient power/support activation maps and accelerated-time tracking.
 
 Object keys are recursively sorted for stable hashing. Array order is preserved because queue and grid ordering can affect behavior.
 
+## Top-level legacy state coverage policy
+
+M0E1 makes top-level state coverage fail closed. `tests/simulation/legacy-state-policy.cjs` classifies every known current legacy root.
+
+| Root(s) | Policy | Reason |
+| --- | --- | --- |
+| `seed`, `warseed` | include | authoritative RNG state |
+| `resource`, `evolution`, `tech`, `city`, `space`, `interstellar`, `galaxy`, `portal`, `eden`, `tauceti`, `starDock`, `civic`, `race` | include | primary run/gameplay state |
+| `genes`, `blood`, `stats`, `prestige`, `pillars` | include | persistent/meta progression |
+| `event`, `m_event`, `special` | include | event and special-progression state |
+| `queue`, `r_queue`, `power`, `support`, `arpa`, `govern` | include | queues, projects, priority and automation state |
+| `custom` | include | custom/hybrid race data used by gameplay |
+| `version`, `new` | include | save/lifecycle metadata |
+| `settings` | mixed | only behavior-affecting fields are part of the simulation oracle |
+| `lastMsg` | exclude | message history/presentation only |
+| `sim` | exclude | temporary simulation/debug flag, not normal authoritative save state |
+| `revision`, `beta` | exclude | obsolete migration markers deleted at the current version |
+
+If a future/current legacy state presents a top-level root not in that policy, normalization fails with an `Unclassified legacy top-level state root` error. New state cannot silently disappear from the oracle.
+
+### Mixed settings policy
+
+The passive simulation oracle currently records these settings:
+
+- `pause`;
+- `at` (accelerated-time state);
+- `boring` (changes seasonal/event behavior);
+- `qAny` (used by governor queue automation).
+
+Presentation/input settings such as themes, visible tabs, labels, message filters and key mappings are intentionally not part of passive simulation output. If later migration work proves another setting changes authoritative simulation behavior, it must be added explicitly rather than captured accidentally.
+
+## Canonical value safety
+
+M0E1 hardens state transport before JSON is involved.
+
+- present-but-`undefined` object properties are encoded with an explicit tagged sentinel, so they remain distinct from missing properties;
+- `Infinity` and `-Infinity` are always rejected;
+- `NaN` is rejected by default with its exact state path;
+- the one verified legacy exception is non-tradable resource `value` metadata, for which upstream can legitimately produce `NaN` because no market `resource_values` entry exists. That value is encoded as an explicit tagged non-finite number rather than silently becoming JSON `null`.
+
+Any new non-finite state location is therefore a test failure until its source is understood.
+
 ## Explicit volatile exclusions
 
-The normalizer currently excludes only:
+Within included state, the normalizer excludes only:
 
 - `stats.start`;
 - `stats.current`.
