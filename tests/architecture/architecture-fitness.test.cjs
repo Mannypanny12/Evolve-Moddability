@@ -69,5 +69,5 @@ test('current repository satisfies the frozen M0E5 architecture baseline', () =>
     const baseline = loadBaseline(root);
     const result = scanRepository(root, baseline);
     assert.deepEqual(result.violations, [], result.violations.join('\n'));
-    assert.equal(result.summary.largestLegacySccSize, 20);
+    assert.equal(result.summary.largestLegacySccSize, baseline.largestLegacySccSize);
 });
