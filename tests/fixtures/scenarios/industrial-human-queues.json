@@ -81,6 +81,10 @@
       },
       "warehouse": {
         "count": 12
+      },
+      "mine": {
+        "count": 20,
+        "on": 18
       }
     },
     "resource": {
@@ -191,8 +195,8 @@
       }
     },
     "power": [
-      "city:coal_power",
-      "city:factory"
+      "city:factory",
+      "city:mine"
     ],
     "queue": {
       "display": true,
@@ -250,6 +254,10 @@
     {
       "path": "power",
       "includes": "city:factory"
+    },
+    {
+      "path": "city.mine.on",
+      "equals": 18
     }
   ]
 }
