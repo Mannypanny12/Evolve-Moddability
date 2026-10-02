@@ -11,6 +11,7 @@ function runLegacyScenario({ fixture, periods }){
         cwd: path.resolve(__dirname, '..', '..'),
         env: { ...process.env },
         encoding: 'utf8',
+        timeout: 30000,
         maxBuffer: 32 * 1024 * 1024
     });
 
