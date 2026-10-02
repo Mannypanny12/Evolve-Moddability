@@ -1,6 +1,7 @@
 'use strict';
 
 const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -106,17 +107,23 @@ for (const definition of fixtures.listFixtureDefinitions()){
     });
 }
 
-test('hydrated legacy process refuses replacement with another fixture state', async () => {
-    const firstDefinition = fixtures.loadFixtureById('early-civilization-human');
-    const first = fixtures.materializePersistedFixture(firstDefinition, legacy);
-    legacy.installLegacyState(first);
-    await legacy.hydrateSimulationState();
+test('hydrated legacy process refuses replacement with another fixture state', () => {
+    const childPath = path.join(__dirname, '..', 'legacy', 'lifecycle-child.cjs');
+    const result = spawnSync(process.execPath, [childPath], {
+        cwd: path.resolve(__dirname, '..', '..'),
+        env: { ...process.env },
+        encoding: 'utf8',
+        timeout: 30000
+    });
 
-    const secondDefinition = fixtures.loadFixtureById('preindustrial-orc');
-    const second = fixtures.materializePersistedFixture(secondDefinition, legacy);
+    if (result.error){
+        throw result.error;
+    }
 
-    assert.throws(
-        () => legacy.installLegacyState(second),
-        /cannot be replaced after hydration/
+    assert.equal(
+        result.status,
+        0,
+        'lifecycle child failed\nstdout:\n' + result.stdout + '\nstderr:\n' + result.stderr
     );
+    assert.match(result.stdout, /lifecycle-replacement-rejected/);
 });
