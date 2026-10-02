@@ -88,8 +88,8 @@
     },
     "support": {
       "alpha": [
-        "int_alpha:starport",
-        "int_alpha:habitat",
+        "int_alpha:fusion",
+        "int_alpha:mining_droid",
         "int_alpha:g_factory"
       ]
     },
@@ -156,7 +156,7 @@
     },
     {
       "path": "support.alpha",
-      "includes": "int_alpha:starport"
+      "includes": "int_alpha:g_factory"
     }
   ]
 }
