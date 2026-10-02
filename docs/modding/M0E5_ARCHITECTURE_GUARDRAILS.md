@@ -6,14 +6,16 @@ M0E5 turns the refactor architecture into a machine-enforced boundary before M1A
 
 `src/engine/**` is reserved for platform-independent engine code.
 
-Every JavaScript file under that directory has a hard zero budget for direct:
+Every `.js`, `.mjs`, and `.cjs` source file under that directory has a hard zero budget for direct:
 
 - legacy `global` access;
-- DOM/browser globals such as `window`, `document`, `navigator`, jQuery, or Vue;
+- DOM/browser globals such as `window`, `document`, `navigator`, `globalThis`, jQuery, or Vue;
 - `localStorage` or the legacy `save` storage wrapper;
-- wall-clock access through `Date.now()`, `new Date(...)`, or `performance.now()`;
-- randomness through `Math.random()` or legacy `Math.rand()`;
-- relative imports that resolve outside `src/engine/**`.
+- wall-clock access through `Date.now()`, `Date()`, `new Date(...)`, or `performance.now()`;
+- randomness through `Math.random()`, legacy `Math.rand()`, or `crypto.getRandomValues()`;
+- relative imports that resolve outside `src/engine/**`;
+- CommonJS `require()` calls;
+- imports of browser/UI packages such as jQuery, Vue, `@vue/*`, or Buefy, even when renamed locally.
 
 Engine-to-engine relative imports are allowed. Browser/platform adapters introduced later belong outside `src/engine/**` and implement engine-owned contracts from the outside.
 
@@ -48,15 +50,15 @@ The SCC may shrink or split, but it may not grow. A module that becomes acyclic 
 
 ## Self-test
 
-The architecture checker has negative-control tests that deliberately exercise forbidden engine patterns, including legacy state, browser/UI, storage, time, randomness, and an import escaping into legacy source.
+The architecture checker has both rule-level and repository-level negative controls. They deliberately exercise forbidden engine patterns, a discovered bad engine file, renamed browser/UI package imports, CommonJS `require()`, engine import cycles, legacy SCC growth, and the requirement to lower SCC baselines after architectural improvement.
 
-The normal repository scan must then pass with zero `src/engine/**` violations and exact legacy ratchets.
+A clean synthetic engine repository must pass, a poisoned synthetic engine repository must return a nonzero architecture result, and the real repository must pass with zero `src/engine/**` violations and exact legacy ratchets. Comments, string literals, template literal text, and regular-expression literals do not consume engine dependency budget; executable template expressions still do.
 
 ## CI
 
 `npm run test:architecture` runs the repository architecture gate explicitly in CI in addition to the architecture check being covered by the normal Node test suite.
 
-Push CI matches `m*` development branches, so M2 and all later milestone branches inherit the same safety gates automatically.
+Push CI matches both `m*` and `m*/**` development branches, so hyphenated milestone branches such as `m2-state` and slash-based branches such as `m2/state` inherit the same safety gates automatically.
 
 ## Scope
 

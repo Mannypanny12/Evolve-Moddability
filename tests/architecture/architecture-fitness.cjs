@@ -2,8 +2,11 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const esbuild = require('esbuild');
 
 const METRIC_KEYS = ['global', 'browser', 'storage', 'clock', 'random'];
+const ENGINE_SOURCE_EXTENSIONS = new Set(['.js', '.mjs', '.cjs']);
+const FORBIDDEN_ENGINE_PACKAGE_PREFIXES = ['jquery', 'vue', '@vue/', 'buefy'];
 
 function countMatches(code, pattern){
     const matches = code.match(pattern);
@@ -11,7 +14,7 @@ function countMatches(code, pattern){
 }
 
 function measureLegacySource(source){
-    const code = maskNonCode(source);
+    const code = maskNonCode(source, { maskRegex: false });
     return {
         global: countMatches(code, /\bglobal\s*(?:\.|\[)/g),
         browser:
@@ -33,10 +36,26 @@ function measureLegacySource(source){
     };
 }
 
-function maskNonCode(source){
+function isLikelyRegexStart(source, index){
+    let cursor = index - 1;
+    while (cursor >= 0 && /\s/.test(source[cursor])) cursor--;
+    if (cursor < 0) return true;
+
+    const previous = source[cursor];
+    if ('([{:;,=!?&|+-*%^~<>'.includes(previous)) return true;
+    if (previous === '>' && source[cursor - 1] === '=') return true;
+
+    const end = cursor + 1;
+    while (cursor >= 0 && /[A-Za-z_$]/.test(source[cursor])) cursor--;
+    const word = source.slice(cursor + 1, end);
+    return ['return', 'throw', 'case', 'delete', 'void', 'typeof', 'instanceof', 'in', 'of', 'yield', 'await'].includes(word);
+}
+
+function maskNonCode(source, { maskRegex = true } = {}){
     const out = source.split('');
     let mode = 'code';
     const interpolationDepth = [];
+    let regexClass = false;
 
     const mask = index => {
         if (source[index] !== '\n' && source[index] !== '\r') out[index] = ' ';
@@ -97,6 +116,33 @@ function maskNonCode(source){
             continue;
         }
 
+        if (mode === 'regex'){
+            mask(i);
+            if (ch === '\\'){
+                if (i + 1 < source.length){
+                    mask(i + 1);
+                    i++;
+                }
+                continue;
+            }
+            if (ch === '['){
+                regexClass = true;
+                continue;
+            }
+            if (ch === ']' && regexClass){
+                regexClass = false;
+                continue;
+            }
+            if (ch === '/' && !regexClass){
+                while (i + 1 < source.length && /[A-Za-z]/.test(source[i + 1])){
+                    mask(i + 1);
+                    i++;
+                }
+                mode = 'code';
+            }
+            continue;
+        }
+
         if (ch === '/' && next === '/'){
             mask(i);
             mask(i + 1);
@@ -109,6 +155,12 @@ function maskNonCode(source){
             mask(i + 1);
             i++;
             mode = 'block-comment';
+            continue;
+        }
+        if (maskRegex && ch === '/' && isLikelyRegexStart(source, i)){
+            mask(i);
+            regexClass = false;
+            mode = 'regex';
             continue;
         }
         if (ch === "'"){
@@ -146,54 +198,56 @@ function maskNonCode(source){
     return out.join('');
 }
 
-function extractImportSpecifiers(source){
-    const specifiers = [];
-    const lines = source.split(/\r?\n/);
+function extractModuleReferences(source, sourcefile = 'architecture-source.js'){
+    const result = esbuild.buildSync({
+        stdin: {
+            contents: source,
+            sourcefile,
+            resolveDir: path.dirname(path.resolve(sourcefile)),
+            loader: 'js',
+        },
+        bundle: true,
+        external: ['*'],
+        platform: 'neutral',
+        format: 'esm',
+        write: false,
+        metafile: true,
+        logLevel: 'silent',
+    });
 
-    for (let i = 0; i < lines.length; i++){
-        const trimmed = lines[i].trim();
-        if (
-            trimmed.startsWith('//') ||
-            trimmed.startsWith('/*') ||
-            trimmed.startsWith('*') ||
-            (!/^import\b/.test(trimmed) && !/^export\b/.test(trimmed))
-        ){
-            continue;
-        }
-
-        let statement = lines[i];
-        for (let j = i; j < Math.min(lines.length, i + 30); j++){
-            if (j > i) statement += '\n' + lines[j];
-
-            let match = statement.match(/\bfrom\s*['"]([^'"]+)['"]/);
-            if (!match) match = statement.match(/^\s*import\s*['"]([^'"]+)['"]/);
-            if (match){
-                specifiers.push(match[1]);
-                break;
-            }
-
-            if (statement.includes(';')) break;
+    const references = [];
+    for (const input of Object.values(result.metafile.inputs)){
+        for (const imported of input.imports || []){
+            references.push({
+                specifier: imported.original || imported.path,
+                kind: imported.kind,
+            });
         }
     }
-
-    const dynamicImport = /\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
-    let dynamicMatch;
-    while ((dynamicMatch = dynamicImport.exec(source)) !== null){
-        specifiers.push(dynamicMatch[1]);
-    }
-
-    return specifiers;
+    return references;
 }
 
-function listJsFilesRecursive(dir){
+function extractImportSpecifiers(source, sourcefile){
+    return extractModuleReferences(source, sourcefile).map(reference => reference.specifier);
+}
+
+function isForbiddenEnginePackage(specifier){
+    return FORBIDDEN_ENGINE_PACKAGE_PREFIXES.some(prefix =>
+        prefix.endsWith('/')
+            ? specifier.startsWith(prefix)
+            : specifier === prefix || specifier.startsWith(prefix + '/')
+    );
+}
+
+function listEngineSourceFilesRecursive(dir){
     if (!fs.existsSync(dir)) return [];
     const files = [];
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })){
         const full = path.join(dir, entry.name);
         if (entry.isDirectory()){
-            files.push(...listJsFilesRecursive(full));
+            files.push(...listEngineSourceFilesRecursive(full));
         }
-        else if (entry.isFile() && entry.name.endsWith('.js')){
+        else if (entry.isFile() && ENGINE_SOURCE_EXTENSIONS.has(path.extname(entry.name))){
             files.push(full);
         }
     }
@@ -204,7 +258,11 @@ function resolveLocalImport(fromFile, specifier, fileSet){
     if (!specifier.startsWith('.')) return null;
 
     const base = path.resolve(path.dirname(fromFile), specifier);
-    const candidates = [base, base + '.js', path.join(base, 'index.js')];
+    const candidates = [
+        base,
+        ...[...ENGINE_SOURCE_EXTENSIONS].map(extension => base + extension),
+        ...[...ENGINE_SOURCE_EXTENSIONS].map(extension => path.join(base, 'index' + extension)),
+    ];
 
     for (const candidate of candidates){
         if (fileSet.has(candidate)) return candidate;
@@ -231,6 +289,7 @@ function engineSourceViolations(source, filename, engineRoot){
         ['wall clock performance.now', /\bperformance\s*\.\s*now\s*\(/],
         ['direct random source', /\bMath\s*\.\s*(?:random|rand)\s*\(/],
         ['direct crypto random source', /\bcrypto\s*\.\s*getRandomValues\s*\(/],
+        ['CommonJS require()', /\brequire\s*\(/],
     ];
 
     for (const [label, pattern] of rules){
@@ -239,7 +298,11 @@ function engineSourceViolations(source, filename, engineRoot){
         }
     }
 
-    for (const specifier of extractImportSpecifiers(source)){
+    for (const reference of extractModuleReferences(source, filename)){
+        const specifier = reference.specifier;
+        if (isForbiddenEnginePackage(specifier)){
+            violations.push(filename + ': forbidden engine package import: ' + specifier);
+        }
         if (!specifier.startsWith('.')) continue;
         const resolved = path.resolve(path.dirname(filename), specifier);
         const relative = path.relative(engineRoot, resolved);
@@ -304,7 +367,7 @@ function buildImportGraph(files){
         const targets = [];
         const source = fs.readFileSync(resolvedFile, 'utf8');
 
-        for (const specifier of extractImportSpecifiers(source)){
+        for (const specifier of extractImportSpecifiers(source, resolvedFile)){
             const target = resolveLocalImport(resolvedFile, specifier, fileSet);
             if (target && fileSet.has(target)) targets.push(target);
         }
@@ -398,7 +461,7 @@ function scanRepository(root, baseline){
         violations.push('Legacy cycle-member baseline must ratchet downward; these modules are no longer cyclic: ' + removed.join(', '));
     }
 
-    const engineFiles = listJsFilesRecursive(engineRoot);
+    const engineFiles = listEngineSourceFilesRecursive(engineRoot);
     for (const file of engineFiles){
         const source = fs.readFileSync(file, 'utf8');
         violations.push(...engineSourceViolations(source, file, engineRoot));
@@ -430,37 +493,46 @@ function loadBaseline(root){
     return JSON.parse(fs.readFileSync(baselinePath, 'utf8'));
 }
 
+function runArchitectureCheck(root, baseline, logger = console){
+    const result = scanRepository(root, baseline);
+
+    logger.log('Architecture fitness summary:');
+    logger.log(JSON.stringify(result.summary, null, 2));
+
+    if (result.violations.length > 0){
+        logger.error('\nArchitecture fitness violations:');
+        for (const violation of result.violations){
+            logger.error('- ' + violation);
+        }
+        return { exitCode: 1, result };
+    }
+
+    logger.log('\nM0E5 architecture fitness gate passed.');
+    return { exitCode: 0, result };
+}
+
 function main(){
     const root = path.resolve(__dirname, '..', '..');
     const baseline = loadBaseline(root);
-    const result = scanRepository(root, baseline);
-
-    console.log('Architecture fitness summary:');
-    console.log(JSON.stringify(result.summary, null, 2));
-
-    if (result.violations.length > 0){
-        console.error('\nArchitecture fitness violations:');
-        for (const violation of result.violations){
-            console.error('- ' + violation);
-        }
-        process.exitCode = 1;
-    }
-    else {
-        console.log('\nM0E5 architecture fitness gate passed.');
-    }
+    const outcome = runArchitectureCheck(root, baseline);
+    process.exitCode = outcome.exitCode;
 }
 
 module.exports = {
     METRIC_KEYS,
     measureLegacySource,
     maskNonCode,
+    extractModuleReferences,
     extractImportSpecifiers,
+    isForbiddenEnginePackage,
+    listEngineSourceFilesRecursive,
     engineSourceViolations,
     stronglyConnectedComponents,
     buildImportGraph,
     engineCycleViolations,
     scanRepository,
     loadBaseline,
+    runArchitectureCheck,
 };
 
 if (require.main === module){
