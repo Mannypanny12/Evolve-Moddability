@@ -54,6 +54,7 @@ engine
 - [M0B_HARNESS.md](M0B_HARNESS.md): legacy characterization harness and deterministic browser/runtime shims.
 - [M0C_FIXTURES.md](M0C_FIXTURES.md): representative source-anchored fixture catalog.
 - [M0D_SIMULATION.md](M0D_SIMULATION.md): deterministic legacy simulation oracle and differential harness.
+- [M0E3_FIXTURE_HYDRATION.md](M0E3_FIXTURE_HYDRATION.md): persisted-fixture lifecycle, hydration ownership, and runtime-isolation rules.
 
 ## Non-goals for early milestones
 

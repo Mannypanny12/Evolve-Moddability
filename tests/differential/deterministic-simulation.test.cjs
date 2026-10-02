@@ -7,6 +7,7 @@ const path = require('node:path');
 
 const baselines = require('../simulation/oracle-baselines.json');
 const legacyBase = require('../fixtures/legacy-base.json');
+const earlyCivilizationFixture = require('../fixtures/scenarios/early-civilization-human.json');
 const { oracleScenarios } = require('../simulation/oracle-scenarios.cjs');
 const {
     ORACLE_RESULT_SCHEMA,
@@ -94,6 +95,33 @@ test('oracle child-result metadata validation fails closed on provenance drift',
             pair[1]
         );
     }
+});
+
+test('persisted fixture hydration supplies generic defaults before any loop period runs', () => {
+    assert.equal(
+        Object.prototype.hasOwnProperty.call(earlyCivilizationFixture.patch.civic, 'taxes'),
+        false,
+        'default tax state belongs to hydration, not persisted scenario intent'
+    );
+
+    const result = runLegacyScenario({
+        fixture: 'early-civilization-human',
+        periods: 0
+    });
+
+    assert.equal(result.before.populationAndCivics.taxes.tax_rate, 20);
+    assert.equal(result.before.populationAndCivics.taxes.display, false);
+    assert.equal(result.before.populationAndCivics.garrison.mercs, false);
+    assert.equal(result.before.populationAndCivics.garrison.fatigue, 0);
+    assert.equal(result.before.populationAndCivics.garrison.protest, 0);
+    assert.equal(result.before.populationAndCivics.garrison.m_use, 0);
+    assert.equal(result.before.populationAndCivics.garrison.crew, 0);
+
+    assert.deepEqual(
+        result.after,
+        result.before,
+        'zero periods must expose hydration only, not simulation progress'
+    );
 });
 
 for (const scenario of oracleScenarios){

@@ -114,7 +114,7 @@ function validateDefinition(definition, filePath){
     assert.ok(Array.isArray(definition.invariants) && definition.invariants.length > 0, `${definition.id}: invariants required`);
 }
 
-function materializeFixture(definition, legacyApi){
+function materializePersistedFixture(definition, legacyApi){
     return deepMerge(legacyApi.pristineLegacyState(), definition.patch);
 }
 
@@ -136,7 +136,7 @@ module.exports = {
     listFixtureDefinitions,
     loadFixtureById,
     validateDefinition,
-    materializeFixture,
+    materializePersistedFixture,
     assertFixture,
     assertBaseFingerprint
 };

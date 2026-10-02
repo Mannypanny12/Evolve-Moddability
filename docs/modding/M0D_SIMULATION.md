@@ -49,13 +49,15 @@ Each child process:
 1. loads the M0B browser/test shim;
 2. freezes wall clock time;
 3. controls unseeded randomness;
-4. materializes one M0C fixture;
-5. initializes required legacy runtime state;
-6. imports the real simulation graph;
-7. captures normalized state before the run;
-8. runs `execGameLoops()`;
-9. captures normalized state after the run;
-10. emits the result and exits immediately.
+4. materializes one persisted M0C fixture;
+5. clones that persisted input into the live legacy runtime;
+6. explicitly hydrates generic government/garrison defaults and imports the real simulation graph;
+7. verifies hydration did not mutate the persisted fixture object;
+8. captures normalized state before the run;
+9. runs `execGameLoops()`;
+10. captures normalized state after the run;
+11. verifies simulation did not mutate the persisted fixture object;
+12. emits the result and exits immediately.
 
 The immediate exit is intentional. Browser-oriented legacy code may leave housekeeping timers alive that should not control test-process lifetime.
 
@@ -281,7 +283,9 @@ This was used while building M0D to identify real fixture hydration requirements
 - spire/mechbay state;
 - Truepath foreign-government state.
 
-Those fixes were made in the synthetic M0C fixture overlays using Evolve's own runtime/save shapes. No gameplay source was modified.
+M0E3 classifies those findings by ownership. Generic load/startup defaults belong to explicit hydration; scenario-specific persisted gameplay state remains in the fixture overlays. The adapter does not manufacture powered structures, power/support priority, ARPA progress, Hell observation history, spire/mechbay progress, or Truepath rival state.
+
+No gameplay source is modified. Existing frozen p20 oracle outputs are expected to remain exact while hydration is formalized.
 
 ## Commands
 

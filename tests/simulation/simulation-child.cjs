@@ -29,11 +29,16 @@ async function main(){
         path.join('tests', 'fixtures', 'scenarios', `${fixtureId}.json`)
     );
 
-    const state = fixtures.materializeFixture(definition, legacy);
-    fixtures.assertFixture(definition, state);
-    legacy.installLegacyState(state);
+    const persistedState = fixtures.materializePersistedFixture(definition, legacy);
+    fixtures.assertFixture(definition, persistedState);
+    const persistedFingerprint = fixtures.fingerprint(persistedState);
 
-    await legacy.initializeSimulation();
+    legacy.installLegacyState(persistedState);
+    await legacy.hydrateSimulationState();
+
+    if (fixtures.fingerprint(persistedState) !== persistedFingerprint){
+        throw new Error(fixtureId + ': hydration mutated the persisted fixture input');
+    }
 
     const before = normalizeSimulationState(
         legacy.legacyState(),
@@ -46,6 +51,10 @@ async function main(){
         legacy.legacyState(),
         legacy.transientSimulationState()
     );
+
+    if (fixtures.fingerprint(persistedState) !== persistedFingerprint){
+        throw new Error(fixtureId + ': simulation mutated the persisted fixture input');
+    }
 
     const result = {
         schema: ORACLE_RESULT_SCHEMA,
