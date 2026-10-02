@@ -1,7 +1,7 @@
 import { global, setGlobal, tmp_vars } from '../../src/vars.js';
 import '../../src/locale.js';
 import '../../src/achieve.js';
-import { modRes } from '../../src/functions.js';
+import { modRes, loopTimers } from '../../src/functions.js';
 import '../../src/races.js';
 import '../../src/resources.js';
 import '../../src/jobs.js';
@@ -19,7 +19,7 @@ import '../../src/portal.js';
 import '../../src/edenic.js';
 import '../../src/truepath.js';
 import '../../src/arpa.js';
-import '../../src/events.js';
+import { events } from '../../src/events.js';
 import '../../src/governor.js';
 import '../../src/prod.js';
 import '../../src/tech.js';
@@ -80,6 +80,45 @@ function technologyDefinition(id){
     return actions.tech[id];
 }
 
+function actionCondition(group, id){
+    const definition = actions[group] && actions[group][id];
+    if (!definition){
+        throw new Error(`Unknown legacy action: ${group}.${id}`);
+    }
+    return definition.condition ? definition.condition() : true;
+}
+
+function eventEffect(id){
+    if (!events[id]){
+        throw new Error(`Unknown legacy event: ${id}`);
+    }
+    return events[id].effect();
+}
+
+function loopTiming(){
+    return loopTimers();
+}
+
+function setWallClock(timestamp){
+    globalThis.__EVOLVE_TEST_RUNTIME__.clock.set(timestamp);
+}
+
+function resetWallClock(){
+    globalThis.__EVOLVE_TEST_RUNTIME__.clock.reset();
+}
+
+function setRandomSequence(values){
+    globalThis.__EVOLVE_TEST_RUNTIME__.rng.sequence(values);
+}
+
+function seedRandom(seed){
+    globalThis.__EVOLVE_TEST_RUNTIME__.rng.seed(seed);
+}
+
+function resetRandom(){
+    globalThis.__EVOLVE_TEST_RUNTIME__.rng.reset();
+}
+
 globalThis.__EVOLVE_LEGACY_TEST_API__ = {
     installLegacyState,
     legacyState,
@@ -88,5 +127,13 @@ globalThis.__EVOLVE_LEGACY_TEST_API__ = {
     pay,
     technologyRequirements,
     technologyQualifies,
-    technologyDefinition
+    technologyDefinition,
+    actionCondition,
+    eventEffect,
+    loopTiming,
+    setWallClock,
+    resetWallClock,
+    setRandomSequence,
+    seedRandom,
+    resetRandom
 };

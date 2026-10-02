@@ -102,6 +102,70 @@ function makeJQueryChain(){
     return chain;
 }
 
+const OriginalDate = globalThis.Date;
+const originalRandom = Math.random;
+let frozenNow = Date.UTC(2026, 0, 1, 12, 0, 0);
+let randomSequence = null;
+let randomIndex = 0;
+
+const runtime = {
+    clock: {
+        set(timestamp){
+            frozenNow = Number(timestamp);
+            globalThis.Date = class FrozenDate extends OriginalDate {
+                constructor(...args){
+                    super(...(args.length ? args : [frozenNow]));
+                }
+                static now(){
+                    return frozenNow;
+                }
+            };
+        },
+        reset(){
+            globalThis.Date = OriginalDate;
+        },
+        now(){
+            return frozenNow;
+        }
+    },
+    rng: {
+        sequence(values){
+            if (!Array.isArray(values) || values.length === 0){
+                throw new Error('RNG sequence requires at least one value');
+            }
+            values.forEach(value => {
+                if (!(value >= 0 && value < 1)){
+                    throw new Error('RNG values must be in [0, 1)');
+                }
+            });
+            randomSequence = values.slice();
+            randomIndex = 0;
+            Math.random = () => {
+                const value = randomSequence[randomIndex % randomSequence.length];
+                randomIndex++;
+                return value;
+            };
+        },
+        seed(seed){
+            let state = Number(seed) >>> 0;
+            Math.random = () => {
+                state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+                return state / 0x100000000;
+            };
+            randomSequence = null;
+            randomIndex = 0;
+        },
+        reset(){
+            Math.random = originalRandom;
+            randomSequence = null;
+            randomIndex = 0;
+        }
+    }
+};
+
+runtime.clock.set(frozenNow);
+runtime.rng.seed(1);
+
 const storage = new MemoryStorage();
 const documentStub = {
     body: makeElement(),
@@ -194,6 +258,8 @@ globalThis.LZString = {
     decompressFromBase64(value){ return Buffer.from(String(value), 'base64').toString('utf8'); }
 };
 
+globalThis.__EVOLVE_TEST_RUNTIME__ = runtime;
+
 globalThis.CryptoJS = {
     SHA256(value){
         return { toString(){ return String(value); } };
@@ -205,5 +271,6 @@ module.exports = {
     storage,
     resetStorage(){
         storage.clear();
-    }
+    },
+    runtime
 };

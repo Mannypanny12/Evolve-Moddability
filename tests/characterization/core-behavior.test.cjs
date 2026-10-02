@@ -59,7 +59,14 @@ function baseState(){
 }
 
 test.beforeEach(() => {
+    legacy.seedRandom(1);
+    legacy.setWallClock(Date.UTC(2026, 0, 1, 12, 0, 0));
     legacy.installLegacyState(baseState());
+});
+
+test.after(() => {
+    legacy.resetRandom();
+    legacy.resetWallClock();
 });
 
 test('resource mutation clamps gain at the current resource maximum', () => {
@@ -130,4 +137,45 @@ test('technology qualification follows the technology condition against race tra
     state.race.evil = 1;
     assert.equal(legacy.technologyQualifies('bone_tools'), true);
     assert.equal(legacy.technologyQualifies('wooden_tools'), false);
+});
+
+
+test('wall-clock-dependent action conditions can be characterized at a frozen date', () => {
+    const state = legacy.legacyState();
+    state.special = {
+        gift: {
+            g2019: true
+        }
+    };
+
+    legacy.setWallClock(Date.UTC(2026, 0, 1, 12, 0, 0));
+    assert.equal(legacy.actionCondition('city', 'gift'), true);
+
+    legacy.setWallClock(Date.UTC(2026, 11, 20, 12, 0, 0));
+    assert.equal(legacy.actionCondition('city', 'gift'), false);
+});
+
+test('unseeded legacy event randomness can be replayed with a controlled RNG sequence', () => {
+    const state = legacy.legacyState();
+    state.race.species = 'protoplasm';
+    state.resource.DNA = {
+        amount: 0,
+        max: 30,
+        delta: 0
+    };
+
+    legacy.setRandomSequence([0.5]);
+    legacy.eventEffect('dna_replication');
+
+    assert.equal(state.resource.DNA.amount, 5);
+});
+
+test('legacy loop timing exposes the default worker cadence deterministically', () => {
+    assert.deepEqual(legacy.loopTiming(), {
+        webWorkerMainTimer: 250,
+        mainTimer: 250,
+        longTimer: 5000,
+        baseLongTimer: 5000,
+        timeAccelerationFactor: 2
+    });
 });

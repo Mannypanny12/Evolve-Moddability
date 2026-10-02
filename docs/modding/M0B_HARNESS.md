@@ -40,6 +40,7 @@ tests/
 |-- run-tests.cjs
 |-- legacy/
 |   |-- browser-shim.cjs
+|   |-- worker-harness.cjs
 |   +-- legacy-api.js
 +-- characterization/
     +-- core-behavior.test.cjs
@@ -54,6 +55,8 @@ The shim exists only to let legacy modules load in Node.
 It provides:
 
 - isolated in-memory localStorage;
+- a freezeable wall clock;
+- deterministic seeded or sequence-driven `Math.random`;
 - minimal window/document objects;
 - inert jQuery-style chains;
 - empty localization JSON responses;
@@ -86,7 +89,11 @@ M0B begins with exact legacy behavior for:
 2. resource overspend floored at zero with failure result;
 3. cost affordability and payment;
 4. technology requirement readiness;
-5. technology condition/trait qualification.
+5. technology condition/trait qualification;
+6. a real wall-clock-dependent action condition;
+7. an unseeded random event replayed deterministically;
+8. legacy loop cadence;
+9. the low-drift timer worker's normal, catch-up, and clear behavior.
 
 These are intentionally small but real seams.
 
@@ -96,9 +103,11 @@ Each test installs a fresh state object.
 
 The bundle sees an empty in-memory storage instance during module initialization, so the test process never reads or writes the user's real browser save.
 
-The current M0B tests do not require real time or randomness. The harness is structured so controlled Clock/RNG seams can be added as later characterization reaches those behaviors.
+The harness freezes wall-clock time and replaces unseeded `Math.random` with deterministic test-controlled implementations. Tests can provide either a seed or an exact random sequence.
 
-M0D will extend this foundation to deterministic loop-level and legacy-vs-new differential simulation.
+The standalone timer worker is executed inside a Node `vm` context with manual `performance.now()` and timer scheduling, so worker cadence and catch-up behavior can be tested without waiting on real time.
+
+M0D will extend this foundation from timer policy and isolated behaviors to deterministic full-loop and legacy-vs-new differential simulation.
 
 ## What M0B does not do
 
