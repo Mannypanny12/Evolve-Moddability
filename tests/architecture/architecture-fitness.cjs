@@ -42,7 +42,7 @@ function isLikelyRegexStart(source, index){
     if (cursor < 0) return true;
 
     const previous = source[cursor];
-    if ('([{:;,=!?&|+-*%^|<>'.includes(previous)) return true;
+    if ('([{:;,=!?&|+-*%^~<>'.includes(previous)) return true;
     if (previous === '>' && source[cursor - 1] === '=') return true;
 
     const end = cursor + 1;
