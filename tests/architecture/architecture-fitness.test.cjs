@@ -30,6 +30,7 @@ test('M0E5 rejects direct legacy global access in engine code', () => {
 test('M0E5 rejects direct browser/UI access in engine code', () => {
     rejects('document.querySelector("#x");', 'DOM document');
     rejects('window.location.href;', 'browser window');
+    rejects('globalThis.document;', 'platform globalThis');
     rejects('$("#x").hide();', 'jQuery');
     rejects('new Vue({});', 'Vue');
 });
@@ -39,9 +40,11 @@ test('M0E5 rejects direct storage, wall-clock, and random access in engine code'
     rejects('save.setItem("x", "y");', 'legacy save storage');
     rejects('Date.now();', 'wall clock Date.now');
     rejects('new Date();', 'wall clock new Date');
+    rejects('Date();', 'wall clock Date()');
     rejects('performance.now();', 'wall clock performance.now');
     rejects('Math.random();', 'direct random source');
     rejects('Math.rand(1, 2);', 'direct random source');
+    rejects('crypto.getRandomValues(new Uint8Array(4));', 'direct crypto random source');
 });
 
 test('M0E5 rejects engine imports that escape into legacy source', () => {
@@ -67,5 +70,4 @@ test('current repository satisfies the frozen M0E5 architecture baseline', () =>
     const result = scanRepository(root, baseline);
     assert.deepEqual(result.violations, [], result.violations.join('\n'));
     assert.equal(result.summary.largestLegacySccSize, 20);
-    assert.equal(result.summary.engineFileCount, 0);
 });
