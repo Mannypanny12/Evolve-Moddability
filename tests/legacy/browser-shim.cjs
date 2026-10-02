@@ -267,6 +267,26 @@ globalThis.Popper = class {
     destroy(){}
 };
 
+const sortableInstances = new WeakMap();
+globalThis.Sortable = {
+    create(element){
+        const instance = {
+            destroy(){
+                sortableInstances.delete(element);
+            }
+        };
+        if (element && typeof element === 'object'){
+            sortableInstances.set(element, instance);
+        }
+        return instance;
+    },
+    get(element){
+        return element && typeof element === 'object'
+            ? sortableInstances.get(element) || null
+            : null;
+    }
+};
+
 globalThis.LZString = {
     compressToUTF16(value){ return String(value); },
     decompressFromUTF16(value){ return String(value); },
