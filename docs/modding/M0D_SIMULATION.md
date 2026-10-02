@@ -102,7 +102,7 @@ It includes:
 
 - save metadata: `version` and legacy `new` lifecycle state;
 - RNG seeds;
-- resources, including amount, max, base economic `value`, diff, delta, rate, storage/container metadata, trade state, and Mana generation fields;
+- resources using a fail-closed field policy: all present resource fields are observed by default, while only explicitly classified presentation fields are excluded;
 - evolution progression;
 - population/civics/jobs;
 - city, space, interstellar, galaxy, Portal, Eden, Tau Ceti and star-dock structures;
@@ -144,6 +144,19 @@ M0E1 makes top-level state coverage fail closed. `tests/simulation/legacy-state-
 
 If a future/current legacy state presents a top-level root not in that policy, normalization fails with an `Unclassified legacy top-level state root` error. New state cannot silently disappear from the oracle.
 
+### Resource field policy
+
+Resource entries are fail-closed at the field level as well as at the top level. All present resource fields are included by default.
+
+The current explicit resource-field exclusions are:
+
+- `name`: localized presentation label;
+- `bar`: resource-bar display preference.
+
+This means newly introduced resource mechanics cannot silently disappear from the oracle simply because they were not added to a positive field whitelist.
+
+For legacy `resource.*.value` metadata, `NaN` is only accepted when the resource is non-tradable, represented by the absence of the legacy `trade` field. Tradable resources must have a finite base market value.
+
 ### Mixed settings policy
 
 The passive simulation oracle currently records these settings:
@@ -162,7 +175,7 @@ M0E1 hardens state transport before JSON is involved.
 - present-but-`undefined` object properties are encoded with an explicit tagged sentinel, so they remain distinct from missing properties;
 - `Infinity` and `-Infinity` are always rejected;
 - `NaN` is rejected by default with its exact state path;
-- the one verified legacy exception is non-tradable resource `value` metadata, for which upstream can legitimately produce `NaN` because no market `resource_values` entry exists. That value is encoded as an explicit tagged non-finite number rather than silently becoming JSON `null`.
+- the verified legacy exception is non-tradable resource `value` metadata, for which upstream can legitimately produce `NaN` because no market `resource_values` entry exists. The normalizer only permits that tag when the legacy resource has no `trade` field; a tradable resource with `NaN` value fails.
 
 Any new non-finite state location is therefore a test failure until its source is understood.
 

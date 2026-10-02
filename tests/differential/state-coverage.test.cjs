@@ -12,7 +12,8 @@ const {
 } = require('../simulation/canonical-state.cjs');
 const {
     ROOT_POLICY,
-    SIMULATION_SETTING_KEYS
+    SIMULATION_SETTING_KEYS,
+    RESOURCE_FIELD_POLICY
 } = require('../simulation/legacy-state-policy.cjs');
 const {
     normalizeSimulationState
@@ -98,6 +99,102 @@ test('legacy root policy explicitly classifies required M0E1 roots', () => {
 
     assert.equal(ROOT_POLICY.lastMsg.mode, 'exclude');
     assert.equal(ROOT_POLICY.settings.mode, 'mixed');
+});
+
+test('resource observation is fail-closed by default and excludes only classified presentation fields', () => {
+    const state = minimalState();
+    state.resource.Money.name = 'Localized Money';
+    state.resource.Money.bar = true;
+    state.resource.Money.future_mechanic_field = 42;
+
+    const normalized = normalizeSimulationState(state);
+
+    assert.equal(normalized.resources.Money.future_mechanic_field, 42);
+    assert.equal(
+        Object.prototype.hasOwnProperty.call(normalized.resources.Money, 'name'),
+        false
+    );
+    assert.equal(
+        Object.prototype.hasOwnProperty.call(normalized.resources.Money, 'bar'),
+        false
+    );
+    assert.equal(RESOURCE_FIELD_POLICY.name.mode, 'exclude');
+    assert.equal(RESOURCE_FIELD_POLICY.bar.mode, 'exclude');
+});
+
+test('every root classified as include is actually observed by normalization', () => {
+    const baselineState = minimalState();
+    const baseline = normalizeSimulationState(baselineState);
+
+    for (const [root, policy] of Object.entries(ROOT_POLICY)){
+        if (policy.mode !== 'include'){
+            continue;
+        }
+
+        const changed = structuredClone(baselineState);
+
+        if (root === 'seed' || root === 'warseed'){
+            changed[root] += 1000;
+        }
+        else if (root === 'version'){
+            changed[root] = `${changed[root]}-probe`;
+        }
+        else if (root === 'new'){
+            changed[root] = !changed[root];
+        }
+        else if (root === 'power'){
+            changed[root].push('m0e1:probe');
+        }
+        else if (root === 'resource'){
+            changed[root].M0E1_Probe = {
+                amount: 1,
+                max: 1,
+                value: 1,
+                diff: 0,
+                delta: 0,
+                rate: 0,
+                display: false,
+                crates: 0,
+                containers: 0,
+                stackable: false
+            };
+        }
+        else {
+            assert.ok(
+                changed[root] && typeof changed[root] === 'object',
+                `${root}: test fixture needs an object-like included root`
+            );
+            changed[root].__m0e1_probe = 1;
+        }
+
+        const diffs = compareSnapshots(
+            baseline,
+            normalizeSimulationState(changed)
+        );
+
+        assert.ok(
+            diffs.length > 0,
+            `${root}: policy says include but normalization did not observe a change`
+        );
+    }
+});
+
+test('roots classified as exclude do not enter passive simulation output', () => {
+    const baseline = minimalState();
+    baseline.sim = false;
+    baseline.revision = 'old';
+    baseline.beta = true;
+
+    const changed = structuredClone(baseline);
+    changed.lastMsg = { all: ['different presentation history'] };
+    changed.sim = true;
+    changed.revision = 'different';
+    changed.beta = false;
+
+    assert.deepEqual(
+        normalizeSimulationState(changed),
+        normalizeSimulationState(baseline)
+    );
 });
 
 test('normalizer observes newly covered authoritative state', () => {
@@ -215,6 +312,28 @@ test('known legacy non-tradable resource NaN value is preserved as an explicit t
         [UNDEFINED_SENTINEL_KEY]: NON_FINITE_SENTINEL_VALUE,
         value: 'NaN'
     });
+});
+
+test('tradable resource NaN value remains invalid', () => {
+    const state = minimalState();
+    state.resource.Food = {
+        amount: 10,
+        max: 250,
+        value: NaN,
+        diff: 0,
+        delta: 0,
+        rate: 1,
+        display: true,
+        crates: 0,
+        containers: 0,
+        trade: 0,
+        stackable: true
+    };
+
+    assert.throws(
+        () => normalizeSimulationState(state),
+        /Non-finite number at resource\.Food\.value/
+    );
 });
 
 test('Infinity remains invalid even in resource value fields', () => {

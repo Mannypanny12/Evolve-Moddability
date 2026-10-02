@@ -5,6 +5,7 @@ const {
 } = require('./canonical-state.cjs');
 const {
     SIMULATION_SETTING_KEYS,
+    RESOURCE_FIELD_POLICY,
     assertKnownRootPolicy
 } = require('./legacy-state-policy.cjs');
 
@@ -49,21 +50,6 @@ function normalizeValue(value, options = {}){
 }
 
 function normalizeResources(resources){
-    const fields = [
-        'amount',
-        'max',
-        'value',
-        'diff',
-        'delta',
-        'rate',
-        'display',
-        'crates',
-        'containers',
-        'trade',
-        'stackable',
-        'gen',
-        'gen_d'
-    ];
     const result = {};
 
     for (const id of Object.keys(resources || {}).sort()){
@@ -73,20 +59,29 @@ function normalizeResources(resources){
         }
 
         const entry = {};
-        for (const field of fields){
-            if (Object.prototype.hasOwnProperty.call(source, field)){
-                if (field === 'value' && Number.isNaN(source[field])){
-                    entry[field] = canonicalize(
-                        source[field],
-                        ['resource', id, field],
-                        { allowNonFinite: true }
-                    );
-                }
-                else {
-                    entry[field] = normalizeValue(source[field], {
-                        parts: ['resource', id, field]
-                    });
-                }
+        for (const field of Object.keys(source).sort()){
+            const policy = RESOURCE_FIELD_POLICY[field];
+            if (policy && policy.mode === 'exclude'){
+                continue;
+            }
+
+            const value = source[field];
+            const isKnownLegacyNonTradableValueNaN =
+                field === 'value' &&
+                Number.isNaN(value) &&
+                !Object.prototype.hasOwnProperty.call(source, 'trade');
+
+            if (isKnownLegacyNonTradableValueNaN){
+                entry[field] = canonicalize(
+                    value,
+                    ['resource', id, field],
+                    { allowNonFinite: true }
+                );
+            }
+            else {
+                entry[field] = normalizeValue(value, {
+                    parts: ['resource', id, field]
+                });
             }
         }
 
