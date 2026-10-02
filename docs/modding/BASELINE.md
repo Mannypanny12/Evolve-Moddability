@@ -38,7 +38,9 @@ npm ci
 npm run build
 ```
 
-The workflow `.github/workflows/baseline-build.yml` runs the same sequence and then verifies that any tracked changes are restricted to known generated outputs. Upstream keeps generated JS/CSS in the repository but explicitly asks contributors not to submit regenerated bundles, so a clean source build is allowed to rewrite those generated files.
+The workflow `.github/workflows/baseline-build.yml` runs the same sequence and then verifies that any tracked changes produced by the build are restricted to known generated outputs. Upstream keeps generated JS/CSS in the repository but explicitly asks contributors not to submit regenerated bundles, so a clean source build is allowed to rewrite those generated files.
+
+Pull requests have a separate guard: the net PR diff itself must not contain `evolve/main.js`, `evolve/evolve.css`, `wiki/wiki.js`, or `wiki/wiki.css`. This distinguishes an expected local build rewrite from accidentally committing generated output.
 
 ## Generated artifacts
 
@@ -82,6 +84,7 @@ M0A is complete when automation proves a clean checkout can:
 3. build game CSS;
 4. build the wiki bundle;
 5. build wiki CSS;
-6. change no tracked files other than the known generated game/wiki bundle or CSS outputs.
+6. change no tracked files other than the known generated game/wiki bundle or CSS outputs during the verification build;
+7. reject pull requests whose committed diff contains those generated game/wiki JS/CSS outputs.
 
 If the inherited baseline fails, diagnose it and make the smallest explicit build-only correction rather than masking the failure.
