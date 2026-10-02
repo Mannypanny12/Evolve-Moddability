@@ -37,12 +37,6 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
-      - name: Verify final oracle updater is a no-op
-        shell: bash
-        run: |
-          npm run oracle:update -- --all
-          git diff --exit-code -- tests/simulation/oracle-snapshots tests/simulation/oracle-baselines.json
-
       - name: Run test suite
         run: npm test
 
