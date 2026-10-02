@@ -158,12 +158,12 @@ test('M1A rejects duplicate aliases inside one registration and canonical IDs as
     assert.equal(resources.size, 0);
 });
 
-test('M1A distinguishes a valid unknown ID from malformed input and offers strict require()', async () => {
+test('M1A distinguishes a valid unknown ID from malformed input and offers strict getRequired()', async () => {
     const { Registry } = await modules();
     const resources = new Registry({ type: 'resource' });
     assert.equal(resources.get('evolve:resource/unknown'), undefined);
     assert.equal(resources.has('evolve:resource/unknown'), false);
-    await expectCode(() => resources.require('evolve:resource/unknown'), 'UNKNOWN_CONTENT_ID');
+    await expectCode(() => resources.getRequired('evolve:resource/unknown'), 'UNKNOWN_CONTENT_ID');
     await expectCode(() => resources.get('not-an-id'), 'INVALID_CONTENT_ID');
 });
 
