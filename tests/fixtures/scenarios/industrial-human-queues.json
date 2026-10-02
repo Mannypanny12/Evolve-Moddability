@@ -85,6 +85,10 @@
       "mine": {
         "count": 20,
         "on": 18
+      },
+      "coal_mine": {
+        "count": 12,
+        "on": 10
       }
     },
     "resource": {
@@ -258,6 +262,10 @@
     {
       "path": "city.mine.on",
       "equals": 18
+    },
+    {
+      "path": "city.coal_mine.on",
+      "equals": 10
     }
   ]
 }
