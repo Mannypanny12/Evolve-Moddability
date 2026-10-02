@@ -9,98 +9,98 @@
     "wallClock": "2026-01-01T12:00:00.000Z",
     "randomSeed": 1
   },
-  "observationSchema": 2,
-  "observationChange": "M0E1 expands authoritative state coverage and explicitly tags verified legacy resource-value NaN.",
+  "observationSchema": 3,
+  "observationChange": "M0E1 corrective audit observes gameplay-active simulation challenge state and uses an explicit fail-closed top-level settings policy, including power and queue behavior settings.",
   "scenarios": {
     "fresh-evolution-p20": {
       "fixture": "fresh-evolution",
       "periods": 20,
       "snapshot": "oracle-snapshots/fresh-evolution-p20.json",
-      "sha256": "33a343812d218fb396faf49031998b5891371a3c9e9c8051c13d7561d78616d4"
+      "sha256": "baa5bc6f08144ce77eba7774df839bfc90ddc827bb12adbb5d9566632f751209"
     },
     "early-civilization-human-p1": {
       "fixture": "early-civilization-human",
       "periods": 1,
       "snapshot": "oracle-snapshots/early-civilization-human-p1.json",
-      "sha256": "2472f8ec3eeaefacc80ff926add7c87c2e1f0bbc3404149e6fbc80ec481af042"
+      "sha256": "98cd64153ba230637c0137c136655377722e51e9fac940ec18d3a2e60e5d576b"
     },
     "early-civilization-human-p3": {
       "fixture": "early-civilization-human",
       "periods": 3,
       "snapshot": "oracle-snapshots/early-civilization-human-p3.json",
-      "sha256": "fb9ac01ef58898cec62ea30d85705a9092a25073684a33f6c181a37ab7d26761"
+      "sha256": "7304ddff79f2e49497837c3a240937bbfe92a1a09eb216e4c4893d27b84b56ca"
     },
     "early-civilization-human-p4": {
       "fixture": "early-civilization-human",
       "periods": 4,
       "snapshot": "oracle-snapshots/early-civilization-human-p4.json",
-      "sha256": "02444de6f71dd7cfa0c5815c3ee9cf09657f78d93e640391fc906874e1b43414"
+      "sha256": "0a536fcf6eb91868b7375db916da03833769e5fc519ef1212fdc98231277434d"
     },
     "early-civilization-human-p20": {
       "fixture": "early-civilization-human",
       "periods": 20,
       "snapshot": "oracle-snapshots/early-civilization-human-p20.json",
-      "sha256": "cae273e51cf810fb7542fb2d798529b9fbe91d6cca532f61d535e2657c0df2b5"
+      "sha256": "8c0ce8f0d10e362d64b1a01b81db38165b99ebdfed4a809791fc1789374bb732"
     },
     "preindustrial-orc-p20": {
       "fixture": "preindustrial-orc",
       "periods": 20,
       "snapshot": "oracle-snapshots/preindustrial-orc-p20.json",
-      "sha256": "dfa8141fecbec019475ea37bfd630727af2610b42808c4a9d23c6b65766a71a9"
+      "sha256": "a4579342216c0549031dcd71a49574f626633ec6f8ccebd241ceda2e9e5d5eea"
     },
     "industrial-human-queues-p20": {
       "fixture": "industrial-human-queues",
       "periods": 20,
       "snapshot": "oracle-snapshots/industrial-human-queues-p20.json",
-      "sha256": "3f1d7aa76aa2bcfcf78cb9ca58b97ad70e1e212d76cb68a8b5f5e45b5b50543e"
+      "sha256": "76c98c91235bc1eb1ccce1c19801808885ef79505a1cfa1bbdf8d6801f9dc662"
     },
     "early-space-human-p20": {
       "fixture": "early-space-human",
       "periods": 20,
       "snapshot": "oracle-snapshots/early-space-human-p20.json",
-      "sha256": "1970bbf926da0c541aa25fb27aabeb22f1be815a9000c0aa3a1b904702c05bab"
+      "sha256": "3059bfcf2d220aeb16e4ab240e1e35bc8add396fae31244556e9fef60172e679"
     },
     "interstellar-human-p20": {
       "fixture": "interstellar-human",
       "periods": 20,
       "snapshot": "oracle-snapshots/interstellar-human-p20.json",
-      "sha256": "bb22935313bac7cff18009a4e34d24fe64151e6663f4dd05a64aab809e07f999"
+      "sha256": "2838f202f55e85c1a42d1f8e1e40f0dfc7d0b4b5364b47563faf8c24e239b2d5"
     },
     "portal-hell-balorg-p20": {
       "fixture": "portal-hell-balorg",
       "periods": 20,
       "snapshot": "oracle-snapshots/portal-hell-balorg-p20.json",
-      "sha256": "67fee50bfb46cb97748c0525b44db7c07d19789a66bbeb1a5667dd46e7624b93"
+      "sha256": "b5b8e9bd7b3a03fa53fc629fe6d4f46e460ec50f5e66c198a3d1284b23cc1d6e"
     },
     "late-eden-human-p20": {
       "fixture": "late-eden-human",
       "periods": 20,
       "snapshot": "oracle-snapshots/late-eden-human-p20.json",
-      "sha256": "e4de9b5529d5083d4db5cc0f12a6e5cfe7ac65ba8e0522c3409e1221c5d3c295"
+      "sha256": "5ea87f44098d88049cc833d30c8a890210613f598b2ebac8e57cca896926c24a"
     },
     "truepath-tauceti-human-p20": {
       "fixture": "truepath-tauceti-human",
       "periods": 20,
       "snapshot": "oracle-snapshots/truepath-tauceti-human-p20.json",
-      "sha256": "e03f638c7544f2dc1707a475eaa3e80ac00fedc36d5d8489e7b9f9487a257d77"
+      "sha256": "116f4168aa16cce30752e1db17b98b184ceade653d7d9db1be6e9e9ec94e2598"
     },
     "challenge-steelen-run-p20": {
       "fixture": "challenge-steelen-run",
       "periods": 20,
       "snapshot": "oracle-snapshots/challenge-steelen-run-p20.json",
-      "sha256": "05d49b97bb782539f0d586bdafc5ace85d3929b2e923489b2020c5337937dd20"
+      "sha256": "04e44d01410275cc2ca2b1a399d72e1de011041a4192c3d08cc173015d7510fc"
     },
     "reset-ready-mad-p20": {
       "fixture": "reset-ready-mad",
       "periods": 20,
       "snapshot": "oracle-snapshots/reset-ready-mad-p20.json",
-      "sha256": "f24ee258c1475750f54a6df2aa942dacec65a9aff346367365d773641c0b9a70"
+      "sha256": "334dbbb5a27afda9ec65964caf55f6d69a1edd7b8f8ed58ab1f7a0f670f528d8"
     },
     "reset-ready-bioseed-p20": {
       "fixture": "reset-ready-bioseed",
       "periods": 20,
       "snapshot": "oracle-snapshots/reset-ready-bioseed-p20.json",
-      "sha256": "cf7081dd51ae4bd00a53aa9182e4a84a91dd8f0f0fe63f996ee58b54e2e5544a"
+      "sha256": "6da56b795190645a5e77b62f39d53a05e1698b73c6d8d6bc0198dcb45fc3fccf"
     }
   },
   "runtimeContractSchema": 1

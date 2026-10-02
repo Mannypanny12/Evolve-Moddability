@@ -12,6 +12,7 @@ const {
 } = require('../simulation/canonical-state.cjs');
 const {
     ROOT_POLICY,
+    SIMULATION_SETTING_POLICY,
     SIMULATION_SETTING_KEYS,
     RESOURCE_FIELD_POLICY
 } = require('../simulation/legacy-state-policy.cjs');
@@ -66,10 +67,17 @@ function minimalState(){
         support: {},
         arpa: { railway: { complete: 25, rank: 1 } },
         settings: {
-            pause: false,
+            alwaysPower: false,
             at: 0,
             boring: true,
+            lowPowerBalance: false,
+            mtorder: ['mastery'],
+            pause: false,
             qAny: true,
+            qAny_res: false,
+            qKey: false,
+            q_merge: 'merge_nearby',
+            showCivic: true,
             theme: 'dark',
             showCity: true
         },
@@ -91,7 +99,8 @@ test('legacy root policy explicitly classifies required M0E1 roots', () => {
         'govern',
         'special',
         'version',
-        'new'
+        'new',
+        'sim'
     ]){
         assert.ok(ROOT_POLICY[root], `missing root policy for ${root}`);
         assert.notEqual(ROOT_POLICY[root].mode, 'exclude', `${root} must be observed`);
@@ -145,6 +154,9 @@ test('every root classified as include is actually observed by normalization', (
         else if (root === 'power'){
             changed[root].push('m0e1:probe');
         }
+        else if (root === 'sim'){
+            changed[root] = { stats: { achieve: { simulation_probe: true } } };
+        }
         else if (root === 'resource'){
             changed[root].M0E1_Probe = {
                 amount: 1,
@@ -181,13 +193,11 @@ test('every root classified as include is actually observed by normalization', (
 
 test('roots classified as exclude do not enter passive simulation output', () => {
     const baseline = minimalState();
-    baseline.sim = false;
     baseline.revision = 'old';
     baseline.beta = true;
 
     const changed = structuredClone(baseline);
     changed.lastMsg = { all: ['different presentation history'] };
-    changed.sim = true;
     changed.revision = 'different';
     changed.beta = false;
 
@@ -195,6 +205,21 @@ test('roots classified as exclude do not enter passive simulation output', () =>
         normalizeSimulationState(changed),
         normalizeSimulationState(baseline)
     );
+});
+
+test('simulation challenge snapshot root is authoritative and observed when present', () => {
+    const baseline = normalizeSimulationState(minimalState());
+    const changed = minimalState();
+    changed.sim = {
+        stats: { achieve: { simulation_probe: true } },
+        prestige: { Plasmid: { count: 123 } }
+    };
+
+    const normalized = normalizeSimulationState(changed);
+    const diffs = compareSnapshots(baseline, normalized);
+
+    assert.ok(diffs.some(diff => diff.path.startsWith('simulationMode')));
+    assert.equal(normalized.simulationMode.prestige.Plasmid.count, 123);
 });
 
 test('normalizer observes newly covered authoritative state', () => {
@@ -234,22 +259,83 @@ test('unclassified top-level legacy state fails closed', () => {
     );
 });
 
-test('simulation settings include behavioral keys and exclude presentation-only preferences', () => {
+test('simulation settings include every classified gameplay key and exclude presentation-only preferences', () => {
     const normalized = normalizeSimulationState(minimalState());
 
     assert.deepEqual(
         Object.keys(normalized.simulationSettings).sort(),
         [...SIMULATION_SETTING_KEYS].sort()
     );
-    assert.equal(normalized.simulationSettings.boring, true);
-    assert.equal(normalized.simulationSettings.qAny, true);
-    assert.equal(
-        Object.prototype.hasOwnProperty.call(normalized.simulationSettings, 'theme'),
-        false
-    );
-    assert.equal(
-        Object.prototype.hasOwnProperty.call(normalized.simulationSettings, 'showCity'),
-        false
+
+    for (const key of [
+        'lowPowerBalance',
+        'qAny_res',
+        'alwaysPower',
+        'q_merge',
+        'qKey',
+        'mtorder',
+        'showCivic'
+    ]){
+        assert.equal(SIMULATION_SETTING_POLICY[key].mode, 'include', `${key} must be gameplay-observed`);
+        assert.equal(
+            Object.prototype.hasOwnProperty.call(normalized.simulationSettings, key),
+            true,
+            `${key} missing from normalized simulation settings`
+        );
+    }
+
+    for (const key of ['theme', 'showCity', 'msgFilters', 'tabLoad']){
+        assert.equal(SIMULATION_SETTING_POLICY[key].mode, 'exclude');
+        assert.equal(
+            Object.prototype.hasOwnProperty.call(normalized.simulationSettings, key),
+            false
+        );
+    }
+});
+
+test('every gameplay-included setting changes normalized output', () => {
+    const baselineState = minimalState();
+    const baseline = normalizeSimulationState(baselineState);
+
+    for (const key of SIMULATION_SETTING_KEYS){
+        const changed = structuredClone(baselineState);
+        const value = changed.settings[key];
+
+        if (typeof value === 'boolean'){
+            changed.settings[key] = !value;
+        }
+        else if (typeof value === 'number'){
+            changed.settings[key] = value + 1;
+        }
+        else if (typeof value === 'string'){
+            changed.settings[key] = value + '-probe';
+        }
+        else if (Array.isArray(value)){
+            changed.settings[key].push('m0e1-probe');
+        }
+        else {
+            throw new Error(`test needs mutation strategy for settings.${key}`);
+        }
+
+        const diffs = compareSnapshots(
+            baseline,
+            normalizeSimulationState(changed)
+        );
+
+        assert.ok(
+            diffs.some(diff => diff.path.startsWith(`simulationSettings.${key}`)),
+            `settings.${key}: included policy did not affect normalized output`
+        );
+    }
+});
+
+test('unclassified future top-level settings fail closed', () => {
+    const state = minimalState();
+    state.settings.future_gameplay_toggle = true;
+
+    assert.throws(
+        () => normalizeSimulationState(state),
+        /Unclassified legacy top-level setting\(s\): future_gameplay_toggle/
     );
 });
 

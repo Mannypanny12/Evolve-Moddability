@@ -57,6 +57,8 @@ Control:
 - clock/environment;
 - number and cadence of simulation steps.
 
+Authoritative legacy-state normalization must fail closed for unknown top-level state roots and unknown top-level settings. Mixed settings require an explicit include/exclude decision backed by production behavior; names that appear presentational are not sufficient evidence for exclusion.
+
 Compare:
 
 - resources;
