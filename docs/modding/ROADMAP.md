@@ -65,6 +65,20 @@ Capture at least:
 
 Exit: we can refactor a subsystem and compare old versus new behavior meaningfully.
 
+### M0E Refactor safety-net completion - complete
+
+The post-M0 audit added five bounded corrective slices before M1:
+
+- M0E1 authoritative-state normalization and canonical safety;
+- M0E2 inspectable frozen oracle snapshots and path-by-path diffs;
+- M0E3 fixture hydration and oracle-matrix hardening;
+- M0E4 real-browser bootstrap/UI smoke with a startup-failure negative control;
+- M0E5 architecture/CI guardrails.
+
+M0E5 establishes `src/engine/**` as a zero-legacy dependency zone, freezes downward-only legacy architecture ratchets, prevents the 20-module legacy cycle from gaining members, and future-proofs milestone-branch CI.
+
+Exit: the safety foundation is complete and M1 can create new engine code behind machine-enforced architecture boundaries.
+
 ---
 
 ## M1: Engine kernel and architectural seams
@@ -167,11 +181,11 @@ Migrate one small real domain end-to-end, likely achievements/statistics metadat
 
 Use dual-read/write or translation only while necessary, then remove that adapter for the migrated slice.
 
-### M2E State architecture fitness gate
+### M2E State architecture guard expansion
 
-Introduce CI rules that prevent new direct `global` dependencies in new engine directories and establish a measured legacy-reference ratchet.
+Extend the M0E5 architecture gate with explicit `GameState` ownership, mutation-boundary, selector, and state-layer dependency rules. Keep tightening the existing legacy-reference and dependency-cycle ratchets as migrated state leaves the legacy architecture.
 
-Exit: `GameState` is authoritative for at least one real domain and the migration pattern is proven.
+Exit: `GameState` is authoritative for at least one real domain, the migration pattern is proven, and CI enforces the new state boundary.
 
 ---
 
