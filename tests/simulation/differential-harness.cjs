@@ -5,6 +5,7 @@ const { spawnSync } = require('node:child_process');
 
 const childPath = path.join(__dirname, 'simulation-child.cjs');
 const marker = '__EVOLVE_SIM_RESULT__';
+const { validateOracleResult } = require('./oracle-contract.cjs');
 
 function runLegacyScenario({ fixture, periods }){
     const result = spawnSync(process.execPath, [childPath, fixture, String(periods)], {
@@ -38,9 +39,11 @@ function runLegacyScenario({ fixture, periods }){
         );
     }
 
-    return JSON.parse(
+    const parsed = JSON.parse(
         Buffer.from(line.slice(marker.length), 'base64').toString('utf8')
     );
+
+    return validateOracleResult(parsed, { fixture, periods });
 }
 
 function numberEqual(expected, actual, absTolerance, relTolerance){
