@@ -37,6 +37,16 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
+      - name: Bootstrap M0E2 oracle snapshots
+        run: npm run oracle:update -- --all
+
+      - name: Upload M0E2 oracle snapshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: m0e2-oracle-snapshots
+          path: tests/simulation/oracle-snapshots
+          if-no-files-found: error
+
       - name: Run test suite
         run: npm test
 
