@@ -2,6 +2,8 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const baselines = require('../simulation/oracle-baselines.json');
 const { oracleScenarios } = require('../simulation/oracle-scenarios.cjs');
@@ -13,8 +15,10 @@ const {
     formatDiffs
 } = require('../simulation/differential-harness.cjs');
 const {
+    snapshotRoot,
     serializeSnapshot,
     fingerprintSnapshot,
+    resolveSnapshotPath,
     loadSnapshot,
     exactSnapshotDiff,
     formatFrozenDiffs
@@ -59,6 +63,77 @@ for (const scenario of oracleScenarios){
         }
     });
 }
+
+test('oracle scenario manifest and committed snapshot catalog stay in exact sync', () => {
+    const scenarioKeys = oracleScenarios.map(scenario => scenario.key).sort();
+    const manifestKeys = Object.keys(baselines.scenarios).sort();
+
+    assert.deepEqual(
+        manifestKeys,
+        scenarioKeys,
+        'oracle scenario list and manifest keys must match exactly'
+    );
+
+    const expectedFiles = [];
+    const seenPaths = new Set();
+
+    for (const key of manifestKeys){
+        const entry = baselines.scenarios[key];
+        const snapshotPath = resolveSnapshotPath(entry);
+        const relative = path.relative(snapshotRoot, snapshotPath);
+
+        assert.equal(
+            seenPaths.has(snapshotPath),
+            false,
+            key + ': snapshot path is reused by another scenario'
+        );
+        seenPaths.add(snapshotPath);
+
+        assert.match(
+            entry.sha256,
+            /^[a-f0-9]{64}$/,
+            key + ': invalid manifest SHA-256'
+        );
+
+        expectedFiles.push(relative);
+
+        const raw = fs.readFileSync(snapshotPath, 'utf8');
+        const parsed = JSON.parse(raw);
+        assert.equal(
+            raw,
+            serializeSnapshot(parsed),
+            key + ': committed snapshot bytes are not canonical'
+        );
+    }
+
+    const actualFiles = fs.readdirSync(snapshotRoot, { withFileTypes: true })
+        .filter(entry => entry.isFile() && entry.name.endsWith('.json'))
+        .map(entry => entry.name)
+        .sort();
+
+    assert.deepEqual(
+        actualFiles,
+        expectedFiles.sort(),
+        'committed snapshot directory and manifest must contain the same JSON files'
+    );
+});
+
+test('structural comparator never exceeds its configured diff cap', () => {
+    const expected = {};
+    const actual = {};
+
+    for (let i = 0; i < 30; i++){
+        actual['added' + i] = i;
+    }
+
+    const diffs = compareSnapshots(expected, actual, {
+        absTolerance: 0,
+        relTolerance: 0,
+        maxDiffs: 5
+    });
+
+    assert.equal(diffs.length, 5);
+});
 
 test('frozen oracle comparison is exact even where differential comparison uses tolerance', () => {
     const expected = { value: 100 };
