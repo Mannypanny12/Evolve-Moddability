@@ -12,7 +12,8 @@ const {
 } = require('../simulation/canonical-state.cjs');
 const {
     ROOT_POLICY,
-    SIMULATION_SETTING_KEYS
+    SIMULATION_SETTING_KEYS,
+    RESOURCE_FIELD_POLICY
 } = require('../simulation/legacy-state-policy.cjs');
 const {
     normalizeSimulationState
@@ -98,6 +99,27 @@ test('legacy root policy explicitly classifies required M0E1 roots', () => {
 
     assert.equal(ROOT_POLICY.lastMsg.mode, 'exclude');
     assert.equal(ROOT_POLICY.settings.mode, 'mixed');
+});
+
+test('resource observation is fail-closed by default and excludes only classified presentation fields', () => {
+    const state = minimalState();
+    state.resource.Money.name = 'Localized Money';
+    state.resource.Money.bar = true;
+    state.resource.Money.future_mechanic_field = 42;
+
+    const normalized = normalizeSimulationState(state);
+
+    assert.equal(normalized.resources.Money.future_mechanic_field, 42);
+    assert.equal(
+        Object.prototype.hasOwnProperty.call(normalized.resources.Money, 'name'),
+        false
+    );
+    assert.equal(
+        Object.prototype.hasOwnProperty.call(normalized.resources.Money, 'bar'),
+        false
+    );
+    assert.equal(RESOURCE_FIELD_POLICY.name.mode, 'exclude');
+    assert.equal(RESOURCE_FIELD_POLICY.bar.mode, 'exclude');
 });
 
 test('normalizer observes newly covered authoritative state', () => {
@@ -215,6 +237,28 @@ test('known legacy non-tradable resource NaN value is preserved as an explicit t
         [UNDEFINED_SENTINEL_KEY]: NON_FINITE_SENTINEL_VALUE,
         value: 'NaN'
     });
+});
+
+test('tradable resource NaN value remains invalid', () => {
+    const state = minimalState();
+    state.resource.Food = {
+        amount: 10,
+        max: 250,
+        value: NaN,
+        diff: 0,
+        delta: 0,
+        rate: 1,
+        display: true,
+        crates: 0,
+        containers: 0,
+        trade: 0,
+        stackable: true
+    };
+
+    assert.throws(
+        () => normalizeSimulationState(state),
+        /Non-finite number at resource\.Food\.value/
+    );
 });
 
 test('Infinity remains invalid even in resource value fields', () => {

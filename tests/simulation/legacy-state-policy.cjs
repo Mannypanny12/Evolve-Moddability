@@ -48,6 +48,19 @@ const SIMULATION_SETTING_KEYS = Object.freeze([
     'qAny'
 ]);
 
+const RESOURCE_FIELD_POLICY = Object.freeze({
+    name: {
+        mode: 'exclude',
+        category: 'presentation',
+        reason: 'localized display label; not authoritative resource mechanics'
+    },
+    bar: {
+        mode: 'exclude',
+        category: 'presentation',
+        reason: 'resource-bar display preference; source preference lives under settings.resBar'
+    }
+});
+
 function assertKnownRootPolicy(state){
     const unknown = Object.keys(state || {}).filter(key => !ROOT_POLICY[key]);
     if (unknown.length){
@@ -66,6 +79,7 @@ function rootPolicyRows(){
 module.exports = {
     ROOT_POLICY,
     SIMULATION_SETTING_KEYS,
+    RESOURCE_FIELD_POLICY,
     assertKnownRootPolicy,
     rootPolicyRows
 };
