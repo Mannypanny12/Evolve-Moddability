@@ -134,6 +134,27 @@ M2B does not migrate gameplay authority, modify persistence, or synchronize with
 
 See [M2B_STATE_STORE_SELECTORS.md](M2B_STATE_STORE_SELECTORS.md) for the design authority.
 
+### M2C - Settings and transient-state separation - in progress
+
+#### M2C1 - Legacy state classification - complete
+
+Established:
+
+- a fail-closed target classification for every currently known top-level legacy `global.settings` member;
+- an explicit separation between M0 behavioral observation and M2 target ownership;
+- future GameState candidates for genuinely simulation-owned settings without adding them to `GameState` yet;
+- application-setting classification for queue/input preferences that should become explicit command choices rather than hidden engine state;
+- explicit semantic-debt treatment for `showCivic` rather than copying the UI flag into GameState;
+- a fail-closed classification for every exported mutable `var` binding in `src/vars.js`;
+- separate categories for reconstructible derived data, deterministic runtime working state, executable/runtime services, platform services, UI state, migration debris and the legacy mixed `global` container;
+- persistence intent that prevents non-authoritative layers from claiming authoritative save semantics.
+
+M2C1 does not move any setting/state, change gameplay, modify persistence, add a GameState field, add mutation authority, or rebaseline the oracle. `GAME_STATE_SCHEMA_VERSION` remains 1.
+
+See [M2C1_LEGACY_STATE_CLASSIFICATION.md](M2C1_LEGACY_STATE_CLASSIFICATION.md).
+
+M2C2 is next and will formalize the full state-layer ownership/lifecycle contract. M2C3 will then add the closure/boundary enforcement required before M2D begins the first real authoritative state-domain migration.
+
 ## Immediate sequence
 
 ```text
@@ -169,7 +190,11 @@ M2A GameState schema - complete
    |
 M2B state store/selectors - complete
    |
-M2C settings/transient separation - next
+M2C1 legacy state classification - complete
+   |
+M2C2 state-layer ownership/lifecycle contract - next
+   |
+M2C3 settings/transient boundary closure
 ```
 
 Do not jump directly to mod loading, total conversions, or bulk content conversion. Those would lock in legacy assumptions before the engine is ready.
