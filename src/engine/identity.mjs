@@ -2,13 +2,53 @@ const NAMESPACE_PATTERN = /^[a-z][a-z0-9_-]*$/;
 const CONTENT_TYPE_PATTERN = /^[a-z][a-z0-9_-]*$/;
 const LOCAL_ID_SEGMENT_PATTERN = /^[a-z0-9][a-z0-9_-]*$/;
 
+function freezeDiagnosticDetails(details){
+    let source;
+    try {
+        source = details === null ? Object.create(null) : Object(details);
+    }
+    catch {
+        return Object.freeze({ diagnosticDetails: '<uninspectable>' });
+    }
+
+    let keys;
+    try {
+        keys = Reflect.ownKeys(source);
+    }
+    catch {
+        return Object.freeze({ diagnosticDetails: '<uninspectable>' });
+    }
+
+    const copy = {};
+    for (const key of keys){
+        let descriptor;
+        try {
+            descriptor = Object.getOwnPropertyDescriptor(source, key);
+        }
+        catch {
+            return Object.freeze({ diagnosticDetails: '<uninspectable>' });
+        }
+        if (!descriptor || !descriptor.enumerable) continue;
+
+        Object.defineProperty(copy, key, {
+            value: Object.prototype.hasOwnProperty.call(descriptor, 'value')
+                ? descriptor.value
+                : '<accessor>',
+            enumerable: true,
+            writable: false,
+            configurable: false,
+        });
+    }
+    return Object.freeze(copy);
+}
+
 export class EngineContractError extends Error {
     constructor(code, message, details = undefined){
         super(message);
         this.name = 'EngineContractError';
         this.code = code;
         if (details !== undefined){
-            this.details = Object.freeze({ ...details });
+            this.details = freezeDiagnosticDetails(details);
         }
     }
 }
@@ -17,12 +57,21 @@ function fail(code, message, details){
     throw new EngineContractError(code, message, details);
 }
 
+function safeFunctionName(value){
+    try {
+        return typeof value.name === 'string' && value.name.length > 0 ? value.name : 'anonymous';
+    }
+    catch {
+        return 'uninspectable';
+    }
+}
+
 export function describeContractValue(value){
     try {
         if (typeof value === 'string') return JSON.stringify(value);
         if (typeof value === 'bigint') return `${value}n`;
         if (typeof value === 'symbol') return String(value);
-        if (typeof value === 'function') return `[function ${value.name || 'anonymous'}]`;
+        if (typeof value === 'function') return `[function ${safeFunctionName(value)}]`;
         if (value === undefined) return 'undefined';
 
         const json = JSON.stringify(value);
@@ -66,12 +115,48 @@ export function assertLocalId(localId){
     return localId;
 }
 
+function isContentIdOptionsObject(value){
+    if (value === null || typeof value !== 'object') return false;
+    try {
+        return !Array.isArray(value);
+    }
+    catch {
+        return false;
+    }
+}
+
+function readContentIdComponent(options, field){
+    let descriptor;
+    try {
+        descriptor = Object.getOwnPropertyDescriptor(options, field);
+    }
+    catch {
+        fail(
+            'INVALID_CONTENT_ID',
+            `Content ID component ${field} could not be inspected.`,
+            { field, value: options }
+        );
+    }
+
+    if (!descriptor) return undefined;
+    if (!Object.prototype.hasOwnProperty.call(descriptor, 'value')){
+        fail(
+            'INVALID_CONTENT_ID',
+            `Content ID component ${field} must be a data field.`,
+            { field, value: options }
+        );
+    }
+    return descriptor.value;
+}
+
 export function formatContentId(options = {}){
-    if (options === null || typeof options !== 'object' || Array.isArray(options)){
+    if (!isContentIdOptionsObject(options)){
         fail('INVALID_CONTENT_ID', `Content ID components must be an object, got ${describeContractValue(options)}.`, { value: options });
     }
 
-    const { namespace, type, localId } = options;
+    const namespace = readContentIdComponent(options, 'namespace');
+    const type = readContentIdComponent(options, 'type');
+    const localId = readContentIdComponent(options, 'localId');
     assertNamespace(namespace);
     assertContentType(type);
     assertLocalId(localId);
