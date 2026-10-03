@@ -39,10 +39,9 @@ function loadInitializedLegacySettings(){
 
     delete require.cache[require.resolve(bundlePath)];
     const legacy = require(bundlePath);
+    assert.equal(typeof legacy.getState, 'function', 'legacy harness must expose getState()');
 
-    const getState = legacy.getState || legacy.getGlobal || legacy.state;
-    assert.equal(typeof getState, 'function', 'legacy harness must expose a state getter');
-    const state = getState();
+    const state = legacy.getState();
     assert.ok(state && state.settings && typeof state.settings === 'object', 'initialized legacy state must expose settings');
     return state.settings;
 }
@@ -60,8 +59,7 @@ test('M2C1 target policy classifies every known legacy setting exactly once', ()
 });
 
 test('M2C1 current initialized legacy settings surface is independently classified', () => {
-    const initializedSettings = loadInitializedLegacySettings();
-    const sourceKeys = sortedKeys(initializedSettings);
+    const sourceKeys = sortedKeys(loadInitializedLegacySettings());
 
     assert.deepEqual(
         sortedKeys(SIMULATION_SETTING_POLICY),
@@ -76,8 +74,7 @@ test('M2C1 current initialized legacy settings surface is independently classifi
 });
 
 test('M2C1 records nested settings containers for M2C2 sub-classification', () => {
-    const initializedSettings = loadInitializedLegacySettings();
-    const nestedContainers = Object.entries(initializedSettings)
+    const nestedContainers = Object.entries(loadInitializedLegacySettings())
         .filter(([, value]) => value !== null && typeof value === 'object' && !Array.isArray(value))
         .map(([key]) => key)
         .sort();
