@@ -49,7 +49,7 @@ async function expectCode(action, code){
 }
 
 test('M1 closure keeps identity formatting and error diagnostics inert around accessors', async () => {
-    const { EngineContractError, formatContentId } = await identityPromise;
+    const { EngineContractError, describeContractValue, formatContentId } = await identityPromise;
 
     let componentGetterCalls = 0;
     const options = { type: 'resource', localId: 'food' };
@@ -79,6 +79,18 @@ test('M1 closure keeps identity formatting and error diagnostics inert around ac
     assert.equal(detailGetterCalls, 0);
     assert.equal(error.details.danger, '<accessor>');
     assert.ok(Object.isFrozen(error.details));
+
+    let functionNameGetterCalls = 0;
+    const namedFunction = function originalName(){};
+    Object.defineProperty(namedFunction, 'name', {
+        configurable: true,
+        get(){
+            functionNameGetterCalls++;
+            throw new Error('must not execute');
+        },
+    });
+    assert.equal(describeContractValue(namedFunction), '[function anonymous]');
+    assert.equal(functionNameGetterCalls, 0);
 });
 
 test('M1 closure registry metadata validation does not execute record or array accessors', async () => {
@@ -137,9 +149,10 @@ test('M1 closure registry metadata validation does not execute record or array a
 });
 
 test('M1 closure inspector stays fail-safe for hostile functions, errors, and registry arrays', async () => {
-    const [{ inspectContractError, inspectRegistries }, { Registry }] = await Promise.all([
+    const [{ inspectContractError, inspectRegistries }, { Registry }, { EngineContractError }] = await Promise.all([
         inspectorPromise,
         registryPromise,
+        identityPromise,
     ]);
 
     const hostileFunction = new Proxy(function target(){}, {
@@ -148,9 +161,10 @@ test('M1 closure inspector stays fail-safe for hostile functions, errors, and re
             return Reflect.getOwnPropertyDescriptor(target, property);
         },
     });
-    const ordinary = new Error('ordinary');
-    ordinary.details = { hostileFunction };
-    assert.doesNotThrow(() => inspectContractError(ordinary));
+    const contractError = new EngineContractError('HOSTILE_DETAIL', 'hostile detail', { hostileFunction });
+    const hostileFunctionInspection = inspectContractError(contractError);
+    assert.equal(hostileFunctionInspection.contractError, true);
+    assert.equal(hostileFunctionInspection.details.hostileFunction, '[function anonymous]');
 
     const hostileError = new Proxy(new Error('hidden'), {
         get(){ throw new Error('property getter blocked'); },
