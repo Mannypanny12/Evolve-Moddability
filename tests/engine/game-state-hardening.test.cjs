@@ -149,4 +149,11 @@ test('M2A state inspection converts hostile proxy failures into structured contr
         () => canonicalizeStateValue(proxy, 'state'),
         error => error instanceof EngineContractError && error.code === 'INVALID_STATE_VALUE'
     );
+
+    const revocable = Proxy.revocable([], {});
+    revocable.revoke();
+    assert.throws(
+        () => canonicalizeStateValue(revocable.proxy, 'state'),
+        error => error instanceof EngineContractError && error.code === 'INVALID_STATE_VALUE'
+    );
 });
