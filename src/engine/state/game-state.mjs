@@ -34,9 +34,10 @@ export function validateGameState(gameState){
 }
 
 export function createGameStateStore(initialState = createEmptyGameState()){
-    return createStateStore({
+    const { store } = createStateStore({
         initialState,
         validateState: validateGameState,
         writableFields: GAME_STATE_WRITABLE_ROOT_FIELDS,
     });
+    return store;
 }
