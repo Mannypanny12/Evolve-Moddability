@@ -154,14 +154,16 @@ test('M1C storage is async, string-only, isolated, and preserves adapter failure
     const { createStorage, createMemoryStorage } = await modules();
     const memoryA = createMemoryStorage();
     const memoryB = createMemoryStorage();
+    const storageA = createStorage(memoryA.storage);
+    const storageB = createStorage(memoryB.storage);
 
-    await memoryA.storage.write('key', 'A');
-    await memoryB.storage.write('key', 'B');
-    assert.equal(await memoryA.storage.read('key'), 'A');
-    assert.equal(await memoryB.storage.read('key'), 'B');
+    await storageA.write('key', 'A');
+    await storageB.write('key', 'B');
+    assert.equal(await storageA.read('key'), 'A');
+    assert.equal(await storageB.read('key'), 'B');
 
-    await expectRejectedCode(memoryA.storage.read(''), 'INVALID_STORAGE_KEY');
-    await expectRejectedCode(memoryA.storage.write('key', 123), 'INVALID_STORAGE_VALUE');
+    await expectRejectedCode(storageA.read(''), 'INVALID_STORAGE_KEY');
+    await expectRejectedCode(storageA.write('key', 123), 'INVALID_STORAGE_VALUE');
 
     const badRead = createStorage({
         read(){ return 123; },
@@ -182,19 +184,26 @@ test('M1C storage is async, string-only, isolated, and preserves adapter failure
 });
 
 test('M1C logger validates messages, preserves details, and does not invent timestamps', async () => {
-    const { createCaptureLogger } = await modules();
+    const { createLogger, createCaptureLogger } = await modules();
     const capture = createCaptureLogger();
+    const logger = createLogger(capture.logger);
     const details = { count: 3 };
 
-    capture.logger.debug('debug message', details);
-    capture.logger.warn('warning');
+    logger.debug('debug message', details);
+    logger.warn('warning');
 
     assert.deepEqual(capture.entries(), [
         { level: 'debug', message: 'debug message', details },
         { level: 'warn', message: 'warning', details: undefined },
     ]);
     assert.equal('timestamp' in capture.entries()[0], false);
-    await expectCode(() => capture.logger.error(''), 'INVALID_LOG_MESSAGE');
+    await expectCode(() => logger.error(''), 'INVALID_LOG_MESSAGE');
+});
+
+test('M1C deterministic adapter snapshots use locale-independent key ordering', async () => {
+    const { createMemoryStorage } = await modules();
+    const memory = createMemoryStorage({ z: 'last', A: 'upper', a: 'lower' });
+    assert.deepEqual(Object.keys(memory.snapshot()), ['A', 'a', 'z']);
 });
 
 test('M1C runtime environments have no shared singleton state', async () => {

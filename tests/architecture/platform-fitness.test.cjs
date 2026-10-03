@@ -7,6 +7,7 @@ const path = require('node:path');
 const test = require('node:test');
 
 const {
+    engineRuntimeDependencyViolations,
     platformSourceViolations,
     runPlatformArchitectureCheck,
     scanPlatform,
@@ -16,7 +17,8 @@ const root = path.resolve(__dirname, '..', '..');
 const srcRoot = path.join(root, 'src');
 const engineRoot = path.join(srcRoot, 'engine');
 const platformRoot = path.join(srcRoot, 'platform');
-const virtualFile = path.join(platformRoot, 'browser', 'negative-control.mjs');
+const virtualPlatformFile = path.join(platformRoot, 'browser', 'negative-control.mjs');
+const virtualEngineFile = path.join(engineRoot, 'negative-control.mjs');
 const roots = { srcRoot, engineRoot, platformRoot };
 const silentLogger = { log(){}, error(){} };
 
@@ -32,8 +34,16 @@ function withTempRepository(callback){
     }
 }
 
-function rejects(source, expected){
-    const violations = platformSourceViolations(source, virtualFile, roots);
+function rejectsPlatform(source, expected){
+    const violations = platformSourceViolations(source, virtualPlatformFile, roots);
+    assert.ok(
+        violations.some(message => message.includes(expected)),
+        'Expected violation containing "' + expected + '", got: ' + violations.join(' | ')
+    );
+}
+
+function rejectsEngine(source, expected){
+    const violations = engineRuntimeDependencyViolations(source, virtualEngineFile);
     assert.ok(
         violations.some(message => message.includes(expected)),
         'Expected violation containing "' + expected + '", got: ' + violations.join(' | ')
@@ -43,20 +53,38 @@ function rejects(source, expected){
 test('M1C platform layer may depend inward on engine contracts', () => {
     const violations = platformSourceViolations(
         "import { createClock } from '../../engine/runtime/clock.mjs';\nexport const clock = createClock;\n",
-        virtualFile,
+        virtualPlatformFile,
         roots
     );
     assert.deepEqual(violations, []);
 });
 
 test('M1C platform layer rejects imports into legacy gameplay source', () => {
-    rejects("import { global } from '../../vars.js';", 'platform import escapes allowed platform/engine layers');
-    rejects("const legacy = import('../../main.js');", 'platform import escapes allowed platform/engine layers');
+    rejectsPlatform("import { global } from '../../vars.js';", 'platform import escapes allowed platform/engine layers');
+    rejectsPlatform("const legacy = import('../../main.js');", 'platform import escapes allowed platform/engine layers');
 });
 
 test('M1C platform layer rejects direct legacy global access and CommonJS escape hatches', () => {
-    rejects('export const food = global.resource.Food;', 'legacy global');
-    rejects("const legacy = require('../../vars.js');", 'CommonJS require()');
+    rejectsPlatform('export const legacyState = global;', 'legacy global');
+    rejectsPlatform("const legacy = require('../../vars.js');", 'CommonJS require()');
+});
+
+test('M1C engine runtime guard rejects hidden diagnostics, scheduling, and random platform dependencies', () => {
+    rejectsEngine('const legacyState = global;', 'legacy global symbol');
+    rejectsEngine('console.warn("direct diagnostics");', 'direct console diagnostics');
+    rejectsEngine('setTimeout(run, 0);', 'direct timer/scheduler API');
+    rejectsEngine('requestAnimationFrame(render);', 'direct timer/scheduler API');
+    rejectsEngine('crypto.randomUUID();', 'direct crypto random source');
+    rejectsEngine('crypto.getRandomValues(bytes);', 'direct crypto random source');
+});
+
+test('M1C runtime guard ignores forbidden words in comments and literal text', () => {
+    const harmless = [
+        '// global console.log setTimeout crypto.randomUUID()',
+        'const text = "global console.warn setInterval requestAnimationFrame crypto.getRandomValues";',
+        'const template = `console.error global setTimeout`;'
+    ].join('\n');
+    assert.deepEqual(engineRuntimeDependencyViolations(harmless, virtualEngineFile), []);
 });
 
 test('M1C platform architecture gate detects platform import cycles', () => {
@@ -70,7 +98,7 @@ test('M1C platform architecture gate detects platform import cycles', () => {
     });
 });
 
-test('M1C platform architecture gate discovers clean platform modules and returns success', () => {
+test('M1C platform architecture gate discovers clean runtime and platform modules and returns success', () => {
     withTempRepository(temp => {
         const engine = path.join(temp, 'src', 'engine');
         const platform = path.join(temp, 'src', 'platform', 'browser');
@@ -79,13 +107,15 @@ test('M1C platform architecture gate discovers clean platform modules and return
 
         const outcome = runPlatformArchitectureCheck(temp, silentLogger);
         assert.equal(outcome.exitCode, 0);
+        assert.equal(outcome.result.summary.engineFileCount, 1);
         assert.equal(outcome.result.summary.platformFileCount, 1);
         assert.deepEqual(outcome.result.violations, []);
     });
 });
 
-test('current repository satisfies the M1C platform architecture gate', () => {
+test('current repository satisfies the M1C runtime/platform architecture gate', () => {
     const outcome = runPlatformArchitectureCheck(root, silentLogger);
     assert.equal(outcome.exitCode, 0, outcome.result.violations.join('\n'));
+    assert.equal(outcome.result.summary.engineFileCount > 0, true);
     assert.equal(outcome.result.summary.platformFileCount > 0, true);
 });

@@ -16,11 +16,29 @@ function isInside(root, target){
     return relative === '' || (!relative.startsWith('..' + path.sep) && relative !== '..' && !path.isAbsolute(relative));
 }
 
+function engineRuntimeDependencyViolations(source, filename){
+    const code = maskNonCode(source);
+    const violations = [];
+    const rules = [
+        ['legacy global symbol', /\bglobal\b/],
+        ['direct console diagnostics', /\bconsole\s*(?:\.|\[)/],
+        ['direct timer/scheduler API', /\b(?:setTimeout|clearTimeout|setInterval|clearInterval|setImmediate|clearImmediate|queueMicrotask|requestAnimationFrame|cancelAnimationFrame|requestIdleCallback|cancelIdleCallback)\s*\(/],
+        ['direct crypto random source', /\bcrypto\s*\.\s*(?:getRandomValues|randomUUID)\s*\(/],
+    ];
+
+    for (const [label, pattern] of rules){
+        if (pattern.test(code)){
+            violations.push(filename + ': forbidden M1C engine dependency: ' + label);
+        }
+    }
+    return violations;
+}
+
 function platformSourceViolations(source, filename, roots){
     const code = maskNonCode(source);
     const violations = [];
 
-    if (/\bglobal\s*(?:\.|\[)/.test(code)){
+    if (/\bglobal\b/.test(code)){
         violations.push(filename + ': forbidden platform dependency: legacy global');
     }
     if (/\brequire\s*\(/.test(code)){
@@ -66,8 +84,14 @@ function scanPlatform(root){
     const engineRoot = path.join(srcRoot, 'engine');
     const platformRoot = path.join(srcRoot, 'platform');
     const roots = { srcRoot, engineRoot, platformRoot };
+    const engineFiles = listEngineSourceFilesRecursive(engineRoot);
     const platformFiles = listEngineSourceFilesRecursive(platformRoot);
     const violations = [];
+
+    for (const file of engineFiles){
+        const source = fs.readFileSync(file, 'utf8');
+        violations.push(...engineRuntimeDependencyViolations(source, file));
+    }
 
     for (const file of platformFiles){
         const source = fs.readFileSync(file, 'utf8');
@@ -78,6 +102,7 @@ function scanPlatform(root){
     return {
         violations,
         summary: {
+            engineFileCount: engineFiles.length,
             platformFileCount: platformFiles.length,
         },
     };
@@ -85,18 +110,18 @@ function scanPlatform(root){
 
 function runPlatformArchitectureCheck(root, logger = console){
     const result = scanPlatform(root);
-    logger.log('Platform architecture fitness summary:');
+    logger.log('M1C runtime/platform architecture fitness summary:');
     logger.log(JSON.stringify(result.summary, null, 2));
 
     if (result.violations.length > 0){
-        logger.error('\nPlatform architecture fitness violations:');
+        logger.error('\nM1C runtime/platform architecture fitness violations:');
         for (const violation of result.violations){
             logger.error('- ' + violation);
         }
         return { exitCode: 1, result };
     }
 
-    logger.log('\nM1C platform architecture fitness gate passed.');
+    logger.log('\nM1C runtime/platform architecture fitness gate passed.');
     return { exitCode: 0, result };
 }
 
@@ -108,6 +133,7 @@ function main(){
 
 module.exports = {
     isInside,
+    engineRuntimeDependencyViolations,
     platformSourceViolations,
     platformCycleViolations,
     scanPlatform,
