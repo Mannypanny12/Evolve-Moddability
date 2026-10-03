@@ -1,8 +1,8 @@
 import { Registry } from '../registry.mjs';
 import {
     assertDefinitionSchemaVersion,
-    assertDefinitionString,
     assertDefinitionToken,
+    assertLocalizationKey,
     freezeDefinitionRecord,
     readClosedDefinitionObject,
 } from './common.mjs';
@@ -25,9 +25,9 @@ export function validateAchievementDefinition(definition, context){
     });
 
     const presentation = freezeDefinitionRecord({
-        nameKey: assertDefinitionString(presentationFields.get('nameKey'), 'achievement.presentation.nameKey'),
-        descriptionKey: assertDefinitionString(presentationFields.get('descriptionKey'), 'achievement.presentation.descriptionKey'),
-        flairKey: assertDefinitionString(presentationFields.get('flairKey'), 'achievement.presentation.flairKey'),
+        nameKey: assertLocalizationKey(presentationFields.get('nameKey'), 'achievement.presentation.nameKey'),
+        descriptionKey: assertLocalizationKey(presentationFields.get('descriptionKey'), 'achievement.presentation.descriptionKey'),
+        flairKey: assertLocalizationKey(presentationFields.get('flairKey'), 'achievement.presentation.flairKey'),
     });
     const classification = freezeDefinitionRecord({
         category: assertDefinitionToken(classificationFields.get('category'), 'achievement.classification.category'),

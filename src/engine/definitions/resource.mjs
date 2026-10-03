@@ -2,8 +2,8 @@ import { Registry } from '../registry.mjs';
 import {
     assertDefinitionBoolean,
     assertDefinitionSchemaVersion,
-    assertDefinitionString,
     assertDefinitionToken,
+    assertLocalizationKey,
     freezeDefinitionRecord,
     readClosedDefinitionObject,
 } from './common.mjs';
@@ -26,7 +26,7 @@ export function validateResourceDefinition(definition, context){
     });
 
     const presentation = freezeDefinitionRecord({
-        nameKey: assertDefinitionString(presentationFields.get('nameKey'), 'resource.presentation.nameKey'),
+        nameKey: assertLocalizationKey(presentationFields.get('nameKey'), 'resource.presentation.nameKey'),
         colorRole: assertDefinitionToken(presentationFields.get('colorRole'), 'resource.presentation.colorRole'),
     });
     const properties = freezeDefinitionRecord({
