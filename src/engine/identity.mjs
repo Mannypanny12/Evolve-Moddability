@@ -58,12 +58,17 @@ function fail(code, message, details){
 }
 
 function safeFunctionName(value){
+    let descriptor;
     try {
-        return typeof value.name === 'string' && value.name.length > 0 ? value.name : 'anonymous';
+        descriptor = Object.getOwnPropertyDescriptor(value, 'name');
     }
     catch {
         return 'uninspectable';
     }
+    if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) return 'anonymous';
+    return typeof descriptor.value === 'string' && descriptor.value.length > 0
+        ? descriptor.value
+        : 'anonymous';
 }
 
 export function describeContractValue(value){
