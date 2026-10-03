@@ -8,6 +8,15 @@ function statePath(parent, key){
     return parent === '<root>' ? String(key) : `${parent}.${String(key)}`;
 }
 
+function isArrayStateValue(value, path){
+    try {
+        return Array.isArray(value);
+    }
+    catch {
+        fail('INVALID_STATE_VALUE', `${path} could not be safely inspected.`, { path });
+    }
+}
+
 function inspectObject(value, path){
     if (value === null || typeof value !== 'object'){
         fail('INVALID_STATE_VALUE', `${path} must be a plain state object, got ${describeContractValue(value)}.`, { path, value });
@@ -160,7 +169,7 @@ export function canonicalizeStateValue(value, path = '<root>', ancestors = new W
     ancestors.add(value);
 
     try {
-        if (Array.isArray(value)){
+        if (isArrayStateValue(value, path)){
             const items = inspectArray(value, path);
             return items.map((item, index) => canonicalizeStateValue(item, `${path}[${index}]`, ancestors));
         }
