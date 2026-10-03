@@ -199,17 +199,26 @@ test('M2A canonicalization owns its traversal bookkeeping privately', async () =
     );
 });
 
-test('M2A state nesting fails closed before native call-stack exhaustion', async () => {
+test('M2A state nesting accepts the exact limit and fails closed above it', async () => {
     const { canonicalizeStateValue, EngineContractError, MAX_GAME_STATE_NESTING_DEPTH } = await modules();
-    const value = {};
-    let cursor = value;
+
+    const atLimit = {};
+    let cursor = atLimit;
+    for (let depth = 0; depth < MAX_GAME_STATE_NESTING_DEPTH; depth++){
+        cursor.child = {};
+        cursor = cursor.child;
+    }
+    assert.doesNotThrow(() => canonicalizeStateValue(atLimit, 'state'));
+
+    const overLimit = {};
+    cursor = overLimit;
     for (let depth = 0; depth <= MAX_GAME_STATE_NESTING_DEPTH; depth++){
         cursor.child = {};
         cursor = cursor.child;
     }
 
     assert.throws(
-        () => canonicalizeStateValue(value, 'state'),
+        () => canonicalizeStateValue(overLimit, 'state'),
         error => {
             assert.equal(error instanceof EngineContractError, true);
             assert.equal(error.code, 'INVALID_STATE_VALUE');
