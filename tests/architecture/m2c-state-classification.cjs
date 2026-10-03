@@ -25,7 +25,7 @@ const PERSISTENCE_INTENTS = Object.freeze([
     'deferred'
 ]);
 
-function entry({ legacyMode, targetLayer, persistence, owner, directMigration = true, reason }){
+function entry({ legacyMode, targetLayer, persistence, owner, directMigration, reason }){
     return Object.freeze({
         legacyMode,
         targetLayer,
@@ -39,12 +39,12 @@ function entry({ legacyMode, targetLayer, persistence, owner, directMigration = 
 const SETTING_TARGET_POLICY = Object.freeze({
     // Legacy gameplay/simulation-affecting settings. M0 observation and M2 target
     // ownership are intentionally separate decisions.
-    alwaysPower: entry({ legacyMode: 'include', targetLayer: 'game-state-candidate', persistence: 'authoritative-save', owner: 'future structure/power policy domain', reason: 'Changes automatic activation of newly completed powered structures, including autonomous/queued completion.' }),
-    at: entry({ legacyMode: 'include', targetLayer: 'game-state-candidate', persistence: 'authoritative-save', owner: 'future simulation-time domain', reason: 'Represents accelerated-time budget consumed by simulation.' }),
-    boring: entry({ legacyMode: 'include', targetLayer: 'game-state-candidate', persistence: 'authoritative-save', owner: 'future run/world rule domain', reason: 'Changes seasonal gameplay effects rather than presentation only.' }),
-    lowPowerBalance: entry({ legacyMode: 'include', targetLayer: 'game-state-candidate', persistence: 'authoritative-save', owner: 'future power/support domain', reason: 'Changes deterministic power-shortage allocation during simulation.' }),
-    mtorder: entry({ legacyMode: 'include', targetLayer: 'game-state-candidate', persistence: 'authoritative-save', owner: 'future evolution/trait domain', reason: 'Persisted ordering participates in evolution/minor-trait behavior.' }),
-    pause: entry({ legacyMode: 'include', targetLayer: 'game-state-candidate', persistence: 'authoritative-save', owner: 'future simulation-control domain', reason: 'Stops/resumes gameplay and currently gates actions; target representation remains a simulation-control concern.' }),
+    alwaysPower: entry({ legacyMode: 'include', targetLayer: 'game-state-candidate', persistence: 'authoritative-save', owner: 'future structure/power policy domain', directMigration: true, reason: 'Changes automatic activation of newly completed powered structures, including autonomous/queued completion.' }),
+    at: entry({ legacyMode: 'include', targetLayer: 'game-state-candidate', persistence: 'authoritative-save', owner: 'future simulation-time domain', directMigration: true, reason: 'Represents accelerated-time budget consumed by simulation.' }),
+    boring: entry({ legacyMode: 'include', targetLayer: 'game-state-candidate', persistence: 'authoritative-save', owner: 'future run/world rule domain', directMigration: true, reason: 'Changes seasonal gameplay effects rather than presentation only.' }),
+    lowPowerBalance: entry({ legacyMode: 'include', targetLayer: 'game-state-candidate', persistence: 'authoritative-save', owner: 'future power/support domain', directMigration: true, reason: 'Changes deterministic power-shortage allocation during simulation.' }),
+    mtorder: entry({ legacyMode: 'include', targetLayer: 'game-state-candidate', persistence: 'authoritative-save', owner: 'future evolution/trait domain', directMigration: true, reason: 'Persisted ordering participates in evolution/minor-trait behavior.' }),
+    pause: entry({ legacyMode: 'include', targetLayer: 'game-state-candidate', persistence: 'authoritative-save', owner: 'future simulation-control domain', directMigration: true, reason: 'Stops/resumes gameplay and currently gates actions; target representation remains a simulation-control concern.' }),
 
     qAny: entry({ legacyMode: 'include', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'future command/UI application layer', directMigration: false, reason: 'Legacy preference changes how a build action is authored; target commands should receive the chosen behavior explicitly.' }),
     qAny_res: entry({ legacyMode: 'include', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'future command/UI application layer', directMigration: false, reason: 'Legacy preference changes how a research action is authored; it should not become hidden engine state.' }),
@@ -53,41 +53,41 @@ const SETTING_TARGET_POLICY = Object.freeze({
     showCivic: entry({ legacyMode: 'include', targetLayer: 'semantic-debt', persistence: 'deferred', owner: 'future progression/unlock domain plus UI projection', directMigration: false, reason: 'A UI-looking visibility flag currently gates technology conditions. Migrate the underlying progression fact, then derive visibility.' }),
 
     // Stable user/application preferences.
-    affix: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application presentation settings', reason: 'Number formatting preference.' }),
-    animated: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application presentation settings', reason: 'Animation preference.' }),
-    buildQueueHeight: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application layout settings', reason: 'User-selected queue layout height.' }),
-    cLabels: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application presentation settings', reason: 'City label preference.' }),
-    disableReset: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application safety settings', reason: 'Controls reset UI affordance rather than simulation outcomes.' }),
-    font: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application presentation settings', reason: 'Font preference.' }),
-    icon: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application presentation settings', reason: 'Resource icon preference.' }),
-    keyMap: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application input settings', reason: 'Keyboard mapping preference.' }),
-    locale: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application localization settings', reason: 'Localization choice.' }),
-    mKeys: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application input settings', reason: 'Modifier-key preference.' }),
-    msgFilters: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application message settings', reason: 'Message visibility/filter preference.' }),
-    msgQueueHeight: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application layout settings', reason: 'User-selected message layout height.' }),
-    q_resize: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application layout settings', reason: 'Queue resizing preference.' }),
-    queuestyle: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application presentation settings', reason: 'Queue CSS/layout style preference.' }),
-    resBar: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application resource presentation settings', reason: 'Resource-bar visibility preferences.' }),
-    sPackOn: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application localization settings', reason: 'String-pack/localization toggle.' }),
-    tabLoad: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application navigation settings', reason: 'UI lazy-loading preference.' }),
-    theme: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application presentation settings', reason: 'CSS theme preference.' }),
-    touch: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application input settings', reason: 'Touch UI preference.' }),
+    affix: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application presentation settings', directMigration: true, reason: 'Number formatting preference.' }),
+    animated: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application presentation settings', directMigration: true, reason: 'Animation preference.' }),
+    buildQueueHeight: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application layout settings', directMigration: true, reason: 'User-selected queue layout height.' }),
+    cLabels: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application presentation settings', directMigration: true, reason: 'City label preference.' }),
+    disableReset: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application safety settings', directMigration: true, reason: 'Controls reset UI affordance rather than simulation outcomes.' }),
+    font: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application presentation settings', directMigration: true, reason: 'Font preference.' }),
+    icon: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application presentation settings', directMigration: true, reason: 'Resource icon preference.' }),
+    keyMap: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application input settings', directMigration: true, reason: 'Keyboard mapping preference.' }),
+    locale: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application localization settings', directMigration: true, reason: 'Localization choice.' }),
+    mKeys: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application input settings', directMigration: true, reason: 'Modifier-key preference.' }),
+    msgFilters: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application message settings', directMigration: true, reason: 'Message visibility/filter preference.' }),
+    msgQueueHeight: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application layout settings', directMigration: true, reason: 'User-selected message layout height.' }),
+    q_resize: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application layout settings', directMigration: true, reason: 'Queue resizing preference.' }),
+    queuestyle: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application presentation settings', directMigration: true, reason: 'Queue CSS/layout style preference.' }),
+    resBar: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application resource presentation settings', directMigration: true, reason: 'Resource-bar visibility preferences.' }),
+    sPackOn: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application localization settings', directMigration: true, reason: 'String-pack/localization toggle.' }),
+    tabLoad: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application navigation settings', directMigration: true, reason: 'UI lazy-loading preference.' }),
+    theme: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application presentation settings', directMigration: true, reason: 'CSS theme preference.' }),
+    touch: entry({ legacyMode: 'exclude', targetLayer: 'application-settings', persistence: 'application-preference', owner: 'application input settings', directMigration: true, reason: 'Touch UI preference.' }),
 
     // Current UI/navigation/session state. Some visibility flags may later be
     // derived from authoritative progression, but they must not be copied into
     // GameState merely because legacy saves them.
     arpa: entry({ legacyMode: 'exclude', targetLayer: 'ui-state', persistence: 'ui-session-or-preference', owner: 'application ARPA navigation state', directMigration: false, reason: 'ARPA navigation/visibility state.' }),
-    civTabs: entry({ legacyMode: 'exclude', targetLayer: 'ui-state', persistence: 'ui-session-or-preference', owner: 'application navigation state', reason: 'Selected top-level civilization/settings tab.' }),
+    civTabs: entry({ legacyMode: 'exclude', targetLayer: 'ui-state', persistence: 'ui-session-or-preference', owner: 'application navigation state', directMigration: true, reason: 'Selected top-level civilization/settings tab.' }),
     eden: entry({ legacyMode: 'exclude', targetLayer: 'ui-state', persistence: 'ui-session-or-preference', owner: 'application Eden navigation state', directMigration: false, reason: 'Eden navigation/visibility state.' }),
-    govTabs: entry({ legacyMode: 'exclude', targetLayer: 'ui-state', persistence: 'ui-session-or-preference', owner: 'application navigation state', reason: 'Selected government tab.' }),
-    govTabs2: entry({ legacyMode: 'exclude', targetLayer: 'ui-state', persistence: 'ui-session-or-preference', owner: 'application navigation state', reason: 'Selected secondary government tab.' }),
-    hellTabs: entry({ legacyMode: 'exclude', targetLayer: 'ui-state', persistence: 'ui-session-or-preference', owner: 'application navigation state', reason: 'Selected Hell tab.' }),
-    marketTabs: entry({ legacyMode: 'exclude', targetLayer: 'ui-state', persistence: 'ui-session-or-preference', owner: 'application navigation state', reason: 'Selected market/resource tab.' }),
+    govTabs: entry({ legacyMode: 'exclude', targetLayer: 'ui-state', persistence: 'ui-session-or-preference', owner: 'application navigation state', directMigration: true, reason: 'Selected government tab.' }),
+    govTabs2: entry({ legacyMode: 'exclude', targetLayer: 'ui-state', persistence: 'ui-session-or-preference', owner: 'application navigation state', directMigration: true, reason: 'Selected secondary government tab.' }),
+    hellTabs: entry({ legacyMode: 'exclude', targetLayer: 'ui-state', persistence: 'ui-session-or-preference', owner: 'application navigation state', directMigration: true, reason: 'Selected Hell tab.' }),
+    marketTabs: entry({ legacyMode: 'exclude', targetLayer: 'ui-state', persistence: 'ui-session-or-preference', owner: 'application navigation state', directMigration: true, reason: 'Selected market/resource tab.' }),
     portal: entry({ legacyMode: 'exclude', targetLayer: 'ui-state', persistence: 'ui-session-or-preference', owner: 'application Portal navigation state', directMigration: false, reason: 'Portal navigation/visibility state.' }),
-    resTabs: entry({ legacyMode: 'exclude', targetLayer: 'ui-state', persistence: 'ui-session-or-preference', owner: 'application navigation state', reason: 'Selected research sub-tab.' }),
+    resTabs: entry({ legacyMode: 'exclude', targetLayer: 'ui-state', persistence: 'ui-session-or-preference', owner: 'application navigation state', directMigration: true, reason: 'Selected research sub-tab.' }),
     space: entry({ legacyMode: 'exclude', targetLayer: 'ui-state', persistence: 'ui-session-or-preference', owner: 'application space navigation state', directMigration: false, reason: 'Space-region navigation/visibility state.' }),
-    spaceTabs: entry({ legacyMode: 'exclude', targetLayer: 'ui-state', persistence: 'ui-session-or-preference', owner: 'application navigation state', reason: 'Selected space UI tab.' }),
-    statsTabs: entry({ legacyMode: 'exclude', targetLayer: 'ui-state', persistence: 'ui-session-or-preference', owner: 'application navigation state', reason: 'Selected statistics/achievement tab.' }),
+    spaceTabs: entry({ legacyMode: 'exclude', targetLayer: 'ui-state', persistence: 'ui-session-or-preference', owner: 'application navigation state', directMigration: true, reason: 'Selected space UI tab.' }),
+    statsTabs: entry({ legacyMode: 'exclude', targetLayer: 'ui-state', persistence: 'ui-session-or-preference', owner: 'application navigation state', directMigration: true, reason: 'Selected statistics/achievement tab.' }),
     tau: entry({ legacyMode: 'exclude', targetLayer: 'ui-state', persistence: 'ui-session-or-preference', owner: 'application Tau Ceti navigation state', directMigration: false, reason: 'Tau Ceti navigation/visibility state.' }),
 
     showAchieve: entry({ legacyMode: 'exclude', targetLayer: 'ui-state', persistence: 'ui-session-or-preference', owner: 'application UI projection', directMigration: false, reason: 'Achievement panel visibility.' }),
@@ -119,7 +119,7 @@ const SETTING_TARGET_POLICY = Object.freeze({
     showWish: entry({ legacyMode: 'exclude', targetLayer: 'ui-state', persistence: 'ui-session-or-preference', owner: 'application UI projection', directMigration: false, reason: 'Wish panel visibility.' }),
 
     // Legacy-only, derived and diagnostic settings.
-    expose: entry({ legacyMode: 'exclude', targetLayer: 'debug-only', persistence: 'application-preference', owner: 'developer/debug application layer', reason: 'Debug data exposure switch.' }),
+    expose: entry({ legacyMode: 'exclude', targetLayer: 'debug-only', persistence: 'application-preference', owner: 'developer/debug application layer', directMigration: true, reason: 'Debug data exposure switch.' }),
     restoreCheck: entry({ legacyMode: 'exclude', targetLayer: 'migration-only', persistence: 'legacy-only', owner: 'legacy importer/migration', directMigration: false, reason: 'Obsolete restore/migration preference.' }),
     sPackMsg: entry({ legacyMode: 'exclude', targetLayer: 'derived-transient', persistence: 'recompute', owner: 'application localization projection', directMigration: false, reason: 'Localized string-pack status text derived from storage/localization.' }),
     tLabels: entry({ legacyMode: 'exclude', targetLayer: 'migration-only', persistence: 'legacy-only', owner: 'legacy importer/migration', directMigration: false, reason: 'Obsolete label preference removed by migration.' })
