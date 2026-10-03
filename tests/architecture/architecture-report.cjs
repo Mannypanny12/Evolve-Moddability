@@ -8,12 +8,14 @@ const {
 } = require('./architecture-fitness.cjs');
 const { scanPlatform } = require('./platform-fitness.cjs');
 const { scanLegacyBridge } = require('./legacy-bridge-fitness.cjs');
+const { loadBoundaryBaseline, scanM2CBoundary } = require('./m2c-boundary-fitness.cjs');
 
 async function buildArchitectureReport(root){
     const baseline = loadBaseline(root);
     const architecture = scanRepository(root, baseline);
     const platform = scanPlatform(root);
     const bridge = scanLegacyBridge(root);
+    const stateBoundary = scanM2CBoundary(root, loadBoundaryBaseline(root));
     const mappingModule = await import(pathToFileURL(path.join(root, 'src/legacy/bridge/evolve-mappings.mjs')).href);
     const inspectorModule = await import(pathToFileURL(path.join(root, 'src/legacy/bridge/inspector.mjs')).href);
     const mappings = inspectorModule.inspectLegacyMappings(mappingModule.createEvolveLegacyMappingCatalog());
@@ -31,11 +33,13 @@ async function buildArchitectureReport(root){
             platformFileCount: platform.summary.platformFileCount,
             bridgeFileCount: bridge.summary.bridgeFileCount,
         },
+        stateBoundary: stateBoundary.summary,
         legacyMappings: mappings,
         gateViolations: {
             architecture: architecture.violations,
             platform: platform.violations,
             bridge: bridge.violations,
+            stateBoundary: stateBoundary.violations,
         },
     };
 }
