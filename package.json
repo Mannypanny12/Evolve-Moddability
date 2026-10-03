@@ -22,7 +22,7 @@
     "test": "node tests/run-tests.cjs",
     "test:characterization": "node tests/run-tests.cjs characterization",
     "test:simulation": "node tests/run-tests.cjs simulation",
-    "test:architecture": "node tests/architecture/architecture-fitness.cjs",
+    "test:architecture": "node tests/architecture/architecture-fitness.cjs && node tests/architecture/platform-fitness.cjs",
     "oracle:update": "node tests/simulation/update-oracle-snapshots.cjs",
     "test:browser": "node tests/browser/smoke.cjs"
   },
