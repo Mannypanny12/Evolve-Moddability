@@ -114,6 +114,23 @@ Established:
 
 See [M2A_GAME_STATE_SCHEMA.md](M2A_GAME_STATE_SCHEMA.md) for the design authority.
 
+### M2B - State store and selectors - complete
+
+Established:
+
+- deeply frozen committed state and detached deterministic snapshots;
+- synchronous selectors over read-only committed state;
+- explicit named top-level mutation scopes instead of generic path setters;
+- detached mutable transaction drafts with full validation before atomic commit;
+- rollback on thrown/invalid/reentrant/async mutation attempts;
+- post-validation scope-escape detection;
+- deterministic revisions and JSON Pointer change diagnostics;
+- a thin `GameStateStore` integration with zero premature gameplay mutation roots.
+
+M2B does not migrate gameplay authority, modify persistence, or synchronize with legacy `global`. `GAME_STATE_SCHEMA_VERSION` remains 1.
+
+See [M2B_STATE_STORE_SELECTORS.md](M2B_STATE_STORE_SELECTORS.md) for the design authority.
+
 ## Immediate sequence
 
 ```text
@@ -147,7 +164,9 @@ M1D bridge/inspector - complete
    |
 M2A GameState schema - complete
    |
-M2B state store/selectors - next
+M2B state store/selectors - complete
+   |
+M2C settings/transient separation - next
 ```
 
 Do not jump directly to mod loading, total conversions, or bulk content conversion. Those would lock in legacy assumptions before the engine is ready.
