@@ -5,6 +5,8 @@ const {
     RUNTIME_TARGET_POLICY,
 } = require('./m2c-state-classification.cjs');
 
+const NO_TARGET_LAYER = null;
+
 const STATE_LAYERS = Object.freeze([
     'game-state',
     'application-preference',
@@ -144,7 +146,7 @@ const LAYER_RULES = Object.freeze({
         lifecycles: freezeList(['import']),
         persistence: freezeList(['import-only']),
         simulationRoles: freezeList(['none']),
-        migrationDispositions: freezeList(['decompose', 'discard']),
+        migrationDispositions: freezeList(['discard']),
         resetBehaviors: freezeList(['import-only']),
     }),
     debug: Object.freeze({
@@ -160,6 +162,19 @@ function stateContract({ targetLayer, lifecycle, persistence, simulationRole, mi
     return Object.freeze({ targetLayer, lifecycle, persistence, simulationRole, migrationDisposition, resetBehavior, owner, reason });
 }
 
+function decompositionSourceContract(owner, reason){
+    return stateContract({
+        targetLayer: NO_TARGET_LAYER,
+        lifecycle: 'import',
+        persistence: 'import-only',
+        simulationRole: 'none',
+        migrationDisposition: 'decompose',
+        resetBehavior: 'import-only',
+        owner,
+        reason,
+    });
+}
+
 const SHOW_PROJECTION_SETTINGS = Object.freeze([
     'showAchieve', 'showAlchemy', 'showCargo', 'showCity', 'showCiv', 'showCivic', 'showDeep',
     'showEden', 'showEjector', 'showEvolve', 'showGalactic', 'showGenetics', 'showGovernor',
@@ -168,6 +183,30 @@ const SHOW_PROJECTION_SETTINGS = Object.freeze([
     'showStorage', 'showTau', 'showWish',
 ]);
 const SHOW_PROJECTION_SET = new Set(SHOW_PROJECTION_SETTINGS);
+
+const REGION_REPLACEMENT_PATHS = Object.freeze([
+    'space.home', 'space.moon', 'space.red', 'space.hell', 'space.sun', 'space.gas',
+    'space.gas_moon', 'space.belt', 'space.dwarf', 'space.alpha', 'space.proxima',
+    'space.nebula', 'space.neutron', 'space.blackhole', 'space.sirius', 'space.stargate',
+    'space.gateway', 'space.gorddon', 'space.alien1', 'space.alien2', 'space.chthonian',
+    'space.titan', 'space.enceladus', 'space.triton', 'space.eris', 'space.kuiper',
+    'portal.fortress', 'portal.badlands', 'portal.pit', 'portal.ruins', 'portal.gate',
+    'portal.lake', 'portal.spire', 'portal.wasteland',
+    'eden.asphodel', 'eden.elysium', 'eden.isle', 'eden.palace',
+    'tau.home', 'tau.red', 'tau.roid', 'tau.gas', 'tau.gas2', 'tau.star',
+]);
+
+const REGION_REPLACEMENT_MAP = Object.freeze(Object.fromEntries(
+    REGION_REPLACEMENT_PATHS.map(legacyPath => [legacyPath, Object.freeze({
+        legacyPath,
+        targetLayer: 'game-state',
+        authorityOwner: 'world/progression domain',
+        authorityKind: 'authoritative region-unlock/progression fact',
+        migrationDisposition: 'translate',
+        uiProjection: 'derived-state',
+        evidence: 'persisted legacy region flag; target schema/path deferred to owning gameplay-domain migration',
+    })])
+));
 
 function settingContract(name, info){
     if (name === 'pause'){
@@ -185,19 +224,18 @@ function settingContract(name, info){
             reason: 'disableReset is a temporary confirmation/safety latch for reset controls. Legacy reset handling explicitly clears it, so it must not become a persistent application-profile preference.',
         });
     }
-    if (name === 'arpa' || name === 'msgFilters'){
-        return stateContract({
-            targetLayer: 'migration', lifecycle: 'import', persistence: 'import-only', simulationRole: 'none',
-            migrationDisposition: 'decompose', resetBehavior: 'import-only', owner: 'legacy settings importer plus nested target owners',
-            reason: `${name} is a mixed legacy container whose nested members have different target owners and must be decomposed.`,
-        });
+    if (['arpa', 'msgFilters', 'space', 'portal', 'eden', 'tau'].includes(name)){
+        return decompositionSourceContract(
+            'legacy settings decomposition boundary',
+            `${name} is a legacy container whose representation has no permanent one-to-one target; its reviewed leaves migrate independently.`
+        );
     }
-    if (['space', 'portal', 'eden', 'tau'].includes(name) || SHOW_PROJECTION_SET.has(name)){
+    if (SHOW_PROJECTION_SET.has(name)){
         return stateContract({
             targetLayer: 'derived-state', lifecycle: 'application-session', persistence: 'none', simulationRole: 'derived-read-only',
             migrationDisposition: 'derive', resetBehavior: 'recompute',
             owner: name === 'showCivic' ? 'progression/unlock selectors plus UI projection' : 'progression/world selectors plus UI projection',
-            reason: 'Legacy visibility/unlock mirrors should be derived from authoritative progression/world facts instead of becoming independent saved UI authority.',
+            reason: 'Reviewed legacy visibility mirrors should be derived from authoritative progression/world facts rather than becoming independent saved UI authority.',
         });
     }
 
@@ -244,21 +282,14 @@ function settingContract(name, info){
 }
 
 function runtimeContract(name, info){
-    if (name === 'message_logs' || name === 'tmp_vars'){
-        return stateContract({
-            targetLayer: 'migration', lifecycle: 'import', persistence: 'import-only', simulationRole: 'none',
-            migrationDisposition: 'decompose', resetBehavior: 'import-only',
-            owner: name === 'message_logs' ? 'legacy message presentation container plus nested application owners' : 'legacy scratch container plus capability-local future owners',
-            reason: `${name} is a mixed legacy runtime container and must be decomposed rather than recreated as one permanent target bucket.`,
-        });
+    if (name === 'message_logs' || name === 'tmp_vars' || info.targetLayer === 'legacy-mixed-container'){
+        return decompositionSourceContract(
+            'legacy runtime decomposition boundary',
+            `${name} is a mixed legacy runtime container and must be decomposed rather than recreated as one permanent target bucket.`
+        );
     }
 
     switch (info.targetLayer){
-        case 'legacy-mixed-container':
-            return stateContract({
-                targetLayer: 'migration', lifecycle: 'import', persistence: 'import-only', simulationRole: 'none',
-                migrationDisposition: 'decompose', resetBehavior: 'import-only', owner: info.owner, reason: info.reason,
-            });
         case 'derived-transient':
             return stateContract({
                 targetLayer: 'derived-state', lifecycle: 'process', persistence: 'none', simulationRole: 'derived-read-only',
@@ -322,10 +353,11 @@ const NESTED_SETTING_RULES = Object.freeze([
         }),
     }),
     nestedRule({
-        id: 'world-region-availability', pattern: /^(space|portal|eden|tau)\.[^.]+$/,
+        id: 'world-region-authority', pattern: /^(space|portal|eden|tau)\.[^.]+$/,
         classification: stateContract({
-            targetLayer: 'derived-state', lifecycle: 'application-session', persistence: 'none', simulationRole: 'derived-read-only',
-            migrationDisposition: 'derive', resetBehavior: 'recompute', owner: 'progression/world selectors plus UI projection', reason: 'Region availability mirrors gameplay progression and should be projected from authoritative world/progression state.',
+            targetLayer: 'game-state', lifecycle: 'game-domain', persistence: 'game-save', simulationRole: 'authoritative',
+            migrationDisposition: 'translate', resetBehavior: 'domain-defined', owner: 'world/progression domain',
+            reason: 'A persisted legacy region flag is migration evidence for an authoritative region-unlock/progression fact. UI visibility is derived from that fact after import.',
         }),
     }),
     nestedRule({
@@ -383,6 +415,7 @@ const EXPECTED_FIXED_NESTED_KEYS = Object.freeze({
     tau: freezeList(['home', 'red', 'roid', 'gas', 'gas2', 'star']),
     keyMap: freezeList(['x10', 'x25', 'x100', 'q', 'showCiv', 'showCivic', 'showResearch', 'showResources', 'showGenetics', 'showAchieve', 'settings']),
 });
+
 const EXPECTED_MESSAGE_LOG_FILTERS = Object.freeze([
     'all', 'progress', 'queue', 'building_queue', 'research_queue', 'combat', 'spy', 'events', 'major_events', 'minor_events', 'achievements', 'hell',
 ]);
@@ -395,6 +428,7 @@ function matchNestedRuntimePath(path){
 }
 
 module.exports = {
+    NO_TARGET_LAYER,
     STATE_LAYERS,
     LIFECYCLES,
     PERSISTENCE_MODES,
@@ -403,6 +437,8 @@ module.exports = {
     RESET_BEHAVIORS,
     LAYER_RULES,
     SHOW_PROJECTION_SETTINGS,
+    REGION_REPLACEMENT_PATHS,
+    REGION_REPLACEMENT_MAP,
     SETTING_STATE_CONTRACT,
     RUNTIME_STATE_CONTRACT,
     NESTED_SETTING_RULES,
