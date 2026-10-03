@@ -171,9 +171,16 @@ test('M1B family validation errors carry canonical definition identity context',
     assert.equal(error.details.path, 'resource.presentation.nameKey');
 });
 
-test('M1B localization references reject whitespace/control forms but allow legacy and future namespaced keys', async () => {
+test('M1B localization references reject malformed forms but allow legacy and one future namespace', async () => {
     const { createResourceRegistry } = await modules();
-    for (const invalid of ['resource Food name', 'resource_Food_name\n', ':missing_namespace']){
+    for (const invalid of [
+        'resource Food name',
+        'resource_Food_name\n',
+        ':missing_namespace',
+        'foo:',
+        'foo:bar:baz',
+        'Example:resource_key',
+    ]){
         await expectCode(
             () => createResourceRegistry().register(record('evolve:resource/food', foodDefinition(invalid))),
             'INVALID_DEFINITION_FIELD'

@@ -1,7 +1,7 @@
 import { EngineContractError, describeContractValue } from '../identity.mjs';
 
 const TOKEN_PATTERN = /^[a-z][a-z0-9_-]*$/;
-const LOCALIZATION_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.:-]*$/;
+const LOCALIZATION_KEY_PATTERN = /^(?:[a-z][a-z0-9_-]*:)?[A-Za-z0-9][A-Za-z0-9_.-]*$/;
 
 function fail(code, message, details){
     throw new EngineContractError(code, message, details);
