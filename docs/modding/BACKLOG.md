@@ -84,17 +84,20 @@ Introduce testable interfaces for:
 
 Browser implementations adapt current platform behavior. New engine code uses ports instead of direct globals/platform calls.
 
-### M1D - Legacy bridge and architecture inspector ([#9](../../issues/9))
+### M1D - Legacy bridge and architecture inspector ([#9](../../issues/9)) - complete
 
-Provide:
+Established:
 
-- registry/definition inspection;
-- ownership and aliases;
-- legacy mapping inspection;
-- architecture diagnostics;
-- temporary controlled bridge to legacy state where needed.
+- deterministic read-only registry/definition inspection;
+- ownership, aliases, definition-family and structured contract-error diagnostics;
+- explicit validated legacy mapping/lifecycle metadata for relationships that cannot be direct aliases;
+- representative direct Food-state and contextual `primitive` technology mappings;
+- source-backed characterization for the contextual technology mapping;
+- an inspectable architecture report reusing the M0E5/M1C scanners;
+- a dedicated bridge quarantine gate preventing direct legacy/platform access or forbidden imports;
+- mandatory adapter/mapping removal milestones, with M9C as the hard bridge-deletion backstop.
 
-Document removal rules for every adapter.
+M1D deliberately does not create `GameState` or switch authoritative state. Those begin in M2.
 
 ## Immediate sequence
 
@@ -125,9 +128,9 @@ M1B definition contracts - complete
    |
 M1C environment ports - complete
    |
-M1D bridge/inspector - next
+M1D bridge/inspector - complete
    |
-M2 explicit GameState
+M2A GameState schema - next
 ```
 
 Do not jump directly to mod loading, total conversions, or bulk content conversion. Those would lock in legacy assumptions before the engine is ready.
