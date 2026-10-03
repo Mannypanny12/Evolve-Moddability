@@ -9,7 +9,7 @@ It does **not** migrate state. It creates a fail-closed, source-backed classific
 M2C1 classifies two especially dangerous legacy surfaces:
 
 1. every known top-level member of `global.settings`;
-2. every exported mutable `var` binding in `src/vars.js`.
+2. every exported mutable runtime binding in `src/vars.js`.
 
 The classification lives in:
 
@@ -167,6 +167,14 @@ The important rules are:
 
 M7 still owns the actual persistence format and serializers.
 
+## Direct migration is an explicit decision
+
+Every classification entry must state `directMigration: true` or `directMigration: false` explicitly.
+
+There is deliberately no default. Omitting the field fails the architecture test. This prevents a newly catalogued legacy value from silently being treated as safe for direct translation merely because the reviewer forgot to decide.
+
+`directMigration: true` means only that the represented concept can plausibly carry across without first discovering a different underlying semantic fact. It does **not** authorize migration in M2C1 and does not define the final target schema.
+
 ## Fail-closed coverage
 
 ### Legacy settings
@@ -183,19 +191,26 @@ Therefore a future setting first added to the M0 fail-closed observation policy 
 
 The test also requires the stored legacy observation mode to equal M0's current mode. M2C classification cannot weaken or redefine simulation observation.
 
-### Exported mutable runtime values
+This cross-check does not by itself prove that M0 discovered every setting present in a real initialized legacy state. M2C1 hardening therefore also compares the M0/M2 setting key set against the actual initialized legacy settings surface exposed through the deterministic legacy harness. New current top-level settings must be present in both policies or CI fails.
 
-The test reads `src/vars.js` directly and extracts every top-level:
+Nested object-valued settings remain a separate concern: M2C1 classifies their top-level ownership, while M2C2 must formalize whether their nested members are stable preferences, UI projections, derived values, or semantic debt.
+
+### Exported runtime values
+
+The test reads `src/vars.js` directly and extracts every top-level mutable binding declared as either:
 
 ```js
 export var name = ...
+export let name = ...
 ```
 
 It requires that exact set to equal `RUNTIME_TARGET_POLICY`.
 
-A newly exported mutable runtime bucket therefore fails CI until explicitly classified.
+A newly exported mutable `var` or `let` runtime bucket therefore fails CI until explicitly classified.
 
-This scanner is intentionally narrow. It is not a claim that all legacy mutable module state has already been inventoried. M2C2 can broaden the architectural enforcement if source review identifies other state surfaces that need a permanent guard.
+Exported `const` bindings are separately ratcheted. The existing `message_filters` constant is the only allowed exported `const` container in `vars.js`; adding another exported `const` there requires architectural review instead of becoming a back door around the mutable-binding guard.
+
+This source scanner is intentionally scoped to `vars.js`. It is not a claim that all mutable state in every legacy module has already been inventoried. M2C2 can broaden permanent state-layer enforcement where needed.
 
 ## Important decisions recorded by M2C1
 
@@ -242,7 +257,7 @@ M2C1 is intentionally behavior-neutral:
 
 ### M2C2
 
-M2C2 turns this source classification into the full settings/transient-state layer contract, including ownership, lifecycle and dependency rules.
+M2C2 turns this source classification into the full settings/transient-state layer contract, including ownership, lifecycle and dependency rules. It should also normalize today's migration-oriented labels such as `semantic-debt` and `legacy-mixed-container` into separate permanent layer and migration-disposition concepts rather than canonizing them as runtime layers.
 
 ### M2C3
 
@@ -256,12 +271,15 @@ M2D remains the first real authoritative state-domain migration. It is the point
 
 M2C1 is complete when:
 
-1. every M0-classified legacy setting has one explicit M2 target classification;
-2. M0 observation semantics and M2 target ownership remain separate and are cross-checked by tests;
-3. every exported mutable `var` binding in `vars.js` has one explicit target classification;
-4. persistence intent is explicit and non-authoritative layers cannot claim authoritative-save intent;
-5. behavior-relevant working state is distinguished from reconstructible derived state;
-6. executable/platform machinery is explicitly excluded from data-state layers;
-7. `showCivic` and other non-direct translations are recorded rather than copied into new state;
-8. no gameplay, GameState schema, persistence, save, reset, UI or oracle behavior changes;
-9. the complete existing safety net remains green.
+1. every current initialized top-level legacy setting has one explicit M2 target classification;
+2. every M0-classified legacy setting has one explicit M2 target classification;
+3. M0 observation semantics and M2 target ownership remain separate and are cross-checked by tests;
+4. every exported mutable `var`/`let` binding in `vars.js` has one explicit target classification;
+5. new exported `const` containers in `vars.js` cannot silently bypass classification;
+6. every catalog entry makes an explicit direct-migration decision;
+7. persistence intent is explicit and non-authoritative layers cannot claim authoritative-save intent;
+8. behavior-relevant working state is distinguished from reconstructible derived state;
+9. executable/platform machinery is explicitly excluded from data-state layers;
+10. `showCivic` and other non-direct translations are recorded rather than copied into new state;
+11. no gameplay, GameState schema, persistence, save, reset, UI or oracle behavior changes;
+12. the complete existing safety net remains green.
