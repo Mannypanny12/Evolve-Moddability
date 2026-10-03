@@ -26,30 +26,35 @@ function readIdentifier(source, index){
     return match ? { value: match[0], end: index + match[0].length } : null;
 }
 
-function readStaticBracketProperty(source, index){
-    let cursor = skipWhitespace(source, index + 1);
-    const quote = source[cursor];
-    if (quote !== "'" && quote !== '"') return { dynamic: true, end: index + 1 };
-    cursor++;
+function readQuotedString(source, index){
+    const quote = source[index];
+    if (quote !== "'" && quote !== '"') return null;
+    let cursor = index + 1;
     let value = '';
     while (cursor < source.length){
         const ch = source[cursor];
         if (ch === '\\'){
-            if (cursor + 1 >= source.length) return { dynamic: true, end: cursor + 1 };
+            if (cursor + 1 >= source.length) return null;
             value += source[cursor + 1];
             cursor += 2;
             continue;
         }
         if (ch === quote){
-            cursor++;
-            cursor = skipWhitespace(source, cursor);
-            if (source[cursor] !== ']') return { dynamic: true, end: cursor };
-            return { dynamic: false, value, end: cursor + 1 };
+            return { value, end: cursor + 1 };
         }
         value += ch;
         cursor++;
     }
-    return { dynamic: true, end: cursor };
+    return null;
+}
+
+function readStaticBracketProperty(source, masked, index){
+    let cursor = skipWhitespace(masked, index + 1);
+    const stringValue = readQuotedString(source, cursor);
+    if (!stringValue) return { dynamic: true, end: index + 1 };
+    cursor = skipWhitespace(masked, stringValue.end);
+    if (source[cursor] !== ']') return { dynamic: true, end: cursor };
+    return { dynamic: false, value: stringValue.value, end: cursor + 1 };
 }
 
 function readProperty(source, masked, index){
@@ -60,14 +65,27 @@ function readProperty(source, masked, index){
         return identifier ? { dynamic: false, value: identifier.value, end: identifier.end } : null;
     }
     if (masked[cursor] === '['){
-        return readStaticBracketProperty(source, cursor);
+        return readStaticBracketProperty(source, masked, cursor);
     }
     return null;
 }
 
+function readHasOwnPropertyKey(source, masked, index){
+    let cursor = skipWhitespace(masked, index);
+    if (masked[cursor] !== '(') return null;
+    cursor = skipWhitespace(masked, cursor + 1);
+    const stringValue = readQuotedString(source, cursor);
+    if (!stringValue) return { dynamic: true };
+    return { dynamic: false, value: stringValue.value };
+}
+
+function incrementCount(counts, key){
+    counts[key] = (Object.prototype.hasOwnProperty.call(counts, key) ? counts[key] : 0) + 1;
+}
+
 function analyzeSettingsAccesses(source){
     const masked = maskNonCode(source);
-    const counts = {};
+    const counts = Object.create(null);
     const globalPattern = /\bglobal\b/g;
     let match;
 
@@ -76,12 +94,28 @@ function analyzeSettingsAccesses(source){
         if (!settingsProperty || settingsProperty.dynamic || settingsProperty.value !== 'settings') continue;
 
         const settingProperty = readProperty(source, masked, settingsProperty.end);
-        const key = !settingProperty
-            ? '$root'
-            : settingProperty.dynamic
-                ? '$dynamic'
-                : settingProperty.value;
-        counts[key] = (counts[key] || 0) + 1;
+        if (!settingProperty){
+            incrementCount(counts, '$root');
+            continue;
+        }
+        if (settingProperty.dynamic){
+            incrementCount(counts, '$dynamic');
+            continue;
+        }
+        if (settingProperty.value === 'hasOwnProperty'){
+            const checkedKey = readHasOwnPropertyKey(source, masked, settingProperty.end);
+            if (!checkedKey){
+                incrementCount(counts, '$root');
+            }
+            else if (checkedKey.dynamic){
+                incrementCount(counts, '$dynamic');
+            }
+            else {
+                incrementCount(counts, checkedKey.value);
+            }
+            continue;
+        }
+        incrementCount(counts, settingProperty.value);
     }
 
     return sortedObject(counts);
