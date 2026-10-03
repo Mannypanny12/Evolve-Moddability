@@ -191,20 +191,32 @@ Therefore a future setting first added to the M0 fail-closed observation policy 
 
 The test also requires the stored legacy observation mode to equal M0's current mode. M2C classification cannot weaken or redefine simulation observation.
 
-M2C1 hardening adds an independent third leg: the deterministic legacy harness is initialized and its actual current top-level `settings` keys are compared with both policies. This means M0 and M2C can no longer silently omit a current initialized top-level setting together.
+M2C1 hardening adds an independent third leg: the deterministic legacy harness exposes a pristine initialized legacy state, and every actual current top-level `settings` key must exist in both the M0 and M2C policies. The policies may intentionally contain historical or optional keys that are absent from the pristine current state.
+
+The currently explicit policy-known keys absent from pristine initialization are:
+
+```text
+qKey
+restoreCheck
+tLabels
+```
+
+That exact dormant set is ratcheted too. If one becomes initialized, disappears from policy, or a different historical/optional key becomes dormant, CI requires a deliberate review.
 
 The hardening test also records the current object-valued nested settings containers:
 
 ```text
 arpa
+eden
 keyMap
 msgFilters
 portal
 resBar
 space
+tau
 ```
 
-If that set grows, CI fails. M2C2 must sub-classify the nested members and formalize whether each is a stable preference, UI projection, derived value, or semantic debt.
+If that set grows or shrinks, CI fails. M2C2 must sub-classify the nested members and formalize whether each is a stable preference, UI projection, derived value, or semantic debt.
 
 ### Exported runtime values
 
@@ -285,12 +297,13 @@ M2C1 is complete when:
 1. every current initialized top-level legacy setting has one explicit M2 target classification;
 2. every M0-classified legacy setting has one explicit M2 target classification;
 3. M0 observation semantics and M2 target ownership remain separate and are cross-checked by tests;
-4. every exported mutable `var`/`let` binding in `vars.js` has one explicit target classification;
-5. new exported `const` containers in `vars.js` cannot silently bypass classification;
-6. every catalog entry makes an explicit direct-migration decision;
-7. persistence intent is explicit and non-authoritative layers cannot claim authoritative-save intent;
-8. behavior-relevant working state is distinguished from reconstructible derived state;
-9. executable/platform machinery is explicitly excluded from data-state layers;
-10. `showCivic` and other non-direct translations are recorded rather than copied into new state;
-11. no gameplay, GameState schema, persistence, save, reset, UI or oracle behavior changes;
-12. the complete existing safety net remains green.
+4. historical/optional policy keys absent from pristine initialization remain explicitly ratcheted;
+5. every exported mutable `var`/`let` binding in `vars.js` has one explicit target classification;
+6. new exported `const` containers in `vars.js` cannot silently bypass classification;
+7. every catalog entry makes an explicit direct-migration decision;
+8. persistence intent is explicit and non-authoritative layers cannot claim authoritative-save intent;
+9. behavior-relevant working state is distinguished from reconstructible derived state;
+10. executable/platform machinery is explicitly excluded from data-state layers;
+11. `showCivic` and other non-direct translations are recorded rather than copied into new state;
+12. no gameplay, GameState schema, persistence, save, reset, UI or oracle behavior changes;
+13. the complete existing safety net remains green.
