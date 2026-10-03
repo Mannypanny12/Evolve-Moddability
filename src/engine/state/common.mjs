@@ -1,5 +1,7 @@
 import { EngineContractError, describeContractValue } from '../identity.mjs';
 
+export const MAX_GAME_STATE_NESTING_DEPTH = 256;
+
 function fail(code, message, details){
     throw new EngineContractError(code, message, details);
 }
@@ -147,7 +149,7 @@ export function assertGameStateSchemaVersion(value, expected){
     return value;
 }
 
-export function canonicalizeStateValue(value, path = '<root>', ancestors = new WeakSet()){
+function canonicalizeStateValueInternal(value, path, context, depth){
     if (value === null || typeof value === 'string' || typeof value === 'boolean'){
         return value;
     }
@@ -163,22 +165,44 @@ export function canonicalizeStateValue(value, path = '<root>', ancestors = new W
         fail('INVALID_STATE_VALUE', `${path} contains unsupported state type ${typeof value}: ${describeContractValue(value)}.`, { path, value });
     }
 
-    if (ancestors.has(value)){
-        fail('INVALID_STATE_VALUE', `${path} contains a cyclic state reference.`, { path });
+    if (depth > MAX_GAME_STATE_NESTING_DEPTH){
+        fail(
+            'INVALID_STATE_VALUE',
+            `${path} exceeds the maximum GameState nesting depth of ${MAX_GAME_STATE_NESTING_DEPTH}.`,
+            { path, maxDepth: MAX_GAME_STATE_NESTING_DEPTH }
+        );
     }
-    ancestors.add(value);
+
+    if (context.active.has(value)){
+        fail(
+            'INVALID_STATE_VALUE',
+            `${path} contains a cyclic state reference to ${context.seen.get(value)}.`,
+            { path, firstPath: context.seen.get(value) }
+        );
+    }
+
+    if (context.seen.has(value)){
+        fail(
+            'INVALID_STATE_VALUE',
+            `${path} reuses state object already present at ${context.seen.get(value)}. GameState must be a tree.`,
+            { path, firstPath: context.seen.get(value) }
+        );
+    }
+
+    context.seen.set(value, path);
+    context.active.add(value);
 
     try {
         if (isArrayStateValue(value, path)){
             const items = inspectArray(value, path);
-            return items.map((item, index) => canonicalizeStateValue(item, `${path}[${index}]`, ancestors));
+            return items.map((item, index) => canonicalizeStateValueInternal(item, `${path}[${index}]`, context, depth + 1));
         }
 
         const fields = inspectObject(value, path);
         const output = {};
         for (const key of [...fields.keys()].sort()){
             Object.defineProperty(output, key, {
-                value: canonicalizeStateValue(fields.get(key), statePath(path, key), ancestors),
+                value: canonicalizeStateValueInternal(fields.get(key), statePath(path, key), context, depth + 1),
                 enumerable: true,
                 writable: true,
                 configurable: true,
@@ -187,6 +211,18 @@ export function canonicalizeStateValue(value, path = '<root>', ancestors = new W
         return output;
     }
     finally {
-        ancestors.delete(value);
+        context.active.delete(value);
     }
+}
+
+export function canonicalizeStateValue(value, path = '<root>'){
+    return canonicalizeStateValueInternal(
+        value,
+        path,
+        {
+            active: new WeakSet(),
+            seen: new WeakMap(),
+        },
+        0
+    );
 }
