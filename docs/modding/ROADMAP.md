@@ -148,11 +148,11 @@ The full M1 closure audit is recorded in `M1_CLOSURE_REVIEW.md`. It hardens M1A-
 
 ## M2: Explicit state architecture
 
-### M2A GameState schema
+### M2A GameState schema - complete
 
 Define the first explicit state root and domain ownership rules.
 
-Start with low-coupling domains and metadata rather than cloning all of `global`.
+M2A now provides an independent minimal `GameState` root, a hardened inert plain-data state-value contract, fail-closed validation, and explicit ownership/layer rules without cloning legacy `global` or moving gameplay/save authority. See `M2A_GAME_STATE_SCHEMA.md`.
 
 ### M2B State store and selectors
 
