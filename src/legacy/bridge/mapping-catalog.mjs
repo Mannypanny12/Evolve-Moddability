@@ -39,7 +39,7 @@ function readRecord(value, label){
         fail('INVALID_LEGACY_MAPPING', `${label} could not be inspected.`, { label });
     }
 
-    const record = {};
+    const record = Object.create(null);
     for (const key of keys){
         if (typeof key !== 'string'){
             fail('INVALID_LEGACY_MAPPING', `${label} must not contain symbol fields.`, { label });
