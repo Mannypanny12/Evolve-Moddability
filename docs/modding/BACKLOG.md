@@ -134,7 +134,7 @@ M2B does not migrate gameplay authority, modify persistence, or synchronize with
 
 See [M2B_STATE_STORE_SELECTORS.md](M2B_STATE_STORE_SELECTORS.md) for the design authority.
 
-### M2C - Settings and transient-state separation - in progress
+### M2C - Settings and transient-state separation - complete
 
 #### M2C1 - Legacy state classification - complete after hardening
 
@@ -177,7 +177,23 @@ Established the permanent target contract without migrating production authority
 
 See [M2C2_STATE_LAYER_CONTRACT.md](M2C2_STATE_LAYER_CONTRACT.md).
 
-M2C3 closes/enforces the final settings/transient boundary next. M2D remains the first real authoritative state-domain migration.
+#### M2C3 - State-boundary closure - complete
+
+Closed the M2C boundary without migrating production authority:
+
+- direct legacy `global.settings` access is frozen by module and statically visible top-level key in a checked downward-only baseline;
+- dynamic settings access and whole-settings-object exposure are explicit debt classes rather than invisible escape hatches;
+- statically visible `hasOwnProperty()` existence checks are attributed to the setting they inspect;
+- consumer edges for every M2C-managed `vars.js` runtime binding are frozen and can only shrink;
+- the runtime-consumer baseline keyset is fail-closed against the M2C2 contract, including explicit namespace-import debt;
+- generic settings/UI/cache/transient/runtime/migration/debug catch-all roots are permanently prohibited from becoming authoritative `GameState` domains;
+- the M2C gate is a first-class `npm run test:architecture` gate and appears in the architecture report;
+- adversarial tests prove debt increases, unratcheted improvements, new runtime consumers, binding-key drift, scanner edge cases and forbidden GameState roots fail closed;
+- no production settings/UI/transient store was created, no gameplay state was migrated, and `GameState` remains `{ schemaVersion: 1 }` with zero writable roots.
+
+See [M2C3_STATE_BOUNDARY_CLOSURE.md](M2C3_STATE_BOUNDARY_CLOSURE.md).
+
+M2D is next and remains the first real authoritative state-domain migration. M2E follows it with broader GameState ownership, mutation-boundary, selector and state-layer dependency enforcement once a real domain exists.
 
 ## Immediate sequence
 
@@ -218,7 +234,9 @@ M2C1 legacy state classification - complete
    |
 M2C2 state-layer contract - complete
    |
-M2C3 settings/transient boundary closure - next
+M2C3 settings/transient boundary closure - complete
+   |
+M2D first authoritative state-domain migration - next
 ```
 
 Do not jump directly to mod loading, total conversions, or bulk content conversion. Those would lock in legacy assumptions before the engine is ready.
