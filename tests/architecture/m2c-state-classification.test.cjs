@@ -21,8 +21,14 @@ function sortedKeys(value){
     return Object.keys(value).sort();
 }
 
-function mutableVarExports(source){
-    return [...source.matchAll(/^export\s+var\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=/gm)]
+function mutableBindingExports(source){
+    return [...source.matchAll(/^export\s+(?:var|let)\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=/gm)]
+        .map(match => match[1])
+        .sort();
+}
+
+function exportedConstBindings(source){
+    return [...source.matchAll(/^export\s+const\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=/gm)]
         .map(match => match[1])
         .sort();
 }
@@ -58,6 +64,22 @@ test('M2C1 classification entries are complete and use closed vocabulary', () =>
             assert.equal(typeof info.reason, 'string', `${catalogName}.${key}: reason must be documented`);
             assert.ok(info.reason.length > 0, `${catalogName}.${key}: reason must not be empty`);
             assert.equal(typeof info.directMigration, 'boolean', `${catalogName}.${key}: directMigration must be explicit`);
+        }
+    }
+});
+
+test('M2C1 directMigration decisions cannot be omitted', () => {
+    for (const [catalogName, catalog] of [
+        ['settings', SETTING_TARGET_POLICY],
+        ['runtime', RUNTIME_TARGET_POLICY]
+    ]){
+        for (const [key, info] of Object.entries(catalog)){
+            assert.equal(
+                Object.prototype.hasOwnProperty.call(info, 'directMigration'),
+                true,
+                `${catalogName}.${key}: directMigration decision is required`
+            );
+            assert.notEqual(info.directMigration, undefined, `${catalogName}.${key}: directMigration must not default implicitly`);
         }
     }
 });
@@ -120,14 +142,25 @@ test('M2C1 prevents non-authoritative layers from claiming authoritative save pe
     }
 });
 
-test('M2C1 fail-closes exported mutable vars.js runtime buckets', () => {
+test('M2C1 fail-closes exported mutable vars.js bindings', () => {
     const source = fs.readFileSync(path.join(root, 'src', 'vars.js'), 'utf8');
-    const sourceExports = mutableVarExports(source);
+    const sourceExports = mutableBindingExports(source);
 
     assert.deepEqual(
         sortedKeys(RUNTIME_TARGET_POLICY),
         sourceExports,
-        'every exported mutable var binding in vars.js must receive an explicit M2C target classification'
+        'every exported mutable var/let binding in vars.js must receive an explicit M2C target classification'
+    );
+});
+
+test('M2C1 forbids new exported const runtime-state containers in vars.js', () => {
+    const source = fs.readFileSync(path.join(root, 'src', 'vars.js'), 'utf8');
+    const allowedExportedConsts = ['message_filters'];
+
+    assert.deepEqual(
+        exportedConstBindings(source),
+        allowedExportedConsts,
+        'new exported const containers in vars.js require deliberate architectural review; mutable runtime state must not bypass the var/let classification guard'
     );
 });
 
