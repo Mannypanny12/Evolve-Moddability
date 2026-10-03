@@ -71,6 +71,18 @@ test('M1A validates identity components independently', async () => {
     await expectCode(() => assertLocalId('bad//path'), 'INVALID_LOCAL_ID');
 });
 
+test('M1A validation diagnostics stay structured for hostile values', async () => {
+    const { assertNamespace, formatContentId, parseContentId } = await identity();
+    const circular = {};
+    circular.self = circular;
+
+    await expectCode(() => assertNamespace(1n), 'INVALID_NAMESPACE');
+    await expectCode(() => parseContentId(1n), 'INVALID_CONTENT_ID');
+    await expectCode(() => parseContentId(circular), 'INVALID_CONTENT_ID');
+    await expectCode(() => formatContentId(null), 'INVALID_CONTENT_ID');
+    await expectCode(() => formatContentId([]), 'INVALID_CONTENT_ID');
+});
+
 test('M1A canonical-ID predicate never treats malformed or legacy strings as canonical', async () => {
     const { isCanonicalContentId } = await identity();
     assert.equal(isCanonicalContentId('evolve:resource/food'), true);
@@ -78,4 +90,5 @@ test('M1A canonical-ID predicate never treats malformed or legacy strings as can
     assert.equal(isCanonicalContentId('tech-agriculture'), false);
     assert.equal(isCanonicalContentId('evolve:resource/Food'), false);
     assert.equal(isCanonicalContentId(undefined), false);
+    assert.equal(isCanonicalContentId(1n), false);
 });
