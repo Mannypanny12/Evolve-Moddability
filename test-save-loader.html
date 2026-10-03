@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Evolve Test Save Loader</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 720px; margin: 0 auto; padding: 24px; line-height: 1.5; }
+        .card { border: 1px solid #999; border-radius: 10px; padding: 18px; margin: 18px 0; }
+        button, .button-link { display: inline-block; padding: 12px 16px; margin: 8px 8px 8px 0; font-size: 16px; }
+        .button-link { border: 1px solid #777; border-radius: 6px; text-decoration: none; color: inherit; }
+        input[type=file] { display: block; margin: 14px 0; max-width: 100%; }
+        #status { white-space: pre-wrap; font-weight: 600; }
+        .muted { opacity: 0.75; }
+    </style>
+</head>
+<body>
+    <h1>Evolve test save loader</h1>
+    <p>This page is only for testing the Evolve-Moddability build. It imports a normal Evolve exported save file into the same browser storage used by the game.</p>
+
+    <div class="card">
+        <h2>1. Get a public test save</h2>
+        <p>A community-shared save from June 2026 was described as having about 8 MAD resets and 1 Bioseed reset.</p>
+        <a class="button-link" href="https://drive.google.com/file/d/1Jz5s4nk68VY70hRDp9Y753lwAyZDnPMo/view?usp=sharing" target="_blank" rel="noopener noreferrer">Open public save on Google Drive</a>
+        <p class="muted">Download the text file to your phone, then return to this page.</p>
+    </div>
+
+    <div class="card">
+        <h2>2. Import the downloaded file</h2>
+        <input id="saveFile" type="file" accept=".txt,text/plain">
+        <button id="importButton" type="button">Import save and open Evolve</button>
+        <button id="restoreButton" type="button">Restore previous local save</button>
+        <p id="status" aria-live="polite"></p>
+    </div>
+
+    <p><a href="./">Back to Evolve</a></p>
+
+    <script src="lib/lz-string.min.js"></script>
+    <script>
+        const SAVE_KEY = 'evolved';
+        const BACKUP_KEY = 'evolved_before_test_import';
+        const status = document.getElementById('status');
+
+        function setStatus(message) {
+            status.textContent = message;
+        }
+
+        function validateSaveShape(saveState) {
+            return saveState
+                && typeof saveState === 'object'
+                && saveState.evolution
+                && saveState.settings
+                && saveState.stats
+                && Object.prototype.hasOwnProperty.call(saveState.stats, 'plasmid');
+        }
+
+        function sanitizeMessageColors(saveState) {
+            if (!saveState.lastMsg) {
+                return;
+            }
+            if (Array.isArray(saveState.lastMsg)) {
+                for (const message of saveState.lastMsg) {
+                    if (message && typeof message.c === 'string') {
+                        message.c = message.c.replaceAll('"', '');
+                    }
+                }
+                return;
+            }
+            if (typeof saveState.lastMsg === 'object') {
+                for (const queue of Object.values(saveState.lastMsg)) {
+                    if (!Array.isArray(queue)) {
+                        continue;
+                    }
+                    for (const message of queue) {
+                        if (message && typeof message.c === 'string') {
+                            message.c = message.c.replaceAll('"', '');
+                        }
+                    }
+                }
+            }
+        }
+
+        async function importSelectedFile() {
+            const file = document.getElementById('saveFile').files[0];
+            if (!file) {
+                setStatus('Choose the downloaded Evolve save file first.');
+                return;
+            }
+
+            try {
+                let encoded = (await file.text()).trim();
+                if (encoded.charCodeAt(0) === 0xFEFF) {
+                    encoded = encoded.slice(1);
+                }
+
+                const json = LZString.decompressFromBase64(encoded);
+                if (!json) {
+                    throw new Error('The file is not a valid Base64-compressed Evolve export.');
+                }
+
+                const saveState = JSON.parse(json);
+                if (!validateSaveShape(saveState)) {
+                    throw new Error('The file does not have the expected Evolve save structure.');
+                }
+
+                sanitizeMessageColors(saveState);
+
+                const existing = localStorage.getItem(SAVE_KEY);
+                if (existing && !localStorage.getItem(BACKUP_KEY)) {
+                    localStorage.setItem(BACKUP_KEY, existing);
+                }
+
+                localStorage.setItem(SAVE_KEY, LZString.compressToUTF16(JSON.stringify(saveState)));
+                setStatus('Save imported successfully. Opening Evolve...');
+                window.location.href = './';
+            }
+            catch (error) {
+                console.error(error);
+                setStatus('Import failed: ' + (error && error.message ? error.message : String(error)));
+            }
+        }
+
+        function restorePreviousSave() {
+            const backup = localStorage.getItem(BACKUP_KEY);
+            if (!backup) {
+                setStatus('No previous local save backup is available on this device.');
+                return;
+            }
+            localStorage.setItem(SAVE_KEY, backup);
+            localStorage.removeItem(BACKUP_KEY);
+            setStatus('Previous local save restored. Opening Evolve...');
+            window.location.href = './';
+        }
+
+        document.getElementById('importButton').addEventListener('click', importSelectedFile);
+        document.getElementById('restoreButton').addEventListener('click', restorePreviousSave);
+    </script>
+</body>
+</html>
