@@ -109,6 +109,19 @@ test('M1A validates owner, schema version, tags, and required definition presenc
     await expectCode(() => resources.register(missingDefinition), 'INVALID_REGISTRY_ENTRY');
 });
 
+test('M1A registry constructor and diagnostics reject hostile values with structured errors', async () => {
+    const { Registry } = await modules();
+    await expectCode(() => new Registry(null), 'INVALID_REGISTRY_OPTIONS');
+    await expectCode(() => new Registry([]), 'INVALID_REGISTRY_OPTIONS');
+
+    const resources = new Registry({ type: 'resource' });
+    await expectCode(
+        () => resources.register(resourceRecord('evolve:resource/food', [], { schemaVersion: 1n })),
+        'INVALID_SCHEMA_VERSION'
+    );
+    await expectCode(() => resources.resolveAlias(1n), 'INVALID_LEGACY_ALIAS');
+});
+
 test('M1A legacy aliases resolve explicitly and are never normal lookup identities', async () => {
     const { Registry } = await modules();
     const resources = new Registry({ type: 'resource' });
@@ -156,6 +169,26 @@ test('M1A rejects duplicate aliases inside one registration and canonical IDs as
         'INVALID_LEGACY_ALIAS'
     );
     assert.equal(resources.size, 0);
+});
+
+test('M1A rejects sparse tag and alias arrays rather than preserving holes', async () => {
+    const { Registry } = await modules();
+    const resources = new Registry({ type: 'resource' });
+
+    await expectCode(
+        () => resources.register(resourceRecord('evolve:resource/food', new Array(1))),
+        'INVALID_LEGACY_ALIAS'
+    );
+    await expectCode(
+        () => resources.register(resourceRecord('evolve:resource/food', [], { tags: new Array(1) })),
+        'INVALID_TAG'
+    );
+    await expectCode(
+        () => resources.register(resourceRecord('evolve:resource/food', [, 'Food'])),
+        'INVALID_LEGACY_ALIAS'
+    );
+    assert.equal(resources.size, 0);
+    assert.equal(resources.resolveAlias('Food'), undefined);
 });
 
 test('M1A distinguishes a valid unknown ID from malformed input and offers strict getRequired()', async () => {
