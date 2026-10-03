@@ -156,15 +156,19 @@ See [M2C1_LEGACY_STATE_CLASSIFICATION.md](M2C1_LEGACY_STATE_CLASSIFICATION.md).
 
 Established the permanent target contract without migrating production authority:
 
-- closed permanent layers for GameState, application preferences/control, UI session state, derived state, simulation/application working state, runtime/platform services, migration and debug concerns;
+- closed target layers for GameState, application preferences/control, UI session state, derived state, simulation/application working state, runtime/platform services, migration and debug concerns;
+- mixed legacy parents use an explicit no-target decomposition contract instead of being assigned a fake permanent migration owner;
 - orthogonal lifecycle, persistence, simulation-role, migration-disposition and gameplay-reset vocabularies;
 - legal layer combinations are machine-checked;
-- every M2C1 top-level setting/runtime entry normalizes into one M2C2 target contract;
+- every M2C1 top-level setting/runtime entry normalizes into one legal target contract or reviewed no-target decomposition source;
 - behavior-affecting application preferences cross the future engine boundary only as explicit command inputs;
-- `pause` is refined to application/scheduler control instead of target GameState;
-- `show*` and space/Portal/Eden/Tau region flags are derived progression/world projections rather than independent saved UI authority;
+- `pause` is application/scheduler control and `disableReset` is a temporary UI safety latch, with reset-to-default semantics proven against `clearStates()`;
+- `show*` projection flags are explicit fail-closed derived projections rather than name-prefix guesses;
+- space/Portal/Eden/Tau parent containers are decomposed, while each persisted region flag is conservatively translated into future authoritative world/progression information before UI visibility is derived;
+- every current region flag is listed in a fail-closed replacement map so legacy unlock evidence cannot be silently discarded;
 - ARPA navigation is separated from progression-driven ARPA availability;
 - message-filter unlock availability is separated from user visibility/limit/retention preferences;
+- `message_logs` selected view is separated from reconstructed presentation buffers;
 - keyboard mappings and per-resource bar choices remain application-profile preferences;
 - legacy runtime working maps remain reconstructible non-persistent operation context;
 - executable/platform machinery maps to services rather than state;
