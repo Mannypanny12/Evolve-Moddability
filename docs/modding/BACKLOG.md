@@ -48,7 +48,7 @@ The harness must be capable of comparing a future new-system implementation agai
 
 ## M1: Engine kernel and seams
 
-### M1A - Identity and registry kernel ([#6](../../issues/6))
+### M1A - Identity and registry kernel ([#6](../../issues/6)) - complete
 
 Implement:
 
@@ -62,7 +62,7 @@ Implement:
 
 This is an internal engine primitive, not yet a public Mod API.
 
-### M1B - Definition contracts and namespace rules ([#7](../../issues/7))
+### M1B - Definition contracts and namespace rules ([#7](../../issues/7)) - complete
 
 Define:
 
@@ -119,11 +119,11 @@ M0E4 real-browser smoke - complete
    |
 M0E5 architecture/CI guardrails - complete
    |
-M1A identity/registry - current
+M1A identity/registry - complete
    |
-M1B definition contracts
+M1B definition contracts - complete
    |
-M1C environment ports
+M1C environment ports - next
    |
 M1D bridge/inspector
    |

@@ -99,7 +99,7 @@ Implement:
 
 No registry may own mutable save state.
 
-### M1B Definition contracts
+### M1B Definition contracts - complete
 
 Create initial definition contracts for low-risk families:
 
