@@ -129,7 +129,7 @@ Provide browser adapters and deterministic test adapters.
 
 Begin routing newly written engine code through them. Legacy code may continue using old access temporarily.
 
-### M1D Architecture inspector and legacy bridge
+### M1D Architecture inspector and legacy bridge - complete
 
 Create developer tooling that can show:
 
@@ -141,6 +141,8 @@ Create developer tooling that can show:
 Define the temporary bridge between new engine concepts and legacy `global`.
 
 Exit: new engine modules exist with one-way dependency rules, tests, and no dependency on DOM or vanilla content.
+
+The full M1 closure audit is recorded in `M1_CLOSURE_REVIEW.md`. It hardens M1A-D as one unit without beginning M2 state ownership or gameplay migration.
 
 ---
 
