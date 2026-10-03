@@ -99,6 +99,21 @@ Established:
 
 M1D deliberately does not create `GameState` or switch authoritative state. Those begin in M2.
 
+## M2: Explicit state architecture
+
+### M2A - GameState schema - complete
+
+Established:
+
+- an independent `GameState` schema version and explicit minimal root;
+- hardened inert plain-data canonicalization for future state domains;
+- fail-closed rejection of accessors, exotic objects, sparse/extra arrays, non-finite values, cycles, and hostile inspection failures;
+- documented domain ownership and separation between definitions, authoritative state, settings, transients, runtime ports, and persistence;
+- an explicit rule not to clone legacy `global` into the new engine;
+- behavior-neutral regression coverage with legacy gameplay/save authority unchanged.
+
+See [M2A_GAME_STATE_SCHEMA.md](M2A_GAME_STATE_SCHEMA.md) for the design authority.
+
 ## Immediate sequence
 
 ```text
@@ -130,7 +145,9 @@ M1C environment ports - complete
    |
 M1D bridge/inspector - complete
    |
-M2A GameState schema - next
+M2A GameState schema - complete
+   |
+M2B state store/selectors - next
 ```
 
 Do not jump directly to mod loading, total conversions, or bulk content conversion. Those would lock in legacy assumptions before the engine is ready.
