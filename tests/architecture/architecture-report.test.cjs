@@ -8,7 +8,7 @@ const { buildArchitectureReport } = require('./architecture-report.cjs');
 
 const root = path.resolve(__dirname, '..', '..');
 
-test('M1D architecture report is executable and reflects the guarded repository state', async () => {
+test('M1D/M2C3 architecture report is executable and reflects the guarded repository state', async () => {
     const report = await buildArchitectureReport(root);
 
     assert.equal(report.legacy.moduleCount > 0, true);
@@ -17,8 +17,11 @@ test('M1D architecture report is executable and reflects the guarded repository 
     assert.equal(report.protectedLayers.engineFileCount > 0, true);
     assert.equal(report.protectedLayers.platformFileCount > 0, true);
     assert.equal(report.protectedLayers.bridgeFileCount > 0, true);
+    assert.equal(report.stateBoundary.settingsReferenceCount > 0, true);
+    assert.equal(report.stateBoundary.runtimeBindingCount > 0, true);
     assert.equal(report.legacyMappings.size, 2);
     assert.deepEqual(report.gateViolations.architecture, []);
     assert.deepEqual(report.gateViolations.platform, []);
     assert.deepEqual(report.gateViolations.bridge, []);
+    assert.deepEqual(report.gateViolations.stateBoundary, []);
 });
