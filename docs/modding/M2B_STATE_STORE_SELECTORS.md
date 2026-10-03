@@ -26,7 +26,16 @@ M2B deliberately does not add a gameplay domain. The real `GameState` root remai
 
 Construction validates and canonicalizes the input, detaches it from the caller, and deeply freezes the committed representation.
 
-The public store surface is:
+The primitive returns two deliberately separate capabilities:
+
+```text
+{
+    store,
+    mutationAuthority,
+}
+```
+
+The read-side `store` exposes only:
 
 ```text
 read()
@@ -34,10 +43,17 @@ select(selector, ...args)
 snapshot()
 getRevision()
 getLastChange()
+```
+
+The separate internal `mutationAuthority` exposes:
+
+```text
 createMutationScope({ id, fields })
 ```
 
-There is intentionally no generic `set(path, value)`, `patch(object)`, mutable `getState()`, or arbitrary diff application API.
+Consumers that only need reads/selectors must receive only `store`. The ability to mint mutation scopes is retained by the composition/domain-bootstrap layer and handed out as already-scoped capabilities to the systems that own those writes.
+
+There is intentionally no generic `set(path, value)`, `patch(object)`, mutable `getState()`, arbitrary diff application API, or write-authority factory on the normal read facade.
 
 ## Read-only committed state
 
@@ -59,7 +75,10 @@ Selectors:
 - may return primitives or derived/view-model data;
 - may not mutate committed state;
 - may not start a transaction while selection is active;
+- may not mint mutation scopes while selection is active;
 - must be synchronous.
+
+Declared `async` selectors are rejected before invocation. A synchronous selector that returns a Promise or thenable is rejected as well.
 
 M2B intentionally does not add selector registries, memoization, dependency graphs, or presentation-specific view-model machinery. Those can be layered on only when real consumers justify them.
 
@@ -69,27 +88,36 @@ Cross-domain engine code should increasingly prefer selectors/queries over objec
 
 Mutation authority is explicit and top-level scoped.
 
-A store is configured with a closed list of writable root fields. A caller may then request a named scope containing a subset of those fields:
+A store infrastructure instance is configured with a closed list of writable root fields. The retained `mutationAuthority` may then create a named scope containing a subset of those fields:
 
 ```js
-const scope = store.createMutationScope({
+const { store, mutationAuthority } = createStateStore(...);
+
+const resourcesAuthority = mutationAuthority.createMutationScope({
     id: 'resource-system',
     fields: ['resources'],
 });
 ```
 
+The normal read-side `store` does not expose `createMutationScope()`.
+
 Rules:
 
-1. scope IDs are unique per store;
+1. scope IDs are unique per store infrastructure instance;
 2. a scope must contain at least one field;
 3. every field must be declared writable by the store configuration;
 4. undeclared/reserved roots cannot be acquired merely by naming them;
 5. the mutation draft exposes only the roots owned by that scope;
-6. multiple explicitly owned roots may be combined in one scope for future atomic cross-domain operations.
+6. multiple explicitly owned roots may be combined in one scope for future atomic cross-domain operations;
+7. scopes may not be created while a selector or transaction is active.
 
-The real M2B `GameStateStore` configures **zero writable roots** because M2A V1 contains only `schemaVersion`. `schemaVersion` is not normal mutation state. M2D or a later domain migration will extend the GameState schema and explicitly add that domain to the writable-root configuration.
+This is capability separation, not just naming discipline. Code that receives only the read facade cannot manufacture new write authority later.
 
-This avoids inventing fake state merely to exercise the store.
+The real M2B `GameStateStore` configures **zero writable roots** because M2A V1 contains only `schemaVersion`. `schemaVersion` is not normal mutation state. `createGameStateStore()` returns only the read facade and discards the unused mutation-authority capability.
+
+M2D or a later domain migration will extend the GameState schema and create the first real domain authority in the appropriate composition layer. That authority can then be passed specifically to the owning domain service or command path.
+
+This avoids inventing fake state merely to exercise the store and avoids turning possession of the general store into blanket write permission.
 
 ## Transaction model
 
@@ -121,13 +149,16 @@ atomic committed-state replacement
 
 The mutator must be synchronous and return `undefined`.
 
-This deliberately rejects async mutators and avoids allowing a draft or arbitrary transaction result to become part of the store contract. Later command APIs may return structured command results without weakening state mutation authority.
+Declared `async` mutators are rejected before invocation. A non-async callback that returns any value, including a Promise/thenable, is rejected without commit.
 
-A transaction that throws, produces invalid state, violates scope, attempts reentrancy, or otherwise fails leaves:
+This synchronous callback contract is an API boundary, not a JavaScript sandbox: arbitrary callback code could schedule unrelated future work. Such work does not gain access to committed mutable state through the transaction draft, because the draft is detached and never becomes the committed object.
+
+A transaction that throws, produces invalid state, violates scope, attempts reentrancy, tries to mint authority while active, or otherwise fails leaves:
 
 - committed state unchanged;
 - revision unchanged;
-- last committed diagnostic unchanged.
+- last committed diagnostic unchanged;
+- mutation-scope registration unchanged.
 
 The candidate is canonicalized into a new committed tree before publication. Therefore a mutator retaining a draft reference cannot mutate committed state after the transaction finishes.
 
@@ -157,9 +188,10 @@ M2B keeps state access deliberately single-phase:
 - transactions may not nest;
 - transactions may not start while a selector is active;
 - selectors may not run while a transaction is active;
+- mutation scopes may not be created while a selector or transaction is active;
 - selector nesting for read-only composition is permitted.
 
-This avoids stale reads and partially-observed candidates before M3 introduces command orchestration.
+This avoids stale reads, partially observed candidates, and capability-registration changes escaping a failed transaction before M3 introduces command orchestration.
 
 ## Snapshots
 
@@ -207,7 +239,9 @@ kind = add | remove | replace
 
 Paths use escaped JSON Pointer-style notation so content IDs and other keys containing `/` or `~` remain unambiguous.
 
-Diagnostics are observational only. M2B intentionally exposes no `applyDiff()` or reverse-patch mechanism, because that would recreate arbitrary-path mutation authority.
+These records are diagnostic observations only. They are **not JSON Patch**, are not guaranteed to be a minimal edit script, and must not be replayed to mutate state. Array changes in particular describe deterministic before/after differences, not patch semantics.
+
+M2B intentionally exposes no `applyDiff()` or reverse-patch mechanism, because that would recreate arbitrary-path mutation authority.
 
 The store retains only the most recent committed diagnostic. Long-lived trace/history tooling belongs to later developer-tooling milestones.
 
@@ -222,7 +256,8 @@ As real state grows and M4/M5 introduce high-frequency simulation, profiling may
 Any such optimization must preserve the M2B observable contract:
 
 - committed state remains read-only;
-- failed work cannot leak partial mutation;
+- read-side consumers cannot mint write authority;
+- failed work cannot leak partial mutation or scope registration;
 - scopes cannot write unowned roots;
 - snapshots/diagnostics remain deterministic;
 - callers receive no promise of stable object identity.
@@ -237,17 +272,19 @@ It uses:
 
 - `validateGameState` as the validator;
 - the existing M2A root/schema version;
-- no writable gameplay roots yet.
+- no writable gameplay roots yet;
+- only the read-side facade from the generic store infrastructure.
 
 Therefore after M2B:
 
 - legacy `global` is still authoritative for all gameplay;
 - no gameplay reads from the new store;
 - no gameplay writes to the new store;
+- GameState consumers cannot mint mutation scopes;
 - no `GameState`/`global` synchronization exists;
 - save/load/reset flows remain unchanged.
 
-M2D will prove the migration pattern by adding and migrating the first real state domain.
+M2D will prove the migration pattern by adding and migrating the first real state domain and deliberately creating its owning mutation authority in the composition layer.
 
 ## Architecture boundary
 
@@ -273,21 +310,26 @@ M2B introduces no public Mod API promise.
 M2B regression coverage includes:
 
 - detached/deeply frozen committed state;
+- separate read facade and mutation-authority capability;
+- real `GameStateStore` exposing no authority factory;
 - read-only selector behavior;
-- selector/transaction reentrancy rejection;
-- synchronous-selector enforcement;
+- selector/transaction/scope-creation reentrancy rejection;
+- declared-async selector/mutator rejection before invocation;
+- Promise/thenable selector-result rejection;
 - detached deterministic snapshots;
 - successful atomic scoped commit;
-- deterministic JSON Pointer change ordering/escaping;
+- deterministic JSON Pointer add/remove/replace ordering and `/`/`~` escaping;
+- deterministic array diagnostics;
 - no-op revision behavior;
 - rollback after thrown mutators;
 - rollback after invalid candidate state;
 - retained-draft isolation;
 - nested transaction rejection;
-- async mutator rejection;
 - duplicate/forbidden mutation scopes;
+- no leaked scope IDs from failed/reentrant scope creation;
 - validator-induced scope escape rejection;
 - prototype-shaped field safety;
+- transaction-level rejection of cycles, shared references, accessors, exotic objects, sparse/extra arrays, hostile proxies, non-finite values, and excessive depth;
 - real GameState integration with zero premature gameplay authority.
 
 The complete M0/M1/M2A architecture, build, simulation, oracle, and browser safety net remains required.
@@ -312,13 +354,14 @@ M2B does not implement:
 M2B is complete when:
 
 1. committed state cannot be mutated through public read references;
-2. synchronous selectors can query state without obtaining write authority;
-3. all writes require an explicit named mutation scope;
-4. transactions are detached, validated, scope-checked, and atomic;
-5. failed transactions leave state/revision/diagnostics unchanged;
-6. snapshots are deterministic, detached, and immutable;
-7. state-changing commits produce deterministic revision/change diagnostics;
-8. nested/async/reentrant mutation paths fail closed;
-9. real GameState gains no invented domain or premature gameplay authority;
-10. schema version/save/oracle/legacy behavior remains unchanged;
-11. dedicated M2B tests and the complete existing CI safety net are green.
+2. synchronous selectors can query state without obtaining or minting write authority;
+3. mutation-authority creation is separate from the normal read facade;
+4. all writes require an explicit named mutation scope supplied by retained internal authority;
+5. transactions are detached, validated, scope-checked, and atomic;
+6. failed transactions leave state/revision/diagnostics/scope registration unchanged;
+7. snapshots are deterministic, detached, and immutable;
+8. state-changing commits produce deterministic observational revision/change diagnostics;
+9. nested/async/reentrant mutation and authority-minting paths fail closed;
+10. real GameState gains no invented domain or premature gameplay authority;
+11. schema version/save/oracle/legacy behavior remains unchanged;
+12. dedicated M2B unit/hardening tests and the complete existing CI safety net are green.
