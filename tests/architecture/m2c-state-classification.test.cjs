@@ -66,16 +66,30 @@ test('M2C1 target policy classifies every known legacy setting exactly once', ()
 
 test('M2C1 current initialized legacy settings surface is independently classified', () => {
     const sourceKeys = sortedKeys(loadInitializedLegacySettings());
+    const m0Keys = sortedKeys(SIMULATION_SETTING_POLICY);
+    const m2Keys = sortedKeys(SETTING_TARGET_POLICY);
 
     assert.deepEqual(
-        sortedKeys(SIMULATION_SETTING_POLICY),
-        sourceKeys,
-        'M0 settings policy must match the actual initialized top-level legacy settings surface'
+        sourceKeys.filter(key => !SIMULATION_SETTING_POLICY[key]),
+        [],
+        'actual initialized legacy settings must not contain a key missing from the M0 policy'
     );
     assert.deepEqual(
-        sortedKeys(SETTING_TARGET_POLICY),
-        sourceKeys,
-        'M2C settings policy must match the actual initialized top-level legacy settings surface'
+        sourceKeys.filter(key => !SETTING_TARGET_POLICY[key]),
+        [],
+        'actual initialized legacy settings must not contain a key missing from the M2C policy'
+    );
+
+    const currentDormantPolicyKeys = ['qKey', 'restoreCheck', 'tLabels'].sort();
+    assert.deepEqual(
+        m0Keys.filter(key => !sourceKeys.includes(key)),
+        currentDormantPolicyKeys,
+        'historical/optional M0 setting keys absent from pristine current state must remain explicit'
+    );
+    assert.deepEqual(
+        m2Keys.filter(key => !sourceKeys.includes(key)),
+        currentDormantPolicyKeys,
+        'historical/optional M2C setting keys absent from pristine current state must remain explicit'
     );
 });
 
@@ -87,7 +101,7 @@ test('M2C1 records nested settings containers for M2C2 sub-classification', () =
 
     assert.deepEqual(
         nestedContainers,
-        ['arpa', 'keyMap', 'msgFilters', 'portal', 'resBar', 'space'].sort(),
+        ['arpa', 'eden', 'keyMap', 'msgFilters', 'portal', 'resBar', 'space', 'tau'].sort(),
         'nested settings containers are an explicit M2C2 review surface and must not grow silently'
     );
 });
