@@ -9,14 +9,88 @@ function freezeArray(values){
     return Object.freeze(values);
 }
 
+function readPropertyWithoutAccessors(value, key, fallback){
+    if (value === null || (typeof value !== 'object' && typeof value !== 'function')) return fallback;
+
+    const seen = new Set();
+    let current = value;
+    while (current !== null && !seen.has(current)){
+        seen.add(current);
+        let descriptor;
+        try {
+            descriptor = Object.getOwnPropertyDescriptor(current, key);
+        }
+        catch {
+            return fallback;
+        }
+        if (descriptor){
+            return Object.prototype.hasOwnProperty.call(descriptor, 'value')
+                ? descriptor.value
+                : fallback;
+        }
+        try {
+            current = Object.getPrototypeOf(current);
+        }
+        catch {
+            return fallback;
+        }
+    }
+    return fallback;
+}
+
 function safePrimitive(value){
     switch (typeof value){
         case 'undefined': return '<undefined>';
         case 'bigint': return `${value}n`;
         case 'symbol': return String(value);
-        case 'function': return `[function ${value.name || 'anonymous'}]`;
+        case 'function': {
+            const name = readPropertyWithoutAccessors(value, 'name', 'anonymous');
+            return `[function ${typeof name === 'string' && name.length > 0 ? name : 'anonymous'}]`;
+        }
         default: return value;
     }
+}
+
+function isErrorObject(value){
+    if (value === null || typeof value !== 'object') return false;
+    const seen = new Set();
+    let current = value;
+    while (current !== null && !seen.has(current)){
+        if (current === Error.prototype) return true;
+        seen.add(current);
+        try {
+            current = Object.getPrototypeOf(current);
+        }
+        catch {
+            return false;
+        }
+    }
+    return false;
+}
+
+function defineSnapshotField(target, key, value){
+    Object.defineProperty(target, key, {
+        value,
+        enumerable: true,
+        writable: false,
+        configurable: false,
+    });
+}
+
+function uniqueSymbolLabel(copy, key, index){
+    let base;
+    try {
+        base = `[$symbol:${String(key.description ?? index)}]`;
+    }
+    catch {
+        base = `[$symbol:${index}]`;
+    }
+    let label = base;
+    let suffix = 1;
+    while (Object.prototype.hasOwnProperty.call(copy, label)){
+        label = `${base}#${suffix++}`;
+    }
+    return label;
 }
 
 function snapshotValue(value, ancestors = new Set()){
@@ -39,10 +113,12 @@ function snapshotValue(value, ancestors = new Set()){
     }
 
     if (!isArray && prototype !== Object.prototype && prototype !== null){
-        if (value instanceof Error){
+        if (isErrorObject(value)){
+            const name = readPropertyWithoutAccessors(value, 'name', 'Error');
+            const message = readPropertyWithoutAccessors(value, 'message', '<unreadable>');
             return Object.freeze({
-                name: typeof value.name === 'string' ? value.name : 'Error',
-                message: typeof value.message === 'string' ? value.message : '<unreadable>',
+                name: typeof name === 'string' ? name : 'Error',
+                message: typeof message === 'string' ? message : '<unreadable>',
             });
         }
         return '<non-plain-object>';
@@ -88,30 +164,18 @@ function snapshotValue(value, ancestors = new Set()){
                 descriptor = Object.getOwnPropertyDescriptor(value, key);
             }
             catch {
-                Object.defineProperty(copy, key, {
-                    value: '<uninspectable>',
-                    enumerable: true,
-                });
+                defineSnapshotField(copy, key, '<uninspectable>');
                 continue;
             }
             const snap = descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')
                 ? snapshotValue(descriptor.value, ancestors)
                 : '<accessor>';
-            Object.defineProperty(copy, key, {
-                value: snap,
-                enumerable: true,
-            });
+            defineSnapshotField(copy, key, snap);
         }
 
         for (let index = 0; index < symbolKeys.length; index++){
             const key = symbolKeys[index];
-            let label;
-            try {
-                label = `[$symbol:${String(key.description ?? index)}]`;
-            }
-            catch {
-                label = `[$symbol:${index}]`;
-            }
+            const label = uniqueSymbolLabel(copy, key, index);
             let descriptor;
             try {
                 descriptor = Object.getOwnPropertyDescriptor(value, key);
@@ -119,12 +183,13 @@ function snapshotValue(value, ancestors = new Set()){
             catch {
                 descriptor = undefined;
             }
-            Object.defineProperty(copy, label, {
-                value: descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')
+            defineSnapshotField(
+                copy,
+                label,
+                descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')
                     ? snapshotValue(descriptor.value, ancestors)
-                    : '<accessor-or-uninspectable>',
-                enumerable: true,
-            });
+                    : '<accessor-or-uninspectable>'
+            );
         }
 
         return Object.freeze(copy);
@@ -170,31 +235,74 @@ export function inspectRegistry(registry){
     });
 }
 
-export function inspectRegistries(registries){
-    if (!Array.isArray(registries)){
+function inspectRegistryArray(registries){
+    let isArray;
+    let lengthDescriptor;
+    try {
+        isArray = Array.isArray(registries);
+        if (isArray){
+            lengthDescriptor = Object.getOwnPropertyDescriptor(registries, 'length');
+        }
+    }
+    catch {
+        isArray = false;
+    }
+    if (!isArray || !lengthDescriptor || !Number.isSafeInteger(lengthDescriptor.value) || lengthDescriptor.value < 0){
         fail('INVALID_INSPECTION_TARGET', 'Registry inspector collection must be an array.', { target: snapshotValue(registries) });
     }
 
-    const snapshots = Array.from(registries, registry => inspectRegistry(registry));
+    const snapshots = new Array(lengthDescriptor.value);
+    for (let index = 0; index < lengthDescriptor.value; index++){
+        let descriptor;
+        try {
+            descriptor = Object.getOwnPropertyDescriptor(registries, String(index));
+        }
+        catch {
+            fail('INVALID_INSPECTION_TARGET', `Registry inspector collection item ${index} could not be inspected.`, { index });
+        }
+        if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value') || !descriptor.enumerable){
+            fail('INVALID_INSPECTION_TARGET', 'Registry inspector collection must be dense and contain data items.', { index });
+        }
+        snapshots[index] = inspectRegistry(descriptor.value);
+    }
+    return snapshots;
+}
+
+export function inspectRegistries(registries){
+    const snapshots = inspectRegistryArray(registries);
     snapshots.sort((a, b) => a.family.localeCompare(b.family));
     return freezeArray(snapshots);
 }
 
 export function inspectContractError(error){
-    if (!(error instanceof EngineContractError)){
+    let contractError = false;
+    try {
+        contractError = error instanceof EngineContractError;
+    }
+    catch {
+        contractError = false;
+    }
+
+    if (!contractError){
+        const name = readPropertyWithoutAccessors(error, 'name', typeof error);
+        const message = readPropertyWithoutAccessors(error, 'message', '<non-contract error>');
         return Object.freeze({
             contractError: false,
-            name: error && typeof error.name === 'string' ? error.name : typeof error,
-            message: error && typeof error.message === 'string' ? error.message : '<non-contract error>',
+            name: typeof name === 'string' ? name : typeof error,
+            message: typeof message === 'string' ? message : '<non-contract error>',
             details: snapshotValue(error),
         });
     }
 
+    const name = readPropertyWithoutAccessors(error, 'name', 'EngineContractError');
+    const code = readPropertyWithoutAccessors(error, 'code', '<unreadable>');
+    const message = readPropertyWithoutAccessors(error, 'message', '<unreadable>');
+    const details = readPropertyWithoutAccessors(error, 'details', undefined);
     return Object.freeze({
         contractError: true,
-        name: error.name,
-        code: error.code,
-        message: error.message,
-        details: snapshotValue(error.details),
+        name: typeof name === 'string' ? name : 'EngineContractError',
+        code: typeof code === 'string' ? code : '<unreadable>',
+        message: typeof message === 'string' ? message : '<unreadable>',
+        details: snapshotValue(details),
     });
 }
