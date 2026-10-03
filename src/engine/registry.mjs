@@ -2,6 +2,7 @@ import {
     EngineContractError,
     assertContentType,
     assertNamespace,
+    describeContractValue,
     isCanonicalContentId,
     parseContentId,
 } from './identity.mjs';
@@ -12,28 +13,42 @@ function fail(code, message, details){
 
 function isPlainObject(value){
     if (value === null || typeof value !== 'object') return false;
-    const prototype = Object.getPrototypeOf(value);
-    return prototype === Object.prototype || prototype === null;
+    try {
+        const prototype = Object.getPrototypeOf(value);
+        return prototype === Object.prototype || prototype === null;
+    }
+    catch {
+        return false;
+    }
 }
 
 function validateOwner(owner){
     if (!isPlainObject(owner)){
-        fail('INVALID_OWNER', 'Registry entry owner must be an object.', { owner });
+        fail('INVALID_OWNER', 'Registry entry owner must be a plain object.', { owner });
     }
 
-    const { packageId, source } = owner;
+    let packageId;
+    let source;
+    try {
+        packageId = owner.packageId;
+        source = owner.source;
+    }
+    catch {
+        fail('INVALID_OWNER', 'Registry entry owner fields could not be read.', { owner });
+    }
+
     try {
         assertNamespace(packageId);
     }
     catch (error){
         if (error instanceof EngineContractError){
-            fail('INVALID_OWNER', `Invalid owner package ID: ${JSON.stringify(packageId)}.`, { packageId, source });
+            fail('INVALID_OWNER', `Invalid owner package ID: ${describeContractValue(packageId)}.`, { packageId, source });
         }
         throw error;
     }
 
     if (typeof source !== 'string' || source.length === 0 || source.trim() !== source){
-        fail('INVALID_OWNER', `Invalid owner source: ${JSON.stringify(source)}.`, { packageId, source });
+        fail('INVALID_OWNER', `Invalid owner source: ${describeContractValue(source)}.`, { packageId, source });
     }
 
     return Object.freeze({ packageId, source });
@@ -41,7 +56,7 @@ function validateOwner(owner){
 
 function validateSchemaVersion(schemaVersion){
     if (!Number.isSafeInteger(schemaVersion) || schemaVersion < 1){
-        fail('INVALID_SCHEMA_VERSION', `Schema version must be a positive safe integer, got ${JSON.stringify(schemaVersion)}.`, { schemaVersion });
+        fail('INVALID_SCHEMA_VERSION', `Schema version must be a positive safe integer, got ${describeContractValue(schemaVersion)}.`, { schemaVersion });
     }
     return schemaVersion;
 }
@@ -52,12 +67,12 @@ function validateTags(tags = []){
     }
 
     const seen = new Set();
-    const copy = tags.map(tag => {
+    const copy = Array.from(tags, tag => {
         if (typeof tag !== 'string' || tag.length === 0 || tag.trim() !== tag){
-            fail('INVALID_TAG', `Invalid registry tag: ${JSON.stringify(tag)}.`, { tag });
+            fail('INVALID_TAG', `Invalid registry tag: ${describeContractValue(tag)}.`, { tag });
         }
         if (seen.has(tag)){
-            fail('INVALID_TAG', `Duplicate registry tag: ${JSON.stringify(tag)}.`, { tag });
+            fail('INVALID_TAG', `Duplicate registry tag: ${describeContractValue(tag)}.`, { tag });
         }
         seen.add(tag);
         return tag;
@@ -71,15 +86,15 @@ function validateAliases(aliases = []){
     }
 
     const seen = new Set();
-    const copy = aliases.map(alias => {
+    const copy = Array.from(aliases, alias => {
         if (typeof alias !== 'string' || alias.length === 0 || alias.trim() !== alias){
-            fail('INVALID_LEGACY_ALIAS', `Invalid legacy alias: ${JSON.stringify(alias)}.`, { alias });
+            fail('INVALID_LEGACY_ALIAS', `Invalid legacy alias: ${describeContractValue(alias)}.`, { alias });
         }
         if (isCanonicalContentId(alias)){
-            fail('INVALID_LEGACY_ALIAS', `Legacy alias must not be a canonical content ID: ${JSON.stringify(alias)}.`, { alias });
+            fail('INVALID_LEGACY_ALIAS', `Legacy alias must not be a canonical content ID: ${describeContractValue(alias)}.`, { alias });
         }
         if (seen.has(alias)){
-            fail('DUPLICATE_LEGACY_ALIAS', `Duplicate legacy alias in one registration: ${JSON.stringify(alias)}.`, { alias });
+            fail('DUPLICATE_LEGACY_ALIAS', `Duplicate legacy alias in one registration: ${describeContractValue(alias)}.`, { alias });
         }
         seen.add(alias);
         return alias;
@@ -96,8 +111,11 @@ export class Registry {
     #entries = new Map();
     #aliases = new Map();
 
-    constructor({ type } = {}){
-        this.#type = assertContentType(type);
+    constructor(options = {}){
+        if (!isPlainObject(options)){
+            fail('INVALID_REGISTRY_OPTIONS', 'Registry options must be a plain object.', { options });
+        }
+        this.#type = assertContentType(options.type);
     }
 
     get type(){
@@ -110,22 +128,22 @@ export class Registry {
 
     register(record){
         if (!isPlainObject(record)){
-            fail('INVALID_REGISTRY_ENTRY', 'Registry entry must be an object.', { record });
+            fail('INVALID_REGISTRY_ENTRY', 'Registry entry must be a plain object.', { record });
         }
 
         const parsed = parseContentId(record.id);
         if (parsed.type !== this.#type){
             fail(
                 'REGISTRY_TYPE_MISMATCH',
-                `Registry type ${JSON.stringify(this.#type)} cannot register content type ${JSON.stringify(parsed.type)}.`,
+                `Registry type ${describeContractValue(this.#type)} cannot register content type ${describeContractValue(parsed.type)}.`,
                 { registryType: this.#type, contentType: parsed.type, id: parsed.canonical }
             );
         }
         if (this.#entries.has(parsed.canonical)){
-            fail('DUPLICATE_CONTENT_ID', `Duplicate content ID ${JSON.stringify(parsed.canonical)}.`, { id: parsed.canonical });
+            fail('DUPLICATE_CONTENT_ID', `Duplicate content ID ${describeContractValue(parsed.canonical)}.`, { id: parsed.canonical });
         }
         if (!Object.prototype.hasOwnProperty.call(record, 'definition')){
-            fail('INVALID_REGISTRY_ENTRY', `Registry entry ${JSON.stringify(parsed.canonical)} is missing a definition.`, { id: parsed.canonical });
+            fail('INVALID_REGISTRY_ENTRY', `Registry entry ${describeContractValue(parsed.canonical)} is missing a definition.`, { id: parsed.canonical });
         }
 
         const owner = validateOwner(record.owner);
@@ -138,7 +156,7 @@ export class Registry {
             if (existing !== undefined){
                 fail(
                     'DUPLICATE_LEGACY_ALIAS',
-                    `Legacy alias ${JSON.stringify(alias)} is already mapped to ${JSON.stringify(existing)}.`,
+                    `Legacy alias ${describeContractValue(alias)} is already mapped to ${describeContractValue(existing)}.`,
                     { alias, existingId: existing, requestedId: parsed.canonical }
                 );
             }
@@ -165,7 +183,7 @@ export class Registry {
         if (parsed.type !== this.#type){
             fail(
                 'REGISTRY_TYPE_MISMATCH',
-                `Registry type ${JSON.stringify(this.#type)} cannot access content type ${JSON.stringify(parsed.type)}.`,
+                `Registry type ${describeContractValue(this.#type)} cannot access content type ${describeContractValue(parsed.type)}.`,
                 { registryType: this.#type, contentType: parsed.type, id: parsed.canonical }
             );
         }
@@ -184,14 +202,14 @@ export class Registry {
         const canonical = this.#parseForThisRegistry(id);
         const entry = this.#entries.get(canonical);
         if (entry === undefined){
-            fail('UNKNOWN_CONTENT_ID', `Unknown content ID ${JSON.stringify(canonical)}.`, { id: canonical });
+            fail('UNKNOWN_CONTENT_ID', `Unknown content ID ${describeContractValue(canonical)}.`, { id: canonical });
         }
         return entry;
     }
 
     resolveAlias(alias){
         if (typeof alias !== 'string' || alias.length === 0 || alias.trim() !== alias || isCanonicalContentId(alias)){
-            fail('INVALID_LEGACY_ALIAS', `Invalid legacy alias: ${JSON.stringify(alias)}.`, { alias });
+            fail('INVALID_LEGACY_ALIAS', `Invalid legacy alias: ${describeContractValue(alias)}.`, { alias });
         }
         return this.#aliases.get(alias);
     }
