@@ -156,111 +156,47 @@ const LAYER_RULES = Object.freeze({
     }),
 });
 
-function stateContract({
-    targetLayer,
-    lifecycle,
-    persistence,
-    simulationRole,
-    migrationDisposition,
-    resetBehavior,
-    owner,
-    reason,
-}){
-    return Object.freeze({
-        targetLayer,
-        lifecycle,
-        persistence,
-        simulationRole,
-        migrationDisposition,
-        resetBehavior,
-        owner,
-        reason,
-    });
+function stateContract({ targetLayer, lifecycle, persistence, simulationRole, migrationDisposition, resetBehavior, owner, reason }){
+    return Object.freeze({ targetLayer, lifecycle, persistence, simulationRole, migrationDisposition, resetBehavior, owner, reason });
 }
 
 const SHOW_PROJECTION_SETTINGS = Object.freeze([
-    'showAchieve',
-    'showAlchemy',
-    'showCargo',
-    'showCity',
-    'showCiv',
-    'showCivic',
-    'showDeep',
-    'showEden',
-    'showEjector',
-    'showEvolve',
-    'showGalactic',
-    'showGenetics',
-    'showGovernor',
-    'showIndustry',
-    'showMarket',
-    'showMechLab',
-    'showMil',
-    'showOuter',
-    'showPortal',
-    'showPowerGrid',
-    'showPsychic',
-    'showResearch',
-    'showResources',
-    'showShipYard',
-    'showSpace',
-    'showStorage',
-    'showTau',
-    'showWish',
+    'showAchieve', 'showAlchemy', 'showCargo', 'showCity', 'showCiv', 'showCivic', 'showDeep',
+    'showEden', 'showEjector', 'showEvolve', 'showGalactic', 'showGenetics', 'showGovernor',
+    'showIndustry', 'showMarket', 'showMechLab', 'showMil', 'showOuter', 'showPortal',
+    'showPowerGrid', 'showPsychic', 'showResearch', 'showResources', 'showShipYard', 'showSpace',
+    'showStorage', 'showTau', 'showWish',
 ]);
 const SHOW_PROJECTION_SET = new Set(SHOW_PROJECTION_SETTINGS);
 
 function settingContract(name, info){
     if (name === 'pause'){
         return stateContract({
-            targetLayer: 'application-control',
-            lifecycle: 'application-session',
-            persistence: 'application-session',
-            simulationRole: 'scheduling-gate',
-            migrationDisposition: 'translate',
-            resetBehavior: 'reset-to-default',
+            targetLayer: 'application-control', lifecycle: 'application-session', persistence: 'application-session',
+            simulationRole: 'scheduling-gate', migrationDisposition: 'translate', resetBehavior: 'reset-to-default',
             owner: 'application scheduler/command-dispatch control',
             reason: 'Pause gates scheduling and dispatch, but legacy gameplay resets explicitly clear it. It is session control rather than authoritative simulation state or a durable profile preference.',
         });
     }
-
     if (name === 'disableReset'){
         return stateContract({
-            targetLayer: 'ui-session',
-            lifecycle: 'application-session',
-            persistence: 'none',
-            simulationRole: 'none',
-            migrationDisposition: 'translate',
-            resetBehavior: 'reset-to-default',
-            owner: 'application destructive-action safety UI',
+            targetLayer: 'ui-session', lifecycle: 'application-session', persistence: 'none', simulationRole: 'none',
+            migrationDisposition: 'translate', resetBehavior: 'reset-to-default', owner: 'application destructive-action safety UI',
             reason: 'disableReset is a temporary confirmation/safety latch for reset controls. Legacy reset handling explicitly clears it, so it must not become a persistent application-profile preference.',
         });
     }
-
     if (name === 'arpa' || name === 'msgFilters'){
         return stateContract({
-            targetLayer: 'migration',
-            lifecycle: 'import',
-            persistence: 'import-only',
-            simulationRole: 'none',
-            migrationDisposition: 'decompose',
-            resetBehavior: 'import-only',
-            owner: 'legacy settings importer plus nested target owners',
+            targetLayer: 'migration', lifecycle: 'import', persistence: 'import-only', simulationRole: 'none',
+            migrationDisposition: 'decompose', resetBehavior: 'import-only', owner: 'legacy settings importer plus nested target owners',
             reason: `${name} is a mixed legacy container whose nested members have different target owners and must be decomposed.`,
         });
     }
-
     if (['space', 'portal', 'eden', 'tau'].includes(name) || SHOW_PROJECTION_SET.has(name)){
         return stateContract({
-            targetLayer: 'derived-state',
-            lifecycle: 'application-session',
-            persistence: 'none',
-            simulationRole: 'derived-read-only',
-            migrationDisposition: 'derive',
-            resetBehavior: 'recompute',
-            owner: name === 'showCivic'
-                ? 'progression/unlock selectors plus UI projection'
-                : 'progression/world selectors plus UI projection',
+            targetLayer: 'derived-state', lifecycle: 'application-session', persistence: 'none', simulationRole: 'derived-read-only',
+            migrationDisposition: 'derive', resetBehavior: 'recompute',
+            owner: name === 'showCivic' ? 'progression/unlock selectors plus UI projection' : 'progression/world selectors plus UI projection',
             reason: 'Legacy visibility/unlock mirrors should be derived from authoritative progression/world facts instead of becoming independent saved UI authority.',
         });
     }
@@ -310,15 +246,9 @@ function settingContract(name, info){
 function runtimeContract(name, info){
     if (name === 'message_logs' || name === 'tmp_vars'){
         return stateContract({
-            targetLayer: 'migration',
-            lifecycle: 'import',
-            persistence: 'import-only',
-            simulationRole: 'none',
-            migrationDisposition: 'decompose',
-            resetBehavior: 'import-only',
-            owner: name === 'message_logs'
-                ? 'legacy message presentation container plus nested application owners'
-                : 'legacy scratch container plus capability-local future owners',
+            targetLayer: 'migration', lifecycle: 'import', persistence: 'import-only', simulationRole: 'none',
+            migrationDisposition: 'decompose', resetBehavior: 'import-only',
+            owner: name === 'message_logs' ? 'legacy message presentation container plus nested application owners' : 'legacy scratch container plus capability-local future owners',
             reason: `${name} is a mixed legacy runtime container and must be decomposed rather than recreated as one permanent target bucket.`,
         });
     }
@@ -368,7 +298,6 @@ function runtimeContract(name, info){
 const SETTING_STATE_CONTRACT = Object.freeze(Object.fromEntries(
     Object.entries(SETTING_TARGET_POLICY).map(([name, info]) => [name, settingContract(name, info)])
 ));
-
 const RUNTIME_STATE_CONTRACT = Object.freeze(Object.fromEntries(
     Object.entries(RUNTIME_TARGET_POLICY).map(([name, info]) => [name, runtimeContract(name, info)])
 ));
@@ -382,56 +311,49 @@ const NESTED_SETTING_RULES = Object.freeze([
         id: 'arpa-selected-tab', pattern: /^arpa\.arpaTabs$/,
         classification: stateContract({
             targetLayer: 'ui-session', lifecycle: 'application-session', persistence: 'application-session', simulationRole: 'none',
-            migrationDisposition: 'direct', resetBehavior: 'session-defined', owner: 'application ARPA navigation',
-            reason: 'Selected ARPA tab is navigation state, not progression authority.',
+            migrationDisposition: 'direct', resetBehavior: 'session-defined', owner: 'application ARPA navigation', reason: 'Selected ARPA tab is navigation state, not progression authority.',
         }),
     }),
     nestedRule({
         id: 'arpa-availability', pattern: /^arpa\.(physics|genetics|crispr|blood)$/,
         classification: stateContract({
             targetLayer: 'derived-state', lifecycle: 'application-session', persistence: 'none', simulationRole: 'derived-read-only',
-            migrationDisposition: 'derive', resetBehavior: 'recompute', owner: 'progression selectors plus ARPA UI projection',
-            reason: 'ARPA section availability is driven by progression and should be derived from authoritative facts.',
+            migrationDisposition: 'derive', resetBehavior: 'recompute', owner: 'progression selectors plus ARPA UI projection', reason: 'ARPA section availability is driven by progression and should be derived from authoritative facts.',
         }),
     }),
     nestedRule({
         id: 'world-region-availability', pattern: /^(space|portal|eden|tau)\.[^.]+$/,
         classification: stateContract({
             targetLayer: 'derived-state', lifecycle: 'application-session', persistence: 'none', simulationRole: 'derived-read-only',
-            migrationDisposition: 'derive', resetBehavior: 'recompute', owner: 'progression/world selectors plus UI projection',
-            reason: 'Region availability mirrors gameplay progression and should be projected from authoritative world/progression state.',
+            migrationDisposition: 'derive', resetBehavior: 'recompute', owner: 'progression/world selectors plus UI projection', reason: 'Region availability mirrors gameplay progression and should be projected from authoritative world/progression state.',
         }),
     }),
     nestedRule({
         id: 'keyboard-mapping', pattern: /^keyMap\.[^.]+$/,
         classification: stateContract({
             targetLayer: 'application-preference', lifecycle: 'application-profile', persistence: 'application-preference', simulationRole: 'none',
-            migrationDisposition: 'direct', resetBehavior: 'survive-gameplay-reset', owner: 'application input settings',
-            reason: 'Keyboard mappings are user preferences.',
+            migrationDisposition: 'direct', resetBehavior: 'survive-gameplay-reset', owner: 'application input settings', reason: 'Keyboard mappings are user preferences.',
         }),
     }),
     nestedRule({
         id: 'message-filter-availability', pattern: /^msgFilters\.[^.]+\.unlocked$/,
         classification: stateContract({
             targetLayer: 'derived-state', lifecycle: 'application-session', persistence: 'none', simulationRole: 'derived-read-only',
-            migrationDisposition: 'derive', resetBehavior: 'recompute', owner: 'progression/message-capability selector',
-            reason: 'Whether a message category is available is a progression/capability projection, not a user preference.',
+            migrationDisposition: 'derive', resetBehavior: 'recompute', owner: 'progression/message-capability selector', reason: 'Whether a message category is available is a progression/capability projection, not a user preference.',
         }),
     }),
     nestedRule({
         id: 'message-filter-preference', pattern: /^msgFilters\.[^.]+\.(vis|max|save)$/,
         classification: stateContract({
             targetLayer: 'application-preference', lifecycle: 'application-profile', persistence: 'application-preference', simulationRole: 'none',
-            migrationDisposition: 'direct', resetBehavior: 'survive-gameplay-reset', owner: 'application message settings',
-            reason: 'Message visibility, display limit and retention limit are user preferences.',
+            migrationDisposition: 'direct', resetBehavior: 'survive-gameplay-reset', owner: 'application message settings', reason: 'Message visibility, display limit and retention limit are user preferences.',
         }),
     }),
     nestedRule({
         id: 'resource-bar-preference', pattern: /^resBar\.[^.]+$/,
         classification: stateContract({
             targetLayer: 'application-preference', lifecycle: 'application-profile', persistence: 'application-preference', simulationRole: 'none',
-            migrationDisposition: 'translate', resetBehavior: 'survive-gameplay-reset', owner: 'application resource presentation settings',
-            reason: 'Per-resource bar visibility is a user preference and should later use canonical resource IDs.',
+            migrationDisposition: 'translate', resetBehavior: 'survive-gameplay-reset', owner: 'application resource presentation settings', reason: 'Per-resource bar visibility is a user preference and should later use canonical resource IDs.',
         }),
     }),
 ]);
@@ -441,16 +363,14 @@ const NESTED_RUNTIME_RULES = Object.freeze([
         id: 'message-log-selected-view', pattern: /^message_logs\.view$/,
         classification: stateContract({
             targetLayer: 'ui-session', lifecycle: 'application-session', persistence: 'application-session', simulationRole: 'none',
-            migrationDisposition: 'direct', resetBehavior: 'session-defined', owner: 'application message-view navigation',
-            reason: 'The selected message category is UI-session state.',
+            migrationDisposition: 'direct', resetBehavior: 'session-defined', owner: 'application message-view navigation', reason: 'The selected message category is UI-session state.',
         }),
     }),
     nestedRule({
-        id: 'message-log-buffer', pattern: /^message_logs\.[^.]+$/,
+        id: 'message-log-buffer', pattern: /^message_logs\.(?!view$)[^.]+$/,
         classification: stateContract({
             targetLayer: 'application-working', lifecycle: 'process', persistence: 'none', simulationRole: 'none',
-            migrationDisposition: 'reconstruct', resetBehavior: 'recreate-runtime', owner: 'application message presentation buffers',
-            reason: 'Per-category rendered message buffers are rebuilt at startup from the persisted legacy message history and are not independently authoritative.',
+            migrationDisposition: 'reconstruct', resetBehavior: 'recreate-runtime', owner: 'application message presentation buffers', reason: 'Per-category rendered message buffers are rebuilt at startup from the persisted legacy message history and are not independently authoritative.',
         }),
     }),
 ]);
@@ -463,7 +383,6 @@ const EXPECTED_FIXED_NESTED_KEYS = Object.freeze({
     tau: freezeList(['home', 'red', 'roid', 'gas', 'gas2', 'star']),
     keyMap: freezeList(['x10', 'x25', 'x100', 'q', 'showCiv', 'showCivic', 'showResearch', 'showResources', 'showGenetics', 'showAchieve', 'settings']),
 });
-
 const EXPECTED_MESSAGE_LOG_FILTERS = Object.freeze([
     'all', 'progress', 'queue', 'building_queue', 'research_queue', 'combat', 'spy', 'events', 'major_events', 'minor_events', 'achievements', 'hell',
 ]);
@@ -471,7 +390,6 @@ const EXPECTED_MESSAGE_LOG_FILTERS = Object.freeze([
 function matchNestedSettingPath(path){
     return NESTED_SETTING_RULES.filter(rule => rule.pattern.test(path));
 }
-
 function matchNestedRuntimePath(path){
     return NESTED_RUNTIME_RULES.filter(rule => rule.pattern.test(path));
 }
