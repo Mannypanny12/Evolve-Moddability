@@ -33,7 +33,7 @@ function fixtureState(){
     };
 }
 
-function createFixtureStore(createStateStore, canonicalizeStateValue, options = {}){
+function createFixtureInfrastructure(createStateStore, canonicalizeStateValue, options = {}){
     return createStateStore({
         initialState: options.initialState ?? fixtureState(),
         validateState: options.validateState ?? (value => canonicalizeStateValue(value, 'fixtureState')),
@@ -49,10 +49,14 @@ function expectCode(fn, EngineContractError, code){
     );
 }
 
-test('M2B store construction detaches, canonicalizes, and deeply freezes committed state', async () => {
+test('M2B store construction detaches, canonicalizes, deeply freezes state, and separates mutation authority', async () => {
     const { createStateStore, canonicalizeStateValue } = await modules();
     const input = fixtureState();
-    const store = createFixtureStore(createStateStore, canonicalizeStateValue, { initialState: input });
+    const { store, mutationAuthority } = createFixtureInfrastructure(
+        createStateStore,
+        canonicalizeStateValue,
+        { initialState: input }
+    );
     const state = store.read();
 
     assert.notEqual(state, input);
@@ -60,6 +64,10 @@ test('M2B store construction detaches, canonicalizes, and deeply freezes committ
     assert.equal(Object.isFrozen(state), true);
     assert.equal(Object.isFrozen(state.alpha), true);
     assert.equal(Object.isFrozen(state.queue), true);
+    assert.equal(Object.isFrozen(store), true);
+    assert.equal(Object.isFrozen(mutationAuthority), true);
+    assert.equal(store.createMutationScope, undefined);
+    assert.equal(typeof mutationAuthority.createMutationScope, 'function');
 
     input.alpha.count = 99;
     assert.equal(state.alpha.count, 1);
@@ -69,10 +77,10 @@ test('M2B store construction detaches, canonicalizes, and deeply freezes committ
     assert.equal(store.read().alpha.count, 1);
 });
 
-test('M2B selectors read frozen committed state synchronously and cannot open transactions', async () => {
+test('M2B selectors read frozen committed state synchronously and cannot open transactions or mint authority', async () => {
     const { createStateStore, canonicalizeStateValue, EngineContractError } = await modules();
-    const store = createFixtureStore(createStateStore, canonicalizeStateValue);
-    const alphaScope = store.createMutationScope({ id: 'alpha-owner', fields: ['alpha'] });
+    const { store, mutationAuthority } = createFixtureInfrastructure(createStateStore, canonicalizeStateValue);
+    const alphaScope = mutationAuthority.createMutationScope({ id: 'alpha-owner', fields: ['alpha'] });
 
     assert.equal(store.select((state, extra) => state.alpha.count + extra, 4), 5);
     assert.throws(() => store.select(state => {
@@ -88,7 +96,27 @@ test('M2B selectors read frozen committed state synchronously and cannot open tr
     );
 
     expectCode(
-        () => store.select(async state => state.alpha.count),
+        () => store.select(() => mutationAuthority.createMutationScope({
+            id: 'selector-created',
+            fields: ['beta'],
+        })),
+        EngineContractError,
+        'STATE_ACCESS_REENTRANCY'
+    );
+
+    let asyncSelectorCalled = false;
+    expectCode(
+        () => store.select(async state => {
+            asyncSelectorCalled = true;
+            return state.alpha.count;
+        }),
+        EngineContractError,
+        'INVALID_STATE_SELECTOR'
+    );
+    assert.equal(asyncSelectorCalled, false);
+
+    expectCode(
+        () => store.select(() => ({ then(){} })),
         EngineContractError,
         'INVALID_STATE_SELECTOR'
     );
@@ -108,8 +136,16 @@ test('M2B snapshots are detached, deeply frozen, and deterministic', async () =>
         schemaVersion: 1,
     };
 
-    const leftStore = createFixtureStore(createStateStore, canonicalizeStateValue, { initialState: left });
-    const rightStore = createFixtureStore(createStateStore, canonicalizeStateValue, { initialState: right });
+    const { store: leftStore } = createFixtureInfrastructure(
+        createStateStore,
+        canonicalizeStateValue,
+        { initialState: left }
+    );
+    const { store: rightStore } = createFixtureInfrastructure(
+        createStateStore,
+        canonicalizeStateValue,
+        { initialState: right }
+    );
     const first = leftStore.snapshot();
     const second = leftStore.snapshot();
 
@@ -122,8 +158,8 @@ test('M2B snapshots are detached, deeply frozen, and deterministic', async () =>
 
 test('M2B scoped transactions commit atomically and produce deterministic change diagnostics', async () => {
     const { createStateStore, canonicalizeStateValue } = await modules();
-    const store = createFixtureStore(createStateStore, canonicalizeStateValue);
-    const scope = store.createMutationScope({ id: 'alpha-beta-owner', fields: ['beta', 'alpha'] });
+    const { store, mutationAuthority } = createFixtureInfrastructure(createStateStore, canonicalizeStateValue);
+    const scope = mutationAuthority.createMutationScope({ id: 'alpha-beta-owner', fields: ['beta', 'alpha'] });
 
     const diagnostic = scope.transaction('increment-both', draft => {
         draft.beta.count = 7;
@@ -147,10 +183,38 @@ test('M2B scoped transactions commit atomically and produce deterministic change
     assert.equal(store.getLastChange(), diagnostic);
 });
 
+test('M2B diagnostics cover add/remove/replace, JSON Pointer escaping, and deterministic ordering', async () => {
+    const { createStateStore, canonicalizeStateValue } = await modules();
+    const initialState = fixtureState();
+    initialState.alpha.removeMe = true;
+    initialState.alpha['tilde~slash/key'] = 1;
+    const { store, mutationAuthority } = createFixtureInfrastructure(
+        createStateStore,
+        canonicalizeStateValue,
+        { initialState }
+    );
+    const scope = mutationAuthority.createMutationScope({ id: 'alpha-owner', fields: ['alpha'] });
+
+    const diagnostic = scope.transaction('mixed-diff', draft => {
+        draft.alpha.addMe = { value: 2 };
+        delete draft.alpha.removeMe;
+        draft.alpha.count = 3;
+        draft.alpha['tilde~slash/key'] = 4;
+    });
+
+    assert.deepEqual(diagnostic.changes, [
+        { path: '/alpha/addMe', kind: 'add' },
+        { path: '/alpha/count', kind: 'replace' },
+        { path: '/alpha/removeMe', kind: 'remove' },
+        { path: '/alpha/tilde~0slash~1key', kind: 'replace' },
+    ]);
+    assert.equal(store.getRevision(), 1);
+});
+
 test('M2B no-op transactions do not advance revision or replace the last committed diagnostic', async () => {
     const { createStateStore, canonicalizeStateValue } = await modules();
-    const store = createFixtureStore(createStateStore, canonicalizeStateValue);
-    const scope = store.createMutationScope({ id: 'alpha-owner', fields: ['alpha'] });
+    const { store, mutationAuthority } = createFixtureInfrastructure(createStateStore, canonicalizeStateValue);
+    const scope = mutationAuthority.createMutationScope({ id: 'alpha-owner', fields: ['alpha'] });
 
     const committed = scope.transaction('change', draft => {
         draft.alpha.count = 3;
@@ -169,8 +233,8 @@ test('M2B no-op transactions do not advance revision or replace the last committ
 
 test('M2B failed and invalid transactions roll back state, revision, and diagnostics', async () => {
     const { createStateStore, canonicalizeStateValue, EngineContractError } = await modules();
-    const store = createFixtureStore(createStateStore, canonicalizeStateValue);
-    const scope = store.createMutationScope({ id: 'alpha-owner', fields: ['alpha'] });
+    const { store, mutationAuthority } = createFixtureInfrastructure(createStateStore, canonicalizeStateValue);
+    const scope = mutationAuthority.createMutationScope({ id: 'alpha-owner', fields: ['alpha'] });
     const before = store.read();
 
     assert.throws(() => scope.transaction('throws', draft => {
@@ -195,8 +259,8 @@ test('M2B failed and invalid transactions roll back state, revision, and diagnos
 
 test('M2B committed state is detached from retained transaction drafts', async () => {
     const { createStateStore, canonicalizeStateValue } = await modules();
-    const store = createFixtureStore(createStateStore, canonicalizeStateValue);
-    const scope = store.createMutationScope({ id: 'alpha-owner', fields: ['alpha'] });
+    const { store, mutationAuthority } = createFixtureInfrastructure(createStateStore, canonicalizeStateValue);
+    const scope = mutationAuthority.createMutationScope({ id: 'alpha-owner', fields: ['alpha'] });
     let leakedDraft;
 
     scope.transaction('leak-attempt', draft => {
@@ -211,8 +275,8 @@ test('M2B committed state is detached from retained transaction drafts', async (
 
 test('M2B rejects nested and async transaction mutators without committing partial work', async () => {
     const { createStateStore, canonicalizeStateValue, EngineContractError } = await modules();
-    const store = createFixtureStore(createStateStore, canonicalizeStateValue);
-    const scope = store.createMutationScope({ id: 'alpha-owner', fields: ['alpha'] });
+    const { store, mutationAuthority } = createFixtureInfrastructure(createStateStore, canonicalizeStateValue);
+    const scope = mutationAuthority.createMutationScope({ id: 'alpha-owner', fields: ['alpha'] });
     const before = store.read();
 
     expectCode(
@@ -227,10 +291,19 @@ test('M2B rejects nested and async transaction mutators without committing parti
     );
     assert.equal(store.read(), before);
 
+    let asyncMutatorCalled = false;
     expectCode(
         () => scope.transaction('async', async draft => {
+            asyncMutatorCalled = true;
             draft.alpha.count = 6;
         }),
+        EngineContractError,
+        'INVALID_STATE_TRANSACTION'
+    );
+    assert.equal(asyncMutatorCalled, false);
+
+    expectCode(
+        () => scope.transaction('promise-return', () => Promise.resolve()),
         EngineContractError,
         'INVALID_STATE_TRANSACTION'
     );
@@ -240,29 +313,50 @@ test('M2B rejects nested and async transaction mutators without committing parti
 
 test('M2B mutation scopes are explicit, unique, and cannot write undeclared roots', async () => {
     const { createStateStore, canonicalizeStateValue, EngineContractError } = await modules();
-    const store = createFixtureStore(createStateStore, canonicalizeStateValue);
-    store.createMutationScope({ id: 'alpha-owner', fields: ['alpha'] });
+    const { mutationAuthority } = createFixtureInfrastructure(createStateStore, canonicalizeStateValue);
+    mutationAuthority.createMutationScope({ id: 'alpha-owner', fields: ['alpha'] });
 
     expectCode(
-        () => store.createMutationScope({ id: 'alpha-owner', fields: ['beta'] }),
+        () => mutationAuthority.createMutationScope({ id: 'alpha-owner', fields: ['beta'] }),
         EngineContractError,
         'INVALID_STATE_MUTATION_SCOPE'
     );
     expectCode(
-        () => store.createMutationScope({ id: 'schema-owner', fields: ['schemaVersion'] }),
+        () => mutationAuthority.createMutationScope({ id: 'schema-owner', fields: ['schemaVersion'] }),
         EngineContractError,
         'STATE_MUTATION_FORBIDDEN'
     );
     expectCode(
-        () => store.createMutationScope({ id: 'unknown-owner', fields: ['unknown'] }),
+        () => mutationAuthority.createMutationScope({ id: 'unknown-owner', fields: ['unknown'] }),
         EngineContractError,
         'STATE_MUTATION_FORBIDDEN'
     );
 });
 
+test('M2B scope creation is blocked during transactions and does not leak reserved scope IDs', async () => {
+    const { createStateStore, canonicalizeStateValue, EngineContractError } = await modules();
+    const { store, mutationAuthority } = createFixtureInfrastructure(createStateStore, canonicalizeStateValue);
+    const alphaScope = mutationAuthority.createMutationScope({ id: 'alpha-owner', fields: ['alpha'] });
+    const before = store.read();
+
+    expectCode(
+        () => alphaScope.transaction('scope-mint-attempt', draft => {
+            draft.alpha.count = 4;
+            mutationAuthority.createMutationScope({ id: 'beta-owner', fields: ['beta'] });
+        }),
+        EngineContractError,
+        'STATE_ACCESS_REENTRANCY'
+    );
+    assert.equal(store.read(), before);
+    assert.equal(store.getRevision(), 0);
+
+    const betaScope = mutationAuthority.createMutationScope({ id: 'beta-owner', fields: ['beta'] });
+    assert.equal(betaScope.id, 'beta-owner');
+});
+
 test('M2B rejects validator side effects that escape a transaction scope', async () => {
     const { createStateStore, canonicalizeStateValue, EngineContractError } = await modules();
-    const store = createFixtureStore(createStateStore, canonicalizeStateValue, {
+    const { store, mutationAuthority } = createFixtureInfrastructure(createStateStore, canonicalizeStateValue, {
         validateState(value){
             const output = canonicalizeStateValue(value, 'fixtureState');
             if (output.alpha.count > 1){
@@ -271,7 +365,7 @@ test('M2B rejects validator side effects that escape a transaction scope', async
             return output;
         },
     });
-    const scope = store.createMutationScope({ id: 'alpha-owner', fields: ['alpha'] });
+    const scope = mutationAuthority.createMutationScope({ id: 'alpha-owner', fields: ['alpha'] });
     const before = store.read();
 
     expectCode(
@@ -301,12 +395,12 @@ test('M2B bookkeeping safely handles prototype-shaped writable field names', asy
         configurable: true,
     });
 
-    const store = createStateStore({
+    const { store, mutationAuthority } = createStateStore({
         initialState: input,
         validateState: value => canonicalizeStateValue(value, 'prototypeState'),
         writableFields: ['__proto__'],
     });
-    const scope = store.createMutationScope({ id: 'prototype-owner', fields: ['__proto__'] });
+    const scope = mutationAuthority.createMutationScope({ id: 'prototype-owner', fields: ['__proto__'] });
     const diagnostic = scope.transaction('prototype-field', draft => {
         draft.__proto__.count = 2;
     });
@@ -316,23 +410,20 @@ test('M2B bookkeeping safely handles prototype-shaped writable field names', asy
     assert.equal(Object.getPrototypeOf(store.read()), Object.prototype);
 });
 
-test('M2B GameState integration exposes immutable reads and no gameplay mutation authority yet', async () => {
-    const { createGameStateStore, EngineContractError } = await modules();
+test('M2B GameState integration exposes immutable reads without exposing authority creation', async () => {
+    const { createGameStateStore } = await modules();
     const store = createGameStateStore();
 
     assert.deepEqual(store.read(), { schemaVersion: 1 });
     assert.equal(Object.isFrozen(store.read()), true);
     assert.deepEqual(store.snapshot(), { schemaVersion: 1 });
     assert.equal(store.getRevision(), 0);
-
-    expectCode(
-        () => store.createMutationScope({ id: 'schema-owner', fields: ['schemaVersion'] }),
-        EngineContractError,
-        'STATE_MUTATION_FORBIDDEN'
-    );
-    expectCode(
-        () => store.createMutationScope({ id: 'premature-resources', fields: ['resources'] }),
-        EngineContractError,
-        'STATE_MUTATION_FORBIDDEN'
-    );
+    assert.equal(store.createMutationScope, undefined);
+    assert.deepEqual(Object.keys(store).sort(), [
+        'getLastChange',
+        'getRevision',
+        'read',
+        'select',
+        'snapshot',
+    ]);
 });
