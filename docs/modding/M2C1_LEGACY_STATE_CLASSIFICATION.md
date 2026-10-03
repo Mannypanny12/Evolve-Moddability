@@ -191,9 +191,20 @@ Therefore a future setting first added to the M0 fail-closed observation policy 
 
 The test also requires the stored legacy observation mode to equal M0's current mode. M2C classification cannot weaken or redefine simulation observation.
 
-This cross-check does not by itself prove that M0 discovered every setting present in a real initialized legacy state. M2C1 hardening therefore also compares the M0/M2 setting key set against the actual initialized legacy settings surface exposed through the deterministic legacy harness. New current top-level settings must be present in both policies or CI fails.
+M2C1 hardening adds an independent third leg: the deterministic legacy harness is initialized and its actual current top-level `settings` keys are compared with both policies. This means M0 and M2C can no longer silently omit a current initialized top-level setting together.
 
-Nested object-valued settings remain a separate concern: M2C1 classifies their top-level ownership, while M2C2 must formalize whether their nested members are stable preferences, UI projections, derived values, or semantic debt.
+The hardening test also records the current object-valued nested settings containers:
+
+```text
+arpa
+keyMap
+msgFilters
+portal
+resBar
+space
+```
+
+If that set grows, CI fails. M2C2 must sub-classify the nested members and formalize whether each is a stable preference, UI projection, derived value, or semantic debt.
 
 ### Exported runtime values
 
