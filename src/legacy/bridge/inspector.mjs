@@ -17,7 +17,7 @@ export function inspectLegacyMappings(catalog){
         owner: Object.freeze({ ...mapping.owner }),
     }));
 
-    const byDomain = {};
+    const byDomain = Object.create(null);
     for (const mapping of mappings){
         if (!byDomain[mapping.domain]) byDomain[mapping.domain] = [];
         byDomain[mapping.domain].push(mapping.id);
