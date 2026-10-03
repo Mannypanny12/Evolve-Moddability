@@ -189,8 +189,23 @@ function freezeDiagnostic(record){
     });
 }
 
-function isNativePromise(value){
-    return typeof Promise === 'function' && value instanceof Promise;
+function isDeclaredAsyncFunction(value){
+    try {
+        return /^\s*async\b/.test(Function.prototype.toString.call(value));
+    }
+    catch {
+        return false;
+    }
+}
+
+function isPromiseLike(value, code, path){
+    if (value === null || (typeof value !== 'object' && typeof value !== 'function')) return false;
+    try {
+        return typeof value.then === 'function';
+    }
+    catch {
+        fail(code, `${path} returned a value whose thenable state could not be safely inspected.`, { path });
+    }
 }
 
 export function createStateStore(rawOptions){
@@ -220,6 +235,9 @@ export function createStateStore(rawOptions){
 
     function select(selector, ...args){
         assertCallable(selector, 'selector', 'INVALID_STATE_SELECTOR');
+        if (isDeclaredAsyncFunction(selector)){
+            fail('INVALID_STATE_SELECTOR', 'State selectors must be synchronous.', { operation: 'select' });
+        }
         if (transactionActive){
             fail(
                 'STATE_ACCESS_REENTRANCY',
@@ -231,8 +249,8 @@ export function createStateStore(rawOptions){
         selectionDepth++;
         try {
             const result = selector(committedState, ...args);
-            if (isNativePromise(result)){
-                fail('INVALID_STATE_SELECTOR', 'State selectors must be synchronous.', { operation: 'select' });
+            if (isPromiseLike(result, 'INVALID_STATE_SELECTOR', 'selector')){
+                fail('INVALID_STATE_SELECTOR', 'State selectors must not return a Promise or thenable.', { operation: 'select' });
             }
             return result;
         }
@@ -254,6 +272,14 @@ export function createStateStore(rawOptions){
     }
 
     function createMutationScope(rawScopeOptions){
+        if (transactionActive || selectionDepth > 0){
+            fail(
+                'STATE_ACCESS_REENTRANCY',
+                'Mutation scopes may not be created while a selector or state transaction is active.',
+                { operation: 'createMutationScope' }
+            );
+        }
+
         const scopeOptions = assertPlainOptions(rawScopeOptions, 'mutationScopeOptions');
         const id = assertNonEmptyString(
             readOption(scopeOptions, 'id', 'mutationScopeOptions'),
@@ -295,6 +321,13 @@ export function createStateStore(rawOptions){
                 'transaction.mutator',
                 'INVALID_STATE_TRANSACTION'
             );
+            if (isDeclaredAsyncFunction(mutator)){
+                fail(
+                    'INVALID_STATE_TRANSACTION',
+                    'State transaction mutators must be synchronous.',
+                    { scopeId: id, label }
+                );
+            }
 
             if (transactionActive || selectionDepth > 0){
                 fail(
@@ -327,7 +360,7 @@ export function createStateStore(rawOptions){
                 if (mutatorResult !== undefined){
                     fail(
                         'INVALID_STATE_TRANSACTION',
-                        'State transaction mutators must be synchronous and return undefined.',
+                        'State transaction mutators must return undefined and must not return a Promise or thenable.',
                         { scopeId: id, label }
                     );
                 }
@@ -399,12 +432,19 @@ export function createStateStore(rawOptions){
         });
     }
 
-    return Object.freeze({
+    const store = Object.freeze({
         read,
         select,
         snapshot,
         getRevision,
         getLastChange,
+    });
+    const mutationAuthority = Object.freeze({
         createMutationScope,
+    });
+
+    return Object.freeze({
+        store,
+        mutationAuthority,
     });
 }
