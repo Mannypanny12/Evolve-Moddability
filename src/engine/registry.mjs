@@ -108,6 +108,7 @@ function compareCanonicalIds(a, b){
 
 export class Registry {
     #type;
+    #definitionValidator;
     #entries = new Map();
     #aliases = new Map();
 
@@ -116,6 +117,14 @@ export class Registry {
             fail('INVALID_REGISTRY_OPTIONS', 'Registry options must be a plain object.', { options });
         }
         this.#type = assertContentType(options.type);
+        if (options.definitionValidator !== undefined && typeof options.definitionValidator !== 'function'){
+            fail(
+                'INVALID_DEFINITION_VALIDATOR',
+                'Registry definitionValidator must be a function when provided.',
+                { definitionValidator: options.definitionValidator }
+            );
+        }
+        this.#definitionValidator = options.definitionValidator;
     }
 
     get type(){
@@ -147,6 +156,13 @@ export class Registry {
         }
 
         const owner = validateOwner(record.owner);
+        if (parsed.namespace !== owner.packageId){
+            fail(
+                'CONTENT_NAMESPACE_OWNER_MISMATCH',
+                `Content namespace ${describeContractValue(parsed.namespace)} must match owner package ${describeContractValue(owner.packageId)}.`,
+                { id: parsed.canonical, namespace: parsed.namespace, ownerPackageId: owner.packageId }
+            );
+        }
         const schemaVersion = validateSchemaVersion(record.schemaVersion);
         const tags = validateTags(record.tags);
         const aliases = validateAliases(record.aliases);
@@ -162,13 +178,27 @@ export class Registry {
             }
         }
 
+        const context = Object.freeze({
+            id: parsed.canonical,
+            namespace: parsed.namespace,
+            type: parsed.type,
+            localId: parsed.localId,
+            owner,
+            schemaVersion,
+            tags,
+            aliases,
+        });
+        const definition = this.#definitionValidator
+            ? this.#definitionValidator(record.definition, context)
+            : record.definition;
+
         const entry = Object.freeze({
             id: parsed.canonical,
             owner,
             schemaVersion,
             tags,
             aliases,
-            definition: record.definition,
+            definition,
         });
 
         this.#entries.set(parsed.canonical, entry);
