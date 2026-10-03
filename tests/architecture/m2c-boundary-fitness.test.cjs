@@ -36,23 +36,30 @@ function emptySnapshot(runtimeConsumers = {}){
     return { snapshotVersion: 1, settingsAccesses: {}, runtimeConsumers };
 }
 
-test('M2C3 recognizes static, bracket and dynamic settings access without counting comments or strings', () => {
+test('M2C3 recognizes static, bracket, existence-check and dynamic settings access without counting comments or strings', () => {
     const source = [
         'global.settings.pause;',
         'global["settings"]["q_merge"];',
         "global['settings'].qAny;",
+        "global.settings.hasOwnProperty('touch');",
+        'global.settings.hasOwnProperty(key);',
         'global.settings[key];',
         'const root = global.settings;',
         '// global.settings.fake;',
         'const text = "global.settings.fake";',
     ].join('\n');
     assert.deepEqual(analyzeSettingsAccesses(source), {
-        '$dynamic': 1,
+        '$dynamic': 2,
         '$root': 1,
         pause: 1,
         qAny: 1,
         q_merge: 1,
+        touch: 1,
     });
+});
+
+test('M2C3 prototype-shaped setting names remain ordinary counted data', () => {
+    assert.deepEqual(analyzeSettingsAccesses("global.settings['hasOwnProperty'];"), { hasOwnProperty: 1 });
 });
 
 test('M2C3 recognizes named vars imports including aliases and namespace imports', () => {
