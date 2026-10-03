@@ -20,7 +20,7 @@ A validating registry performs registration in this order:
 
 1. validate canonical content identity and registry type;
 2. validate owner, schema version, tags, and aliases;
-3. enforce namespace ownership;
+3. enforce namespace/declared-owner consistency;
 4. check alias collisions;
 5. validate and canonicalize the family definition;
 6. commit the entry and aliases only after all validation succeeds.
@@ -49,7 +49,9 @@ warcraft:resource/gold     owner.packageId = warcraft   valid
 evolve:resource/food       owner.packageId = example    invalid
 ```
 
-This naturally reserves the `evolve` namespace for first-party Evolve content without hard-coding a special-case package name into the engine.
+This is a **declared-owner consistency rule**. It prevents one registry record from claiming a canonical namespace while declaring a different owner package.
+
+It does **not** authenticate packages or by itself reserve the `evolve` namespace against an untrusted caller that simply declares `owner.packageId = evolve`. Real package identity, namespace reservation, trust, dependency, extension, and override policy belongs to the later package-loading milestones.
 
 Cross-package extension and override are **not** implemented by bypassing this invariant. A later package/content milestone must provide an explicit extension mechanism with its own ownership and conflict rules.
 
@@ -203,7 +205,7 @@ evolve:technology/club
 legacy aliases: club, tech-club
 ```
 
-The shared legacy progression key `primitive` is **not** an alias for the club definition. Multiple technology definitions can grant different levels to the same progression state key, so that relationship is contextual rather than a direct one-to-one legacy identity. It remains M1D bridge/mapping work.
+The shared legacy progression key `primitive` is **not** an alias for the club definition. Multiple technology definitions can grant different levels to the same progression state key, so that relationship is contextual rather than a direct one-to-one legacy identity. M1D represents it as an explicit contextual legacy mapping.
 
 Requirements, grants, costs, conditions, effects, action callbacks, trait gates, and post callbacks remain outside M1B. They need the later condition/effect/cost and technology-migration architecture rather than a premature executable schema.
 
@@ -260,8 +262,8 @@ M1B coverage proves:
 - real vanilla achievement/resource/technology metadata can be represented;
 - runtime/save-state fields are absent from those representations;
 - family registries validate schema version 1;
-- namespace must match owner package;
-- `evolve` cannot be claimed by another owner through ordinary registration;
+- canonical namespace must match the record's declared owner package;
+- namespace/owner equality is not treated as package authentication;
 - family definitions are detached immutable copies;
 - nested definition records are frozen;
 - source mutation after registration cannot alter registry content;
