@@ -41,7 +41,10 @@ function bridgeSourceViolations(source, filename, roots){
 
     for (const reference of extractModuleReferences(source, filename)){
         const specifier = reference.specifier;
-        if (!specifier.startsWith('.')) continue;
+        if (!specifier.startsWith('.')){
+            violations.push(filename + ': legacy bridge bare/package import is forbidden: ' + specifier);
+            continue;
+        }
         const resolved = path.resolve(path.dirname(filename), specifier);
         if (isInside(roots.bridgeRoot, resolved) || isInside(roots.engineRoot, resolved)) continue;
         const relative = path.relative(roots.srcRoot, resolved);

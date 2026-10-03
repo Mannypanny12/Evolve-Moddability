@@ -8,8 +8,9 @@ import {
 const MAPPING_ID_PATTERN = /^[a-z][a-z0-9_-]*(?:\.[a-z0-9_-]+)*$/;
 const DOMAIN_PATTERN = /^[a-z][a-z0-9_-]*$/;
 const LEGACY_PATH_PATTERN = /^global(?:\.[A-Za-z_$][A-Za-z0-9_$]*)+$/;
-const MILESTONE_PATTERN = /^M[0-9]+[A-Z]?(?:[0-9]+)?$/;
+const MILESTONE_PATTERN = /^M([0-9]+)([A-Z])?([0-9]+)?$/;
 const MODES = new Set(['direct', 'contextual', 'composite']);
+const BRIDGE_REMOVAL_BACKSTOP = Object.freeze({ value: 'M9C', major: 9, phase: 3, slice: 0 });
 
 function fail(code, message, details){
     throw new EngineContractError(code, message, details);
@@ -74,6 +75,13 @@ function assertTrimmedString(value, label){
     return value;
 }
 
+function assertMappingId(value){
+    if (typeof value !== 'string' || !MAPPING_ID_PATTERN.test(value)){
+        fail('INVALID_LEGACY_MAPPING_ID', 'Legacy mapping id must be a stable lowercase dotted identifier.', { id: value });
+    }
+    return value;
+}
+
 function validateOwner(value){
     const owner = readRecord(value, 'legacy mapping owner');
     assertExactFields(owner, new Set(['packageId', 'source']), 'legacy mapping owner');
@@ -84,21 +92,70 @@ function validateOwner(value){
     });
 }
 
-function validateStringArray(value, label, { allowEmpty = true } = {}){
-    if (!Array.isArray(value)){
+function inspectDenseArray(value, label){
+    let isArray;
+    let keys;
+    let lengthDescriptor;
+    try {
+        isArray = Array.isArray(value);
+        if (isArray){
+            keys = Reflect.ownKeys(value);
+            lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
+        }
+    }
+    catch {
+        fail('INVALID_LEGACY_MAPPING_FIELD', `${label} could not be inspected.`, { label });
+    }
+
+    if (!isArray){
         fail('INVALID_LEGACY_MAPPING_FIELD', `${label} must be an array.`, { label });
     }
-    if (!allowEmpty && value.length === 0){
+    if (!lengthDescriptor || !Object.prototype.hasOwnProperty.call(lengthDescriptor, 'value') ||
+        !Number.isSafeInteger(lengthDescriptor.value) || lengthDescriptor.value < 0){
+        fail('INVALID_LEGACY_MAPPING_FIELD', `${label} has an invalid length.`, { label });
+    }
+
+    const length = lengthDescriptor.value;
+    for (const key of keys){
+        if (typeof key !== 'string'){
+            fail('INVALID_LEGACY_MAPPING_FIELD', `${label} must not contain symbol fields.`, { label });
+        }
+        if (key === 'length') continue;
+        if (!/^(0|[1-9][0-9]*)$/.test(key) || Number(key) >= length){
+            fail('INVALID_LEGACY_MAPPING_FIELD', `${label} must not contain non-index fields.`, { label, field: key });
+        }
+    }
+
+    const items = new Array(length);
+    for (let index = 0; index < length; index++){
+        let descriptor;
+        try {
+            descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+        }
+        catch {
+            fail('INVALID_LEGACY_MAPPING_FIELD', `${label}[${index}] could not be inspected.`, { label, index });
+        }
+        if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value') || !descriptor.enumerable){
+            fail('INVALID_LEGACY_MAPPING_FIELD', `${label} must be dense and contain only data items.`, { label, index });
+        }
+        items[index] = descriptor.value;
+    }
+    return items;
+}
+
+function validateStringArray(value, label, { allowEmpty = true, legacyPaths = false } = {}){
+    const items = inspectDenseArray(value, label);
+    if (!allowEmpty && items.length === 0){
         fail('INVALID_LEGACY_MAPPING_FIELD', `${label} must not be empty.`, { label });
     }
 
     const seen = new Set();
-    const copy = new Array(value.length);
-    for (let index = 0; index < value.length; index++){
-        if (!Object.prototype.hasOwnProperty.call(value, index)){
-            fail('INVALID_LEGACY_MAPPING_FIELD', `${label} must not be sparse.`, { label, index });
+    const copy = new Array(items.length);
+    for (let index = 0; index < items.length; index++){
+        const item = assertTrimmedString(items[index], `${label}[${index}]`);
+        if (legacyPaths && !LEGACY_PATH_PATTERN.test(item)){
+            fail('INVALID_LEGACY_MAPPING_FIELD', `${label}[${index}] must be an explicit global state path.`, { label, item });
         }
-        const item = assertTrimmedString(value[index], `${label}[${index}]`);
         if (seen.has(item)){
             fail('INVALID_LEGACY_MAPPING_FIELD', `${label} contains a duplicate value: ${item}.`, { label, item });
         }
@@ -123,11 +180,47 @@ function validateCanonicalIds(value, family){
     return ids;
 }
 
-function validateMilestone(value, label){
-    if (typeof value !== 'string' || !MILESTONE_PATTERN.test(value)){
+function parseMilestone(value, label){
+    if (typeof value !== 'string'){
         fail('INVALID_LEGACY_MAPPING_FIELD', `${label} must be a milestone ID such as M1D or M6B.`, { label, value });
     }
-    return value;
+    const match = MILESTONE_PATTERN.exec(value);
+    if (!match){
+        fail('INVALID_LEGACY_MAPPING_FIELD', `${label} must be a milestone ID such as M1D or M6B.`, { label, value });
+    }
+    const major = Number(match[1]);
+    const phase = match[2] ? match[2].charCodeAt(0) - 64 : 0;
+    const slice = match[3] ? Number(match[3]) : 0;
+    if (!Number.isSafeInteger(major) || !Number.isSafeInteger(slice)){
+        fail('INVALID_LEGACY_MAPPING_FIELD', `${label} contains an unsupported milestone number.`, { label, value });
+    }
+    return Object.freeze({ value, major, phase, slice });
+}
+
+function compareMilestones(a, b){
+    if (a.major !== b.major) return a.major - b.major;
+    if (a.phase !== b.phase) return a.phase - b.phase;
+    return a.slice - b.slice;
+}
+
+function validateLifecycle(introducedIn, removeBy){
+    const introduced = parseMilestone(introducedIn, 'legacy mapping introducedIn');
+    const removal = parseMilestone(removeBy, 'legacy mapping removeBy');
+    if (compareMilestones(removal, introduced) <= 0){
+        fail(
+            'INVALID_LEGACY_MAPPING_LIFECYCLE',
+            `Legacy mapping removeBy ${removeBy} must be later than introducedIn ${introducedIn}.`,
+            { introducedIn, removeBy }
+        );
+    }
+    if (compareMilestones(removal, BRIDGE_REMOVAL_BACKSTOP) > 0){
+        fail(
+            'INVALID_LEGACY_MAPPING_LIFECYCLE',
+            `Legacy mapping removeBy ${removeBy} exceeds the M9C bridge-removal backstop.`,
+            { introducedIn, removeBy, backstop: BRIDGE_REMOVAL_BACKSTOP.value }
+        );
+    }
+    return Object.freeze({ introducedIn: introduced.value, removeBy: removal.value });
 }
 
 function validateMapping(record){
@@ -147,9 +240,7 @@ function validateMapping(record){
         'sourceLocations',
     ]), 'legacy mapping');
 
-    if (typeof input.id !== 'string' || !MAPPING_ID_PATTERN.test(input.id)){
-        fail('INVALID_LEGACY_MAPPING_ID', 'Legacy mapping id must be a stable lowercase dotted identifier.', { id: input.id });
-    }
+    const id = assertMappingId(input.id);
     if (typeof input.domain !== 'string' || !DOMAIN_PATTERN.test(input.domain)){
         fail('INVALID_LEGACY_MAPPING_FIELD', 'Legacy mapping domain must be a lowercase token.', { domain: input.domain });
     }
@@ -163,16 +254,22 @@ function validateMapping(record){
     }
 
     const canonicalIds = validateCanonicalIds(input.canonicalIds, family);
-    const contextKeys = validateStringArray(input.contextKeys ?? [], 'legacy mapping contextKeys');
-    if (input.mode === 'direct' && canonicalIds.length !== 1){
-        fail('INVALID_LEGACY_MAPPING_FIELD', 'Direct legacy mappings must target exactly one canonical ID.', { id: input.id });
+    const contextKeys = validateStringArray(input.contextKeys ?? [], 'legacy mapping contextKeys', { legacyPaths: true });
+    if (input.mode === 'direct'){
+        if (canonicalIds.length !== 1){
+            fail('INVALID_LEGACY_MAPPING_FIELD', 'Direct legacy mappings must target exactly one canonical ID.', { id });
+        }
+        if (contextKeys.length !== 0){
+            fail('INVALID_LEGACY_MAPPING_FIELD', 'Direct legacy mappings must not declare contextual keys.', { id });
+        }
     }
-    if (input.mode !== 'direct' && contextKeys.length === 0){
-        fail('INVALID_LEGACY_MAPPING_FIELD', 'Contextual/composite mappings must declare contextKeys.', { id: input.id });
+    else if (contextKeys.length === 0){
+        fail('INVALID_LEGACY_MAPPING_FIELD', 'Contextual/composite mappings must declare contextKeys.', { id });
     }
 
+    const lifecycle = validateLifecycle(input.introducedIn, input.removeBy);
     return Object.freeze({
-        id: input.id,
+        id,
         domain: input.domain,
         family,
         mode: input.mode,
@@ -180,8 +277,8 @@ function validateMapping(record){
         canonicalIds,
         contextKeys,
         owner: validateOwner(input.owner),
-        introducedIn: validateMilestone(input.introducedIn, 'legacy mapping introducedIn'),
-        removeBy: validateMilestone(input.removeBy, 'legacy mapping removeBy'),
+        introducedIn: lifecycle.introducedIn,
+        removeBy: lifecycle.removeBy,
         stateSemantics: assertTrimmedString(input.stateSemantics, 'legacy mapping stateSemantics'),
         sourceLocations: validateStringArray(input.sourceLocations, 'legacy mapping sourceLocations', { allowEmpty: false }),
     });
@@ -189,6 +286,7 @@ function validateMapping(record){
 
 export class LegacyMappingCatalog {
     #mappings = new Map();
+    #legacyPaths = new Map();
 
     get size(){
         return this.#mappings.size;
@@ -199,18 +297,29 @@ export class LegacyMappingCatalog {
         if (this.#mappings.has(mapping.id)){
             fail('DUPLICATE_LEGACY_MAPPING', `Duplicate legacy mapping id: ${mapping.id}.`, { id: mapping.id });
         }
+        const existingPath = this.#legacyPaths.get(mapping.legacyPath);
+        if (existingPath !== undefined){
+            fail(
+                'DUPLICATE_LEGACY_MAPPING_PATH',
+                `Legacy path ${mapping.legacyPath} is already mapped by ${existingPath}.`,
+                { legacyPath: mapping.legacyPath, existingId: existingPath, requestedId: mapping.id }
+            );
+        }
+
         this.#mappings.set(mapping.id, mapping);
+        this.#legacyPaths.set(mapping.legacyPath, mapping.id);
         return mapping;
     }
 
     get(id){
-        return this.#mappings.get(id);
+        return this.#mappings.get(assertMappingId(id));
     }
 
     getRequired(id){
-        const mapping = this.get(id);
+        const validatedId = assertMappingId(id);
+        const mapping = this.#mappings.get(validatedId);
         if (mapping === undefined){
-            fail('UNKNOWN_LEGACY_MAPPING', `Unknown legacy mapping id: ${id}.`, { id });
+            fail('UNKNOWN_LEGACY_MAPPING', `Unknown legacy mapping id: ${validatedId}.`, { id: validatedId });
         }
         return mapping;
     }

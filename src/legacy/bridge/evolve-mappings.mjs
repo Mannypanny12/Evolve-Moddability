@@ -33,14 +33,13 @@ export function createEvolveLegacyMappingCatalog(){
         contextKeys: [
             'global.race.evil',
             'global.race.gravity_well',
-            'global.race.kindling_kindred',
             'global.race.soul_eater',
             'global.tech.transport',
         ],
         owner: { packageId: 'evolve', source: 'legacy-bridge' },
         introducedIn: 'M1D',
         removeBy: 'M6E',
-        stateSemantics: 'Shared legacy progression level written by multiple technology definitions; it is not a technology identity alias.',
+        stateSemantics: 'Shared legacy progression level written by multiple technology definitions; race context selects the level-2 source and gravity/transport context gates the level-3 source.',
         sourceLocations: ['src/tech.js', 'src/vars.js'],
     });
 
