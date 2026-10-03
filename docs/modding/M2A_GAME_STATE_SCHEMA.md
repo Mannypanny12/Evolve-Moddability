@@ -34,6 +34,26 @@ The M2A root is deliberately minimal:
 
 M2A does not clone the current legacy top-level state layout. Future authoritative domains are added only when their semantics and ownership are explicitly characterized.
 
+## GameState schema-version evolution
+
+`GAME_STATE_SCHEMA_VERSION` changes whenever the authoritative structural or semantic GameState contract changes in a way that makes a previously valid GameState incompatible with the new contract.
+
+Examples that normally require a new GameState schema version:
+
+- adding a new mandatory root domain;
+- removing or renaming an authoritative field;
+- changing the meaning or allowed representation of an existing authoritative field;
+- changing a domain invariant so previously valid state would no longer validate or would be interpreted differently.
+
+Examples that do not by themselves require a GameState schema bump:
+
+- adding store/selectors/transaction machinery around the same state representation;
+- adding diagnostics or tests;
+- implementation refactors that preserve the authoritative state contract;
+- changing the future save envelope while leaving the embedded GameState representation unchanged.
+
+M2B therefore does not automatically bump the schema. The first real domain addition in M2D or a later migration may require a bump if it changes the closed authoritative root/shape. Historical GameState migration machinery belongs to the persistence milestones rather than M2A.
+
 ## Why the root starts small
 
 Legacy `global` is an implementation object accumulated over the lifetime of Evolve. It mixes simulation state, persistent progression, RNG seeds, lifecycle flags, settings, migration metadata, and UI-facing state.
@@ -49,7 +69,7 @@ M2A therefore defines the laws of new state before defining the full domain tree
 
 ## State value contract
 
-New `GameState` data must be inert deterministic plain data.
+New `GameState` data must be inert deterministic plain data arranged as a **tree**.
 
 Allowed values:
 
@@ -74,13 +94,31 @@ Rejected values include:
 - arrays with extra state properties;
 - class instances, `Date`, `Map`, `Set`, and other exotic prototypes;
 - cyclic references;
+- repeated/shared object or array references at multiple state paths;
+- state nesting deeper than `MAX_GAME_STATE_NESTING_DEPTH` (256 object/array levels from the canonicalization root);
 - objects that cannot be safely inspected.
 
-Validation reads property descriptors rather than invoking ordinary property access at contract boundaries. Accessor-backed or hostile values therefore cannot execute merely because state validation or diagnostics inspect them.
+Each object or array instance may occur at exactly one path in a GameState tree. Two separate objects with equal values are valid; one shared JavaScript object referenced from two paths is not. This prevents object identity from becoming an implicit gameplay relationship and ensures canonicalization/snapshots never silently change aliasing semantics.
 
 Canonicalization returns detached mutable plain data. M2A deliberately does not freeze live state: mutation authority and store semantics are M2B concerns.
 
 Object keys are emitted in deterministic sorted order. Array order is preserved because ordered state such as queues can be semantically meaningful.
+
+The public `canonicalizeStateValue(value, path)` API owns all traversal bookkeeping internally. Callers cannot inject or reuse cycle/reference tracking state.
+
+### Reflection and Proxy boundary
+
+Validation reads property descriptors rather than ordinary property access, so property getters/setters are never invoked merely to inspect state.
+
+JavaScript `Proxy` reflection traps are different: operations such as `Reflect.ownKeys`, `Object.getPrototypeOf`, `Object.getOwnPropertyDescriptor`, or `Array.isArray` may execute Proxy machinery because the language provides no trap-free general way to inspect a Proxy. M2A therefore does **not** claim to sandbox arbitrary executable Proxy objects.
+
+If reflective inspection fails or a revoked Proxy is encountered, the failure is converted into a structured `EngineContractError` instead of leaking an arbitrary native exception. GameState validation is a strict data-contract boundary, not a security sandbox for untrusted executable objects.
+
+### Nesting bound
+
+State validation is recursive, so M2A enforces `MAX_GAME_STATE_NESTING_DEPTH = 256`. This is intentionally far deeper than any expected gameplay domain while still guaranteeing malformed pathologically deep state fails as `INVALID_STATE_VALUE` before native call-stack exhaustion becomes the error boundary.
+
+This limit is part of the state-value contract. Changing it incompatibly should be treated with the same care as any other GameState contract change.
 
 ## Legacy observation versus new state rules
 
@@ -205,6 +243,8 @@ It inherits all existing `src/engine/**` architecture gates:
 
 Legacy-path classification stays in tests/docs/bridge code, not in engine state modules.
 
+The current M0E5 scanner discovers engine source recursively, so the state subtree is covered automatically rather than by naming convention alone.
+
 ## Tests
 
 M2A covers:
@@ -212,21 +252,25 @@ M2A covers:
 - root schema/version validation;
 - unknown/missing-field fail-closed behavior;
 - detached mutable canonical output;
-- deterministic object key ordering;
+- deterministic object key ordering independent of insertion order;
 - finite-number enforcement;
 - hostile getter rejection without invocation;
+- explicit Proxy reflection behavior/failure conversion;
 - exotic prototypes;
 - symbols and hidden fields;
 - dense-array enforcement;
 - cyclic state;
+- shared-reference rejection for tree-only state;
+- private traversal bookkeeping;
+- bounded nesting with structured failure;
 - prototype-pollution-safe `__proto__` handling;
-- hostile proxy inspection failures.
+- hostile/revoked proxy inspection failures.
 
 Existing M0/M1 architecture, simulation, browser, and build gates remain authoritative regression protection.
 
 ## Behavior-neutrality gate
 
-After M2A:
+After M2A and its review-hardening pass:
 
 - legacy `global` remains authoritative;
 - no gameplay reads `GameState`;
@@ -245,11 +289,13 @@ Any behavioral-oracle change during M2A is a scope failure unless independently 
 M2A is complete when:
 
 1. `GameState` has an explicit independent schema version and closed root;
-2. future state domains can rely on a hardened inert plain-data contract;
-3. domain ownership and layer boundaries are documented;
-4. no legacy state layout has been cloned into the engine;
-5. adversarial state validation tests pass;
-6. existing M0/M1 architecture/test/build/browser gates remain green;
-7. no gameplay source, save format, legacy authority, or oracle baseline changes.
+2. future state domains can rely on a hardened inert deterministic tree-data contract;
+3. schema-version evolution rules are explicit;
+4. domain ownership and layer boundaries are documented;
+5. no legacy state layout has been cloned into the engine;
+6. cycles, aliasing, pathological depth, accessors, exotic values, and hostile inspection failures fail closed;
+7. adversarial state validation tests pass;
+8. existing M0/M1 architecture/test/build/browser gates remain green;
+9. no gameplay source, save format, legacy authority, or oracle baseline changes.
 
 M2B can then add the state store, selectors, snapshots, scoped mutation/transactions, and change diagnostics on top of this contract without first having to unwind legacy object semantics.
