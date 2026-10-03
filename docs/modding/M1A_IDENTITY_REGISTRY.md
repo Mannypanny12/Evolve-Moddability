@@ -65,7 +65,11 @@ M1A records:
 - `owner.packageId`
 - `owner.source`
 
-The package ID uses namespace syntax. M1A deliberately does not yet enforce that the canonical ID namespace equals the owner package ID. Cross-package ownership and extension policy belongs to later package/content-contract work.
+The package ID uses namespace syntax.
+
+M1A originally deferred the question of whether the canonical namespace had to equal `owner.packageId`. M1B explicitly closed that deferral. The **current** registry contract requires equality between the canonical namespace and the declared owner package ID.
+
+That equality is a consistency rule, not package authentication or namespace authorization. Real package identity, reservation, dependency, and extension policy still belongs to the later package-loading milestones.
 
 ### Schema version
 
@@ -75,15 +79,17 @@ M1A stores the version but does not interpret the definition schema. M1B owns de
 
 ### Definition
 
-The definition is opaque to M1A.
+The definition is opaque to a bare M1A registry.
 
-The registry does not inspect it and M1A does not deep-freeze it. This avoids accidentally defining M1B's definition lifecycle early.
+The bare registry does not inspect it and does not deep-freeze it. M1B registries attach family validators and canonicalize validated definition output into deeply immutable JSON-like data.
 
 ### Immutable identity metadata
 
 The registered entry, owner metadata, tag list, and alias list are frozen copies. Callers cannot mutate canonical identity or ownership after registration.
 
 This immutability applies to registry/identity metadata, not to gameplay state.
+
+Registry option/entry/owner/tag/alias metadata is treated as inert contract data. Accessor-backed fields and array items are rejected rather than executed.
 
 ## No mutable gameplay state
 
@@ -149,7 +155,10 @@ Alias rules:
 - a canonical content ID cannot be registered as a legacy alias;
 - duplicate aliases inside one registration fail;
 - one registry cannot map the same alias to two canonical IDs;
-- separate registries may independently use the same legacy string.
+- separate registries may independently use the same legacy string;
+- aliases remain direct, context-free, one-to-one identity translations only.
+
+Contextual or composite legacy relationships belong to the explicit M1D mapping catalog rather than the alias table.
 
 ## Lookup behavior
 
@@ -180,12 +189,13 @@ This is important for reproducible tests, diagnostics, validation, and later pac
 
 Engine contract failures use `EngineContractError` with stable error codes.
 
-Current M1A codes include:
+Current identity/registry codes include:
 
 - `INVALID_CONTENT_ID`
 - `INVALID_NAMESPACE`
 - `INVALID_CONTENT_TYPE`
 - `INVALID_LOCAL_ID`
+- `INVALID_REGISTRY_OPTIONS`
 - `INVALID_REGISTRY_ENTRY`
 - `REGISTRY_TYPE_MISMATCH`
 - `DUPLICATE_CONTENT_ID`
@@ -197,6 +207,8 @@ Current M1A codes include:
 - `UNKNOWN_CONTENT_ID`
 
 Human-readable messages remain diagnostic, while tools can rely on the code.
+
+Diagnostic details are snapshotted without executing accessor properties so malformed diagnostic input cannot mask the contract failure being reported.
 
 ## Module boundary
 
@@ -238,7 +250,7 @@ M1A is not imported into the running game yet, so it has no gameplay effect.
 
 ## Tests
 
-M1A unit coverage verifies:
+M1A coverage verifies:
 
 - valid canonical parsing and formatting;
 - nested local paths;
@@ -255,7 +267,10 @@ M1A unit coverage verifies:
 - canonical IDs forbidden as aliases;
 - valid-missing versus malformed lookup behavior;
 - deterministic iteration independent of registration order;
-- absence of silent replacement/removal operations.
+- absence of silent replacement/removal operations;
+- sparse or accessor-backed metadata arrays fail closed;
+- accessor-backed registry/identity metadata is rejected without invoking getters;
+- hostile diagnostic details cannot replace the intended contract error.
 
 The normal repository test suite discovers these tests, and M0E5 independently enforces the engine dependency and cycle rules.
 
@@ -264,14 +279,12 @@ The normal repository test suite discovers these tests, and M0E5 independently e
 M1A does not:
 
 - convert any vanilla resource, technology, achievement, or other content;
-- define resource/achievement/technology schemas;
 - create `GameState`;
 - store mutable save state;
 - create Clock/RNG/Storage/Logger ports;
-- create the legacy bridge;
 - create package manifests/dependency resolution;
 - define cross-package overrides/extensions;
 - expose a public Mod API;
 - alter saves or gameplay.
 
-Those responsibilities remain in their later milestones.
+M1B supplies the initial validated definition contracts, M1C supplies runtime environment ports, and M1D supplies migration-only inspection/mapping scaffolding. State ownership begins in M2.
