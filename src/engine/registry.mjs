@@ -22,20 +22,34 @@ function isPlainObject(value){
     }
 }
 
+function readOwnDataField(value, field, code, label, { required = false } = {}){
+    let descriptor;
+    try {
+        descriptor = Object.getOwnPropertyDescriptor(value, field);
+    }
+    catch {
+        fail(code, `${label}.${field} could not be inspected.`, { field });
+    }
+
+    if (!descriptor){
+        if (required){
+            fail(code, `${label} is missing required field ${field}.`, { field });
+        }
+        return undefined;
+    }
+    if (!Object.prototype.hasOwnProperty.call(descriptor, 'value') || !descriptor.enumerable){
+        fail(code, `${label}.${field} must be an enumerable data field.`, { field });
+    }
+    return descriptor.value;
+}
+
 function validateOwner(owner){
     if (!isPlainObject(owner)){
         fail('INVALID_OWNER', 'Registry entry owner must be a plain object.', { owner });
     }
 
-    let packageId;
-    let source;
-    try {
-        packageId = owner.packageId;
-        source = owner.source;
-    }
-    catch {
-        fail('INVALID_OWNER', 'Registry entry owner fields could not be read.', { owner });
-    }
+    const packageId = readOwnDataField(owner, 'packageId', 'INVALID_OWNER', 'Registry entry owner', { required: true });
+    const source = readOwnDataField(owner, 'source', 'INVALID_OWNER', 'Registry entry owner', { required: true });
 
     try {
         assertNamespace(packageId);
@@ -61,13 +75,61 @@ function validateSchemaVersion(schemaVersion){
     return schemaVersion;
 }
 
-function validateTags(tags = []){
-    if (!Array.isArray(tags)){
-        fail('INVALID_TAG', 'Registry entry tags must be an array.', { tags });
+function readDenseArrayItems(value, code, label){
+    let array;
+    let keys;
+    let lengthDescriptor;
+    try {
+        array = Array.isArray(value);
+        if (array){
+            keys = Reflect.ownKeys(value);
+            lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
+        }
+    }
+    catch {
+        fail(code, `${label} could not be inspected.`, { value });
     }
 
+    if (!array){
+        fail(code, `${label} must be an array.`, { value });
+    }
+    if (!lengthDescriptor || !Object.prototype.hasOwnProperty.call(lengthDescriptor, 'value') ||
+        !Number.isSafeInteger(lengthDescriptor.value) || lengthDescriptor.value < 0){
+        fail(code, `${label} has an invalid length.`, { value });
+    }
+
+    const length = lengthDescriptor.value;
+    for (const key of keys){
+        if (typeof key !== 'string'){
+            fail(code, `${label} must not contain symbol fields.`, { value });
+        }
+        if (key === 'length') continue;
+        if (!/^(0|[1-9][0-9]*)$/.test(key) || Number(key) >= length){
+            fail(code, `${label} must not contain non-index fields.`, { field: key });
+        }
+    }
+
+    const items = new Array(length);
+    for (let index = 0; index < length; index++){
+        let descriptor;
+        try {
+            descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+        }
+        catch {
+            fail(code, `${label}[${index}] could not be inspected.`, { index });
+        }
+        if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value') || !descriptor.enumerable){
+            fail(code, `${label} must be dense and contain only data items.`, { index });
+        }
+        items[index] = descriptor.value;
+    }
+    return items;
+}
+
+function validateTags(tags = []){
+    const values = readDenseArrayItems(tags, 'INVALID_TAG', 'Registry entry tags');
     const seen = new Set();
-    const copy = Array.from(tags, tag => {
+    const copy = values.map(tag => {
         if (typeof tag !== 'string' || tag.length === 0 || tag.trim() !== tag){
             fail('INVALID_TAG', `Invalid registry tag: ${describeContractValue(tag)}.`, { tag });
         }
@@ -81,12 +143,9 @@ function validateTags(tags = []){
 }
 
 function validateAliases(aliases = []){
-    if (!Array.isArray(aliases)){
-        fail('INVALID_LEGACY_ALIAS', 'Registry entry aliases must be an array.', { aliases });
-    }
-
+    const values = readDenseArrayItems(aliases, 'INVALID_LEGACY_ALIAS', 'Registry entry aliases');
     const seen = new Set();
-    const copy = Array.from(aliases, alias => {
+    const copy = values.map(alias => {
         if (typeof alias !== 'string' || alias.length === 0 || alias.trim() !== alias){
             fail('INVALID_LEGACY_ALIAS', `Invalid legacy alias: ${describeContractValue(alias)}.`, { alias });
         }
@@ -257,6 +316,47 @@ function describeThrownValue(value){
     return describeContractValue(value);
 }
 
+function copyEnumerableDataDetails(value, target){
+    if (value === null || (typeof value !== 'object' && typeof value !== 'function')) return;
+
+    let keys;
+    try {
+        keys = Reflect.ownKeys(value);
+    }
+    catch {
+        return;
+    }
+
+    for (const key of keys){
+        let descriptor;
+        try {
+            descriptor = Object.getOwnPropertyDescriptor(value, key);
+        }
+        catch {
+            continue;
+        }
+        if (!descriptor || !descriptor.enumerable) continue;
+        Object.defineProperty(target, key, {
+            value: Object.prototype.hasOwnProperty.call(descriptor, 'value')
+                ? descriptor.value
+                : '<accessor>',
+            enumerable: true,
+            writable: true,
+            configurable: true,
+        });
+    }
+}
+
+function safeErrorField(error, field, fallback){
+    try {
+        const value = Reflect.get(error, field);
+        return value === undefined ? fallback : value;
+    }
+    catch {
+        return fallback;
+    }
+}
+
 function enrichDefinitionError(error, context){
     const definitionDetails = {
         definitionId: context.id,
@@ -265,10 +365,22 @@ function enrichDefinitionError(error, context){
     };
 
     if (error instanceof EngineContractError){
+        const details = {};
+        copyEnumerableDataDetails(safeErrorField(error, 'details', undefined), details);
+        for (const [key, value] of Object.entries(definitionDetails)){
+            Object.defineProperty(details, key, {
+                value,
+                enumerable: true,
+                writable: true,
+                configurable: true,
+            });
+        }
+        const code = safeErrorField(error, 'code', 'DEFINITION_VALIDATOR_FAILURE');
+        const message = safeErrorField(error, 'message', 'Definition contract failed.');
         throw new EngineContractError(
-            error.code,
-            `${error.message} [${context.id}]`,
-            { ...(error.details || {}), ...definitionDetails }
+            code,
+            `${String(message)} [${context.id}]`,
+            details
         );
     }
 
@@ -299,15 +411,17 @@ export class Registry {
         if (!isPlainObject(options)){
             fail('INVALID_REGISTRY_OPTIONS', 'Registry options must be a plain object.', { options });
         }
-        this.#type = assertContentType(options.type);
-        if (options.definitionValidator !== undefined && typeof options.definitionValidator !== 'function'){
+        const type = readOwnDataField(options, 'type', 'INVALID_REGISTRY_OPTIONS', 'Registry options', { required: true });
+        const definitionValidator = readOwnDataField(options, 'definitionValidator', 'INVALID_REGISTRY_OPTIONS', 'Registry options');
+        this.#type = assertContentType(type);
+        if (definitionValidator !== undefined && typeof definitionValidator !== 'function'){
             fail(
                 'INVALID_DEFINITION_VALIDATOR',
                 'Registry definitionValidator must be a function when provided.',
-                { definitionValidator: options.definitionValidator }
+                { definitionValidator }
             );
         }
-        this.#definitionValidator = options.definitionValidator;
+        this.#definitionValidator = definitionValidator;
     }
 
     get type(){
@@ -323,7 +437,8 @@ export class Registry {
             fail('INVALID_REGISTRY_ENTRY', 'Registry entry must be a plain object.', { record });
         }
 
-        const parsed = parseContentId(record.id);
+        const id = readOwnDataField(record, 'id', 'INVALID_REGISTRY_ENTRY', 'Registry entry', { required: true });
+        const parsed = parseContentId(id);
         if (parsed.type !== this.#type){
             fail(
                 'REGISTRY_TYPE_MISMATCH',
@@ -334,11 +449,9 @@ export class Registry {
         if (this.#entries.has(parsed.canonical)){
             fail('DUPLICATE_CONTENT_ID', `Duplicate content ID ${describeContractValue(parsed.canonical)}.`, { id: parsed.canonical });
         }
-        if (!Object.prototype.hasOwnProperty.call(record, 'definition')){
-            fail('INVALID_REGISTRY_ENTRY', `Registry entry ${describeContractValue(parsed.canonical)} is missing a definition.`, { id: parsed.canonical });
-        }
 
-        const owner = validateOwner(record.owner);
+        const definition = readOwnDataField(record, 'definition', 'INVALID_REGISTRY_ENTRY', 'Registry entry', { required: true });
+        const owner = validateOwner(readOwnDataField(record, 'owner', 'INVALID_REGISTRY_ENTRY', 'Registry entry', { required: true }));
         if (parsed.namespace !== owner.packageId){
             fail(
                 'CONTENT_NAMESPACE_OWNER_MISMATCH',
@@ -346,9 +459,11 @@ export class Registry {
                 { id: parsed.canonical, namespace: parsed.namespace, ownerPackageId: owner.packageId }
             );
         }
-        const schemaVersion = validateSchemaVersion(record.schemaVersion);
-        const tags = validateTags(record.tags);
-        const aliases = validateAliases(record.aliases);
+        const schemaVersion = validateSchemaVersion(
+            readOwnDataField(record, 'schemaVersion', 'INVALID_REGISTRY_ENTRY', 'Registry entry', { required: true })
+        );
+        const tags = validateTags(readOwnDataField(record, 'tags', 'INVALID_REGISTRY_ENTRY', 'Registry entry'));
+        const aliases = validateAliases(readOwnDataField(record, 'aliases', 'INVALID_REGISTRY_ENTRY', 'Registry entry'));
 
         for (const alias of aliases){
             const existing = this.#aliases.get(alias);
@@ -371,9 +486,9 @@ export class Registry {
             tags,
             aliases,
         });
-        const definition = this.#definitionValidator
-            ? validateDefinition(this.#definitionValidator, record.definition, context)
-            : record.definition;
+        const validatedDefinition = this.#definitionValidator
+            ? validateDefinition(this.#definitionValidator, definition, context)
+            : definition;
 
         const entry = Object.freeze({
             id: parsed.canonical,
@@ -381,7 +496,7 @@ export class Registry {
             schemaVersion,
             tags,
             aliases,
-            definition,
+            definition: validatedDefinition,
         });
 
         this.#entries.set(parsed.canonical, entry);
