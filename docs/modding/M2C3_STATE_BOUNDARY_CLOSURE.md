@@ -34,27 +34,30 @@ It recognizes:
 
 - dot access such as `global.settings.pause`;
 - static bracket access such as `global['settings']['pause']`;
-- dynamic bracket access such as `global.settings[key]`;
-- root/container access such as assigning `global.settings` itself.
+- static `hasOwnProperty('pause')` existence checks as access to `pause`;
+- dynamic bracket/existence access such as `global.settings[key]` as dynamic debt;
+- root/container exposure such as assigning or passing `global.settings` itself.
 
 Comments, string literals, template literal text and regular expressions do not create false settings debt through the shared source masker.
 
-The baseline stores counts per legacy module and per reviewed top-level setting key. Dynamic and root accesses use explicit pseudo-keys:
+The baseline stores counts per legacy module and per statically visible top-level setting key. Dynamic and root accesses use explicit pseudo-keys:
 
 ```text
 $dynamic
 $root
 ```
 
-This is intentionally stricter than a total-reference counter. A legacy module cannot remove one settings dependency and silently replace it with another while keeping the same total.
+`$root` is intentionally a capability-level debt marker. When a module exposes the whole settings object, for example through a Vue data object or another alias, downstream property reads can occur without spelling `global.settings` again in JavaScript source. M2C3 therefore freezes that whole-object exposure as one reviewed root capability edge; it does not claim to recover every later property read through arbitrary aliases, templates, framework bindings, or callbacks.
+
+Likewise, the per-setting counters cover accesses whose top-level key is statically visible at the `global.settings` access site. Unknown computed keys remain `$dynamic` rather than being guessed into a target contract.
+
+This is intentionally stricter than a total-reference counter. For directly visible accesses, a legacy module cannot remove one settings dependency and silently replace it with another while keeping the same total. Whole-object and dynamic capability edges are separately frozen so those escape hatches cannot grow unnoticed either.
 
 The rule is downward-only:
 
 - current count greater than baseline: fail because legacy debt increased;
 - current count equal to baseline: pass;
 - current count lower than baseline: fail until the baseline is ratcheted downward deliberately.
-
-Dynamic access is therefore separately visible and cannot grow unnoticed.
 
 ## Runtime/transient consumer ratchet
 
@@ -171,11 +174,11 @@ The only production-adjacent change is the package script that makes the M2C3 sc
 
 M2C3 is complete when:
 
-1. current legacy settings access debt is frozen per module and per top-level setting key;
-2. dynamic/root settings accesses are explicit and cannot grow unnoticed;
+1. current direct legacy settings-access debt is frozen per module and per statically visible top-level setting key;
+2. dynamic settings access and whole-settings capability exposure are explicit and cannot grow unnoticed;
 3. current consumers of M2C-managed `vars.js` runtime bindings are frozen;
 4. new runtime binding classifications cannot bypass the consumer baseline;
-5. all three debt families are downward-ratcheting;
+5. all debt families are downward-ratcheting;
 6. generic non-authoritative settings/UI/transient/runtime/migration/debug buckets are permanently forbidden as GameState roots;
 7. the M2C3 gate runs in `npm run test:architecture`;
 8. the architecture report exposes M2C3 debt and violations;
