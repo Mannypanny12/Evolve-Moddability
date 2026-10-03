@@ -1,5 +1,7 @@
 'use strict';
 
+const fs = require('node:fs');
+const path = require('node:path');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -15,10 +17,13 @@ const {
     MIGRATION_DISPOSITIONS,
     RESET_BEHAVIORS,
     LAYER_RULES,
+    SHOW_PROJECTION_SETTINGS,
     SETTING_STATE_CONTRACT,
     RUNTIME_STATE_CONTRACT,
     EXPECTED_FIXED_NESTED_KEYS,
+    EXPECTED_MESSAGE_LOG_FILTERS,
     matchNestedSettingPath,
+    matchNestedRuntimePath,
 } = require('./m2c-state-layer-contract.cjs');
 
 function sorted(values){
@@ -76,17 +81,22 @@ function assertContractValid(label, info){
     assert.ok(rule.lifecycles.includes(info.lifecycle), `${label}: ${info.lifecycle} is illegal for ${info.targetLayer}`);
     assert.ok(rule.persistence.includes(info.persistence), `${label}: ${info.persistence} is illegal for ${info.targetLayer}`);
     assert.ok(rule.simulationRoles.includes(info.simulationRole), `${label}: ${info.simulationRole} is illegal for ${info.targetLayer}`);
+    assert.ok(rule.migrationDispositions.includes(info.migrationDisposition), `${label}: ${info.migrationDisposition} is illegal for ${info.targetLayer}`);
     assert.ok(rule.resetBehaviors.includes(info.resetBehavior), `${label}: ${info.resetBehavior} is illegal for ${info.targetLayer}`);
 }
 
-test('M2C2 permanent state layers are closed and exclude M2C1 migration-only pseudo-layers', () => {
+test('M2C2 permanent state layers are closed and exclude migration-only pseudo-layers', () => {
     assert.deepEqual(sortedKeys(LAYER_RULES), sorted(STATE_LAYERS));
+    for (const rule of Object.values(LAYER_RULES)){
+        assert.ok(Array.isArray(rule.migrationDispositions));
+        assert.ok(rule.migrationDispositions.length > 0);
+    }
     assert.equal(STATE_LAYERS.includes('semantic-debt'), false);
     assert.equal(STATE_LAYERS.includes('legacy-mixed-container'), false);
     assert.equal(STATE_LAYERS.includes('game-state-candidate'), false);
 });
 
-test('M2C2 normalizes every M2C1 setting and runtime entry exactly once', () => {
+test('M2C2 normalizes every M2C1 setting and runtime entry exactly once into legal combinations', () => {
     assert.deepEqual(sortedKeys(SETTING_STATE_CONTRACT), sortedKeys(SETTING_TARGET_POLICY));
     assert.deepEqual(sortedKeys(RUNTIME_STATE_CONTRACT), sortedKeys(RUNTIME_TARGET_POLICY));
 
@@ -111,7 +121,7 @@ test('M2C2 reserves authoritative persistence exclusively for GameState', () => 
     }
 });
 
-test('M2C2 makes behavior-affecting application preferences explicit command inputs, not implicit engine state', () => {
+test('M2C2 behavior-affecting application preferences become explicit command inputs', () => {
     for (const name of ['qAny', 'qAny_res', 'qKey', 'q_merge']){
         const info = SETTING_STATE_CONTRACT[name];
         assert.equal(info.targetLayer, 'application-preference', name);
@@ -121,30 +131,65 @@ test('M2C2 makes behavior-affecting application preferences explicit command inp
     }
 });
 
-test('M2C2 classifies pause as application scheduling control rather than authoritative GameState', () => {
+test('M2C2 pause is resettable application-session scheduling control', () => {
     const info = SETTING_STATE_CONTRACT.pause;
     assert.equal(info.targetLayer, 'application-control');
+    assert.equal(info.lifecycle, 'application-session');
+    assert.equal(info.persistence, 'application-session');
     assert.equal(info.simulationRole, 'scheduling-gate');
-    assert.equal(info.persistence, 'application-preference');
     assert.equal(info.migrationDisposition, 'translate');
+    assert.equal(info.resetBehavior, 'reset-to-default');
     assert.notEqual(info.targetLayer, 'game-state');
 });
 
-test('M2C2 converts legacy show flags and region containers into derived progression projections', () => {
-    for (const [name, info] of Object.entries(SETTING_STATE_CONTRACT)){
-        if (name.startsWith('show') || ['space', 'portal', 'eden', 'tau'].includes(name)){
-            assert.equal(info.targetLayer, 'derived-state', name);
-            assert.equal(info.persistence, 'none', name);
-            assert.equal(info.simulationRole, 'derived-read-only', name);
-            assert.equal(info.migrationDisposition, 'derive', name);
-            assert.equal(info.resetBehavior, 'recompute', name);
-        }
+test('M2C2 disableReset is a temporary UI safety latch, not a durable preference', () => {
+    const info = SETTING_STATE_CONTRACT.disableReset;
+    assert.equal(info.targetLayer, 'ui-session');
+    assert.equal(info.lifecycle, 'application-session');
+    assert.equal(info.persistence, 'none');
+    assert.equal(info.simulationRole, 'none');
+    assert.equal(info.resetBehavior, 'reset-to-default');
+});
+
+test('legacy source confirms pause and disableReset are cleared by gameplay reset handling', () => {
+    const varsSource = fs.readFileSync(path.resolve(__dirname, '../../src/vars.js'), 'utf8');
+    assert.match(varsSource, /global\.settings\.disableReset\s*=\s*false;/);
+    assert.match(varsSource, /global\.settings\.pause\s*=\s*false;/);
+});
+
+test('M2C2 show projection set is explicit and fail-closed against new show settings', () => {
+    const actualShowSettings = Object.keys(SETTING_TARGET_POLICY).filter(name => name.startsWith('show'));
+    assert.deepEqual(sorted(actualShowSettings), sorted(SHOW_PROJECTION_SETTINGS));
+
+    for (const name of SHOW_PROJECTION_SETTINGS){
+        const info = SETTING_STATE_CONTRACT[name];
+        assert.equal(info.targetLayer, 'derived-state', name);
+        assert.equal(info.persistence, 'none', name);
+        assert.equal(info.simulationRole, 'derived-read-only', name);
+        assert.equal(info.migrationDisposition, 'derive', name);
+        assert.equal(info.resetBehavior, 'recompute', name);
     }
 });
 
-test('M2C2 decomposes legacy mixed nested containers instead of assigning one permanent owner', () => {
+test('M2C2 region containers remain derived progression/world projections', () => {
+    for (const name of ['space', 'portal', 'eden', 'tau']){
+        const info = SETTING_STATE_CONTRACT[name];
+        assert.equal(info.targetLayer, 'derived-state', name);
+        assert.equal(info.persistence, 'none', name);
+        assert.equal(info.migrationDisposition, 'derive', name);
+    }
+});
+
+test('M2C2 decomposes mixed top-level containers instead of assigning one permanent owner', () => {
     for (const name of ['arpa', 'msgFilters']){
         const info = SETTING_STATE_CONTRACT[name];
+        assert.equal(info.targetLayer, 'migration', name);
+        assert.equal(info.migrationDisposition, 'decompose', name);
+        assert.equal(info.persistence, 'import-only', name);
+    }
+
+    for (const name of ['message_logs', 'tmp_vars']){
+        const info = RUNTIME_STATE_CONTRACT[name];
         assert.equal(info.targetLayer, 'migration', name);
         assert.equal(info.migrationDisposition, 'decompose', name);
         assert.equal(info.persistence, 'import-only', name);
@@ -191,20 +236,20 @@ test('M2C2 ratchets fixed nested settings keys against pristine legacy state', (
     }
 });
 
-test('M2C2 gives every current nested settings leaf exactly one target contract', () => {
+test('M2C2 gives every current nested settings leaf exactly one legal target contract', () => {
     const settings = initializedSettings();
     const containers = ['arpa', 'eden', 'keyMap', 'msgFilters', 'portal', 'resBar', 'space', 'tau'];
     const paths = containers.flatMap(container => leafPaths(settings[container], container));
 
     assert.ok(paths.length > 0, 'nested settings inventory must not be empty');
-    for (const path of paths){
-        const matches = matchNestedSettingPath(path);
-        assert.equal(matches.length, 1, `${path}: expected exactly one nested M2C2 rule, got ${matches.map(match => match.id).join(', ') || 'none'}`);
-        assertContractValid(`settings.${path}`, matches[0].classification);
+    for (const nestedPath of paths){
+        const matches = matchNestedSettingPath(nestedPath);
+        assert.equal(matches.length, 1, `${nestedPath}: expected exactly one nested M2C2 rule, got ${matches.map(match => match.id).join(', ') || 'none'}`);
+        assertContractValid(`settings.${nestedPath}`, matches[0].classification);
     }
 });
 
-test('M2C2 splits ARPA navigation from progression-driven section availability', () => {
+test('M2C2 splits ARPA navigation from progression-driven availability', () => {
     const selectedTab = matchNestedSettingPath('arpa.arpaTabs')[0].classification;
     assert.equal(selectedTab.targetLayer, 'ui-session');
     assert.equal(selectedTab.simulationRole, 'none');
@@ -216,10 +261,8 @@ test('M2C2 splits ARPA navigation from progression-driven section availability',
     }
 });
 
-test('M2C2 splits message-filter unlock capability from user filter preferences', () => {
+test('M2C2 splits message-filter capability from user filter preferences', () => {
     const settings = initializedSettings();
-    assert.ok(settings.msgFilters && typeof settings.msgFilters === 'object');
-
     for (const [filter, value] of Object.entries(settings.msgFilters)){
         assert.deepEqual(sortedKeys(value), ['max', 'save', 'unlocked', 'vis'], `${filter}: message-filter shape changed`);
 
@@ -249,5 +292,28 @@ test('M2C2 keeps keyboard mappings and resource-bar visibility on the applicatio
         assert.equal(info.targetLayer, 'application-preference', key);
         assert.equal(info.simulationRole, 'none', key);
         assert.equal(info.persistence, 'application-preference', key);
+    }
+});
+
+test('M2C2 decomposes message_logs view selection from reconstructed per-filter buffers', () => {
+    const varsSource = fs.readFileSync(path.resolve(__dirname, '../../src/vars.js'), 'utf8');
+    const sourceMatch = varsSource.match(/export const message_filters\s*=\s*\[([^\]]+)\]/);
+    assert.ok(sourceMatch, 'vars.js must expose the reviewed message_filters constant');
+    const sourceFilters = [...sourceMatch[1].matchAll(/'([^']+)'/g)].map(match => match[1]);
+    assert.deepEqual(sourceFilters, EXPECTED_MESSAGE_LOG_FILTERS, 'message filter list changed and requires M2C2 review');
+
+    const viewMatches = matchNestedRuntimePath('message_logs.view');
+    assert.equal(viewMatches.length, 1, 'message_logs.view must have exactly one owner');
+    assert.equal(viewMatches[0].classification.targetLayer, 'ui-session');
+    assertContractValid('runtime.message_logs.view', viewMatches[0].classification);
+
+    for (const filter of sourceFilters){
+        const matches = matchNestedRuntimePath(`message_logs.${filter}`);
+        assert.equal(matches.length, 1, `message_logs.${filter} must have exactly one owner`);
+        const info = matches[0].classification;
+        assert.equal(info.targetLayer, 'application-working', filter);
+        assert.equal(info.persistence, 'none', filter);
+        assert.equal(info.migrationDisposition, 'reconstruct', filter);
+        assertContractValid(`runtime.message_logs.${filter}`, info);
     }
 });
