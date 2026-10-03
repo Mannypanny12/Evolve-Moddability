@@ -104,16 +104,15 @@ function analyzeSettingsAccesses(source){
         }
         if (settingProperty.value === 'hasOwnProperty'){
             const checkedKey = readHasOwnPropertyKey(source, masked, settingProperty.end);
-            if (!checkedKey){
-                incrementCount(counts, '$root');
+            if (checkedKey){
+                if (checkedKey.dynamic){
+                    incrementCount(counts, '$dynamic');
+                }
+                else {
+                    incrementCount(counts, checkedKey.value);
+                }
+                continue;
             }
-            else if (checkedKey.dynamic){
-                incrementCount(counts, '$dynamic');
-            }
-            else {
-                incrementCount(counts, checkedKey.value);
-            }
-            continue;
         }
         incrementCount(counts, settingProperty.value);
     }
