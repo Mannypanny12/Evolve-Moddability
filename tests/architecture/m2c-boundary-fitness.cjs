@@ -49,10 +49,10 @@ function readQuotedString(source, index){
 }
 
 function readStaticBracketProperty(source, masked, index){
-    let cursor = skipWhitespace(masked, index + 1);
+    let cursor = skipWhitespace(source, index + 1);
     const stringValue = readQuotedString(source, cursor);
     if (!stringValue) return { dynamic: true, end: index + 1 };
-    cursor = skipWhitespace(masked, stringValue.end);
+    cursor = skipWhitespace(source, stringValue.end);
     if (source[cursor] !== ']') return { dynamic: true, end: cursor };
     return { dynamic: false, value: stringValue.value, end: cursor + 1 };
 }
@@ -73,7 +73,7 @@ function readProperty(source, masked, index){
 function readHasOwnPropertyKey(source, masked, index){
     let cursor = skipWhitespace(masked, index);
     if (masked[cursor] !== '(') return null;
-    cursor = skipWhitespace(masked, cursor + 1);
+    cursor = skipWhitespace(source, cursor + 1);
     const stringValue = readQuotedString(source, cursor);
     if (!stringValue) return { dynamic: true };
     return { dynamic: false, value: stringValue.value };
