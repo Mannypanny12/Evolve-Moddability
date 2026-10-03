@@ -1,19 +1,22 @@
 import { EngineContractError, describeContractValue } from '../identity.mjs';
 
 const TOKEN_PATTERN = /^[a-z][a-z0-9_-]*$/;
+const LOCALIZATION_KEY_PATTERN = /^(?:[a-z][a-z0-9_-]*:)?[A-Za-z0-9][A-Za-z0-9_.-]*$/;
 
 function fail(code, message, details){
     throw new EngineContractError(code, message, details);
 }
 
 function inspectPlainObject(value, path){
-    if (value === null || typeof value !== 'object' || Array.isArray(value)){
+    if (value === null || typeof value !== 'object'){
         fail('INVALID_DEFINITION', `${path} must be a plain object, got ${describeContractValue(value)}.`, { path, value });
     }
 
+    let array;
     let prototype;
     let keys;
     try {
+        array = Array.isArray(value);
         prototype = Object.getPrototypeOf(value);
         keys = Reflect.ownKeys(value);
     }
@@ -21,7 +24,7 @@ function inspectPlainObject(value, path){
         fail('INVALID_DEFINITION', `${path} could not be safely inspected.`, { path });
     }
 
-    if (prototype !== Object.prototype && prototype !== null){
+    if (array || (prototype !== Object.prototype && prototype !== null)){
         fail('INVALID_DEFINITION', `${path} must be a plain object.`, { path, value });
     }
 
@@ -79,6 +82,14 @@ export function assertDefinitionSchemaVersion(schemaVersion, expected, family){
 export function assertDefinitionString(value, path){
     if (typeof value !== 'string' || value.length === 0 || value.trim() !== value){
         fail('INVALID_DEFINITION_FIELD', `${path} must be a non-empty exact string, got ${describeContractValue(value)}.`, { path, value });
+    }
+    return value;
+}
+
+export function assertLocalizationKey(value, path){
+    assertDefinitionString(value, path);
+    if (!LOCALIZATION_KEY_PATTERN.test(value)){
+        fail('INVALID_DEFINITION_FIELD', `${path} must be a logical localization key, got ${describeContractValue(value)}.`, { path, value });
     }
     return value;
 }

@@ -106,6 +106,189 @@ function compareCanonicalIds(a, b){
     return a < b ? -1 : a > b ? 1 : 0;
 }
 
+function invalidCanonicalDefinition(path, value, reason = 'unsupported value'){
+    fail(
+        'INVALID_CANONICAL_DEFINITION',
+        `Validated definition output at ${path} contains ${reason}: ${describeContractValue(value)}.`,
+        { path, value }
+    );
+}
+
+function canonicalizeArray(value, path, ancestors){
+    let keys;
+    let lengthDescriptor;
+    try {
+        keys = Reflect.ownKeys(value);
+        lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
+    }
+    catch {
+        invalidCanonicalDefinition(path, value, 'an uninspectable array');
+    }
+
+    if (!lengthDescriptor || !Object.prototype.hasOwnProperty.call(lengthDescriptor, 'value') ||
+        !Number.isSafeInteger(lengthDescriptor.value) || lengthDescriptor.value < 0){
+        invalidCanonicalDefinition(path, value, 'an invalid array length');
+    }
+
+    const length = lengthDescriptor.value;
+    for (const key of keys){
+        if (typeof key !== 'string'){
+            invalidCanonicalDefinition(path, value, 'a symbol-keyed array field');
+        }
+        if (key === 'length') continue;
+        if (!/^(0|[1-9][0-9]*)$/.test(key) || Number(key) >= length){
+            invalidCanonicalDefinition(`${path}.${key}`, value, 'a non-index array field');
+        }
+    }
+
+    const copy = new Array(length);
+    for (let index = 0; index < length; index++){
+        let descriptor;
+        try {
+            descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+        }
+        catch {
+            invalidCanonicalDefinition(`${path}[${index}]`, value, 'an uninspectable array item');
+        }
+        if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value') || !descriptor.enumerable){
+            invalidCanonicalDefinition(`${path}[${index}]`, value, 'a sparse or accessor-backed array item');
+        }
+        copy[index] = canonicalizeValidatedDefinition(descriptor.value, `${path}[${index}]`, ancestors);
+    }
+    return Object.freeze(copy);
+}
+
+function canonicalizeObject(value, path, ancestors){
+    let prototype;
+    let keys;
+    try {
+        prototype = Object.getPrototypeOf(value);
+        keys = Reflect.ownKeys(value);
+    }
+    catch {
+        invalidCanonicalDefinition(path, value, 'an uninspectable object');
+    }
+
+    if (prototype !== Object.prototype && prototype !== null){
+        invalidCanonicalDefinition(path, value, 'a non-plain object');
+    }
+
+    const stringKeys = [];
+    for (const key of keys){
+        if (typeof key !== 'string'){
+            invalidCanonicalDefinition(path, value, 'a symbol-keyed object field');
+        }
+        stringKeys.push(key);
+    }
+    stringKeys.sort(compareCanonicalIds);
+
+    const copy = {};
+    for (const key of stringKeys){
+        let descriptor;
+        try {
+            descriptor = Object.getOwnPropertyDescriptor(value, key);
+        }
+        catch {
+            invalidCanonicalDefinition(`${path}.${key}`, value, 'an uninspectable object field');
+        }
+        if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value') || !descriptor.enumerable){
+            invalidCanonicalDefinition(`${path}.${key}`, value, 'a non-enumerable or accessor-backed object field');
+        }
+        Object.defineProperty(copy, key, {
+            value: canonicalizeValidatedDefinition(descriptor.value, `${path}.${key}`, ancestors),
+            enumerable: true,
+            writable: true,
+            configurable: true,
+        });
+    }
+    return Object.freeze(copy);
+}
+
+function canonicalizeValidatedDefinition(value, path = 'definition', ancestors = new Set()){
+    if (value === null) return null;
+
+    switch (typeof value){
+        case 'string':
+        case 'boolean':
+            return value;
+        case 'number':
+            if (!Number.isFinite(value)){
+                invalidCanonicalDefinition(path, value, 'a non-finite number');
+            }
+            return value;
+        case 'object':
+            break;
+        default:
+            invalidCanonicalDefinition(path, value);
+    }
+
+    let array;
+    try {
+        array = Array.isArray(value);
+    }
+    catch {
+        invalidCanonicalDefinition(path, value, 'an uninspectable object');
+    }
+
+    if (ancestors.has(value)){
+        invalidCanonicalDefinition(path, value, 'a cyclic reference');
+    }
+    ancestors.add(value);
+    try {
+        return array
+            ? canonicalizeArray(value, path, ancestors)
+            : canonicalizeObject(value, path, ancestors);
+    }
+    finally {
+        ancestors.delete(value);
+    }
+}
+
+function describeThrownValue(value){
+    try {
+        if (value && typeof value === 'object' && typeof value.message === 'string'){
+            const name = typeof value.name === 'string' ? value.name : 'Error';
+            return `${name}: ${value.message}`;
+        }
+    }
+    catch {
+        // Fall back to the fail-safe value formatter below.
+    }
+    return describeContractValue(value);
+}
+
+function enrichDefinitionError(error, context){
+    const definitionDetails = {
+        definitionId: context.id,
+        definitionOwnerPackageId: context.owner.packageId,
+        definitionSchemaVersion: context.schemaVersion,
+    };
+
+    if (error instanceof EngineContractError){
+        throw new EngineContractError(
+            error.code,
+            `${error.message} [${context.id}]`,
+            { ...(error.details || {}), ...definitionDetails }
+        );
+    }
+
+    fail(
+        'DEFINITION_VALIDATOR_FAILURE',
+        `Definition validator failed for ${describeContractValue(context.id)}: ${describeThrownValue(error)}.`,
+        { ...definitionDetails }
+    );
+}
+
+function validateDefinition(validator, definition, context){
+    try {
+        const validated = validator(definition, context);
+        return canonicalizeValidatedDefinition(validated);
+    }
+    catch (error){
+        enrichDefinitionError(error, context);
+    }
+}
+
 export class Registry {
     #type;
     #definitionValidator;
@@ -189,7 +372,7 @@ export class Registry {
             aliases,
         });
         const definition = this.#definitionValidator
-            ? this.#definitionValidator(record.definition, context)
+            ? validateDefinition(this.#definitionValidator, record.definition, context)
             : record.definition;
 
         const entry = Object.freeze({

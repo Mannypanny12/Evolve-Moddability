@@ -1,8 +1,8 @@
 import { Registry } from '../registry.mjs';
 import {
     assertDefinitionSchemaVersion,
-    assertDefinitionString,
     assertDefinitionToken,
+    assertLocalizationKey,
     freezeDefinitionRecord,
     readClosedDefinitionObject,
 } from './common.mjs';
@@ -25,8 +25,8 @@ export function validateTechnologyDefinition(definition, context){
     });
 
     const presentation = freezeDefinitionRecord({
-        nameKey: assertDefinitionString(presentationFields.get('nameKey'), 'technology.presentation.nameKey'),
-        descriptionKey: assertDefinitionString(presentationFields.get('descriptionKey'), 'technology.presentation.descriptionKey'),
+        nameKey: assertLocalizationKey(presentationFields.get('nameKey'), 'technology.presentation.nameKey'),
+        descriptionKey: assertLocalizationKey(presentationFields.get('descriptionKey'), 'technology.presentation.descriptionKey'),
     });
     const classification = freezeDefinitionRecord({
         category: assertDefinitionToken(classificationFields.get('category'), 'technology.classification.category'),
