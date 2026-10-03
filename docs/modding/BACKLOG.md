@@ -134,26 +134,25 @@ M2B does not migrate gameplay authority, modify persistence, or synchronize with
 
 See [M2B_STATE_STORE_SELECTORS.md](M2B_STATE_STORE_SELECTORS.md) for the design authority.
 
-### M2C - Settings and transient-state separation - in progress
+### M2C - Settings and transient-state separation
 
-#### M2C1 - Legacy state classification - complete
+#### M2C1 - Legacy state classification - complete after hardening
 
-Established:
+Established a fail-closed migration catalog for the mixed legacy settings/runtime surfaces without moving authority:
 
-- a fail-closed target classification for every currently known top-level legacy `global.settings` member;
-- an explicit separation between M0 behavioral observation and M2 target ownership;
-- future GameState candidates for genuinely simulation-owned settings without adding them to `GameState` yet;
-- application-setting classification for queue/input preferences that should become explicit command choices rather than hidden engine state;
-- explicit semantic-debt treatment for `showCivic` rather than copying the UI flag into GameState;
-- a fail-closed classification for every exported mutable `var` binding in `src/vars.js`;
-- separate categories for reconstructible derived data, deterministic runtime working state, executable/runtime services, platform services, UI state, migration debris and the legacy mixed `global` container;
-- persistence intent that prevents non-authoritative layers from claiming authoritative save semantics.
-
-M2C1 does not move any setting/state, change gameplay, modify persistence, add a GameState field, add mutation authority, or rebaseline the oracle. `GAME_STATE_SCHEMA_VERSION` remains 1.
+- every M0-classified top-level `global.settings` member has one explicit M2 target classification;
+- the actual initialized legacy settings surface is independently cross-checked so M0/M2 cannot silently omit a current top-level setting together;
+- every exported mutable `var`/`let` binding in `src/vars.js` has one explicit target classification;
+- new exported `const` containers in `vars.js` are ratcheted so they cannot bypass the mutable-state review;
+- M0 observation semantics remain distinct from target ownership;
+- queue/input behavior preferences are recorded as future application/command concerns rather than hidden GameState;
+- derived caches, deterministic runtime working state, executable/runtime services, platform dependencies, migration debris, and semantic debt are distinguished;
+- `directMigration` is an explicit per-entry decision with no implicit default;
+- no gameplay, persistence, `GameState`, oracle, reset, or UI behavior changes.
 
 See [M2C1_LEGACY_STATE_CLASSIFICATION.md](M2C1_LEGACY_STATE_CLASSIFICATION.md).
 
-M2C2 is next and will formalize the full state-layer ownership/lifecycle contract. M2C3 will then add the closure/boundary enforcement required before M2D begins the first real authoritative state-domain migration.
+M2C2 formalizes the permanent state-layer ownership/lifecycle/dependency contract next. M2C3 then closes the boundary before M2D performs the first real authoritative state-domain migration.
 
 ## Immediate sequence
 
@@ -192,9 +191,7 @@ M2B state store/selectors - complete
    |
 M2C1 legacy state classification - complete
    |
-M2C2 state-layer ownership/lifecycle contract - next
-   |
-M2C3 settings/transient boundary closure
+M2C2 state-layer contract - next
 ```
 
 Do not jump directly to mod loading, total conversions, or bulk content conversion. Those would lock in legacy assumptions before the engine is ready.
