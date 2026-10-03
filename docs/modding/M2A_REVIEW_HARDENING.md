@@ -51,6 +51,8 @@ Incompatible structural or semantic GameState changes require a new version. Sto
 
 This keeps M2B mechanics separate from state-format evolution and gives M2D/later domain migrations an explicit rule.
 
+The review-hardening pass itself deliberately keeps `GAME_STATE_SCHEMA_VERSION = 1`: no gameplay system, persistence format, or external consumer has yet accepted V1 as authoritative state. These corrections finalize the pre-consumer V1 contract rather than migrating an already-deployed state format.
+
 ### 4. Proxy safety wording overstated what JavaScript reflection can guarantee
 
 Descriptor-based inspection prevents property getters/setters from being invoked, but JavaScript Proxy reflection traps may execute during operations such as own-key or descriptor inspection.
@@ -67,6 +69,8 @@ MAX_GAME_STATE_NESTING_DEPTH = 256
 
 Object/array state deeper than that fails as `INVALID_STATE_VALUE` before recursive validation reaches native call-stack exhaustion. The limit is intentionally far beyond any expected gameplay state hierarchy.
 
+Tests prove both sides of the boundary: state exactly at the limit is accepted, while the next object/array level fails with a structured contract error.
+
 ### 6. Determinism coverage was narrower than the stated contract
 
 Tests now prove equivalent objects with different insertion order produce identical canonical key order and identical JSON representation, including nested objects inside arrays.
@@ -78,7 +82,7 @@ The hardened test suite now covers:
 - object and array shared-reference rejection;
 - first-path diagnostics for cycles/shared references;
 - caller inability to inject traversal bookkeeping;
-- explicit nesting-limit failure;
+- exact-limit success and over-limit structured nesting failure;
 - deterministic canonical output independent of insertion order;
 - Proxy reflection execution semantics as distinct from accessor execution;
 - existing getter, exotic object, sparse array, hidden field, symbol, non-finite, prototype pollution, hostile Proxy, and revoked Proxy cases.
