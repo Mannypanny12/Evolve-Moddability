@@ -33,6 +33,19 @@ function exportedConstBindings(source){
         .sort();
 }
 
+function loadInitializedLegacySettings(){
+    const bundlePath = process.env.EVOLVE_LEGACY_TEST_BUNDLE;
+    assert.ok(bundlePath, 'EVOLVE_LEGACY_TEST_BUNDLE must be set by the test runner');
+
+    delete require.cache[require.resolve(bundlePath)];
+    const legacy = require(bundlePath);
+
+    assert.equal(typeof legacy.getState, 'function', 'legacy harness must expose getState()');
+    const state = legacy.getState();
+    assert.ok(state && state.settings && typeof state.settings === 'object', 'initialized legacy state must expose settings');
+    return state.settings;
+}
+
 test('M2C1 target policy classifies every known legacy setting exactly once', () => {
     assert.deepEqual(
         sortedKeys(SETTING_TARGET_POLICY),
@@ -46,6 +59,36 @@ test('M2C1 target policy classifies every known legacy setting exactly once', ()
             `settings.${key}: M2 target classification must preserve M0 observation semantics`
         );
     }
+});
+
+test('M2C1 current initialized legacy settings surface is independently classified', () => {
+    const initializedSettings = loadInitializedLegacySettings();
+    const sourceKeys = sortedKeys(initializedSettings);
+
+    assert.deepEqual(
+        sortedKeys(SIMULATION_SETTING_POLICY),
+        sourceKeys,
+        'M0 settings policy must match the actual initialized top-level legacy settings surface'
+    );
+    assert.deepEqual(
+        sortedKeys(SETTING_TARGET_POLICY),
+        sourceKeys,
+        'M2C settings policy must match the actual initialized top-level legacy settings surface'
+    );
+});
+
+test('M2C1 records nested settings containers for M2C2 sub-classification', () => {
+    const initializedSettings = loadInitializedLegacySettings();
+    const nestedContainers = Object.entries(initializedSettings)
+        .filter(([, value]) => value !== null && typeof value === 'object' && !Array.isArray(value))
+        .map(([key]) => key)
+        .sort();
+
+    assert.deepEqual(
+        nestedContainers,
+        ['arpa', 'keyMap', 'msgFilters', 'portal', 'resBar', 'space'].sort(),
+        'nested settings containers are an explicit M2C2 review surface and must not grow silently'
+    );
 });
 
 test('M2C1 classification entries are complete and use closed vocabulary', () => {
