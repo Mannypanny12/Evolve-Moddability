@@ -134,7 +134,7 @@ M2B does not migrate gameplay authority, modify persistence, or synchronize with
 
 See [M2B_STATE_STORE_SELECTORS.md](M2B_STATE_STORE_SELECTORS.md) for the design authority.
 
-### M2C - Settings and transient-state separation
+### M2C - Settings and transient-state separation - in progress
 
 #### M2C1 - Legacy state classification - complete after hardening
 
@@ -152,7 +152,28 @@ Established a fail-closed migration catalog for the mixed legacy settings/runtim
 
 See [M2C1_LEGACY_STATE_CLASSIFICATION.md](M2C1_LEGACY_STATE_CLASSIFICATION.md).
 
-M2C2 formalizes the permanent state-layer ownership/lifecycle/dependency contract next. M2C3 then closes the boundary before M2D performs the first real authoritative state-domain migration.
+#### M2C2 - State-layer ownership/lifecycle contract - complete
+
+Established the permanent target contract without migrating production authority:
+
+- closed permanent layers for GameState, application preferences/control, UI session state, derived state, simulation/application working state, runtime/platform services, migration and debug concerns;
+- orthogonal lifecycle, persistence, simulation-role, migration-disposition and gameplay-reset vocabularies;
+- legal layer combinations are machine-checked;
+- every M2C1 top-level setting/runtime entry normalizes into one M2C2 target contract;
+- behavior-affecting application preferences cross the future engine boundary only as explicit command inputs;
+- `pause` is refined to application/scheduler control instead of target GameState;
+- `show*` and space/Portal/Eden/Tau region flags are derived progression/world projections rather than independent saved UI authority;
+- ARPA navigation is separated from progression-driven ARPA availability;
+- message-filter unlock availability is separated from user visibility/limit/retention preferences;
+- keyboard mappings and per-resource bar choices remain application-profile preferences;
+- legacy runtime working maps remain reconstructible non-persistent operation context;
+- executable/platform machinery maps to services rather than state;
+- no generic PreferencesStore/UIStore/TransientState/CacheStore was created;
+- no gameplay, persistence, GameState, oracle, reset or UI implementation behavior changed.
+
+See [M2C2_STATE_LAYER_CONTRACT.md](M2C2_STATE_LAYER_CONTRACT.md).
+
+M2C3 closes/enforces the final settings/transient boundary next. M2D remains the first real authoritative state-domain migration.
 
 ## Immediate sequence
 
@@ -191,7 +212,9 @@ M2B state store/selectors - complete
    |
 M2C1 legacy state classification - complete
    |
-M2C2 state-layer contract - next
+M2C2 state-layer contract - complete
+   |
+M2C3 settings/transient boundary closure - next
 ```
 
 Do not jump directly to mod loading, total conversions, or bulk content conversion. Those would lock in legacy assumptions before the engine is ready.
