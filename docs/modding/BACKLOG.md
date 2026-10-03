@@ -73,7 +73,7 @@ Define:
 - initial schemas for low-risk content such as achievements/resource metadata/basic technology metadata;
 - explicit extension/override policy deferred until needed.
 
-### M1C - Runtime environment ports ([#8](../../issues/8))
+### M1C - Runtime environment ports ([#8](../../issues/8)) - complete
 
 Introduce testable interfaces for:
 
@@ -123,9 +123,9 @@ M1A identity/registry - complete
    |
 M1B definition contracts - complete
    |
-M1C environment ports - next
+M1C environment ports - complete
    |
-M1D bridge/inspector
+M1D bridge/inspector - next
    |
 M2 explicit GameState
 ```

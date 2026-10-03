@@ -42,9 +42,9 @@ Browser adapters live outside the protected engine tree:
 src/platform/browser/**
 ```
 
-`src/engine/**` continues to have a hard zero budget for direct browser, storage, wall-clock, and random-source access.
+`src/engine/**` continues to have a hard zero budget for direct browser, storage, wall-clock, random-source, console, and scheduler access.
 
-M1C adds a second architecture fitness gate for `src/platform/**`. Platform adapters may depend inward on `src/engine/**` and on other platform modules, but they may not import legacy gameplay modules from the top-level `src/*.js` architecture or directly access the legacy `global` state object.
+M1C adds a second runtime/platform architecture fitness gate. Platform adapters may depend inward on `src/engine/**` and on other platform modules, but they may not import legacy gameplay modules from the top-level `src/*.js` architecture or directly access the legacy `global` state object. The same gate supplements M0E5 for engine-only concerns introduced by M1C, including direct console diagnostics, bare legacy `global`, direct scheduler/timer APIs, and browser/host cryptographic randomness.
 
 ## Runtime environment
 
@@ -81,7 +81,7 @@ Clock does not own:
 - calendar/season domain state;
 - timers or animation frames.
 
-Those concepts remain separate so deterministic simulation cannot accidentally become coupled to real-world date or scheduler behavior.
+Those concepts remain separate so deterministic simulation cannot accidentally become coupled to real-world date or scheduler behavior. Direct scheduler/timer APIs remain forbidden in engine code until an explicit scheduling boundary is introduced by a later milestone.
 
 The browser adapter delegates to `Date.now()` only when `clock.now()` is called.
 
@@ -141,7 +141,7 @@ The browser adapter delegates to the corresponding console method while preservi
 
 The logger does not inject timestamps. Engine code that needs a timestamp must request it explicitly through `Clock`, keeping deterministic diagnostics free of hidden wall-clock reads.
 
-Logger details are diagnostic payloads rather than gameplay state.
+Logger details are diagnostic payloads rather than gameplay state. Direct `console.*` access is forbidden under `src/engine/**`; engine diagnostics must go through the Logger port.
 
 ## Contract validation
 
@@ -171,14 +171,14 @@ Current M1C contract codes are:
 
 ## Deterministic test adapters
 
-Reusable M1C test support provides:
+Reusable M1C test support provides raw deterministic port implementations for:
 
 - mutable deterministic clock;
 - strict sequence RNG;
 - isolated in-memory storage;
 - capture logger.
 
-These live under `tests/support/` rather than production engine code.
+These live under `tests/support/` rather than production engine code. They are intentionally raw port implementations: `createRuntimeEnvironment(...)` or an individual engine contract factory supplies the single validation facade at the engine boundary. This avoids nested/double contract wrapping in composed test environments.
 
 They replace global monkey-patching for new engine tests. The M0 legacy harness continues to patch `Date`, `Math.random`, and `localStorage` because legacy code still depends on those globals. M1C does not rewrite the legacy harness.
 
@@ -186,7 +186,11 @@ They replace global monkey-patching for new engine tests. The M0 legacy harness 
 
 Browser adapters exist for all four ports and can receive injected browser primitives in tests.
 
-The browser runtime factory composes them without creating shared singleton state. Multiple runtime environments can coexist with independent clock, RNG, storage, and logger implementations.
+Each browser module exposes a raw `createBrowser*Port(...)` factory for composition and a validated standalone `createBrowser*(...)` facade. `createBrowserRuntime(...)` composes the raw platform ports and therefore applies each engine contract exactly once.
+
+Explicit overrides are strict: a malformed supplied clock function, RNG function, storage object, or console object is rejected rather than silently falling back to the real platform. Platform defaults are selected only when the corresponding override is `undefined`.
+
+The browser runtime factory creates no shared singleton state. Multiple runtime environments can coexist with independent clock, RNG, storage, and logger implementations.
 
 ## Architecture fitness
 
@@ -194,13 +198,17 @@ M0E5 continues to protect `src/engine/**` and the downward-only legacy architect
 
 M1C adds `tests/architecture/platform-fitness.cjs`, chained into `npm run test:architecture`.
 
-The platform gate proves:
+The M1C runtime/platform gate proves:
 
 - platform code may import engine contracts;
 - platform code may not import legacy top-level gameplay modules;
 - platform code may not use the legacy `global` state object;
 - CommonJS `require()` is not an escape hatch in the new platform layer;
-- platform-local dependency cycles are rejected.
+- platform-local dependency cycles are rejected;
+- engine code may not bypass Logger with direct `console.*` diagnostics;
+- engine code may not use bare legacy `global` even without property access;
+- engine code may not call direct timer/scheduler APIs;
+- engine code may not use `crypto.getRandomValues()` or `crypto.randomUUID()` as hidden random sources.
 
 ## Explicitly deferred legacy work
 
@@ -226,10 +234,10 @@ M1C is ready to merge when:
 
 1. runtime-port unit tests pass;
 2. deterministic adapter tests pass;
-3. browser adapter tests pass;
+3. browser adapter tests pass, including real fallback and malformed-override cases;
 4. the existing complete M0/M1 test suite remains green;
 5. the M0E5 architecture gate remains green;
-6. the new platform architecture gate remains green;
+6. the M1C runtime/platform architecture gate remains green;
 7. production build and real-browser smoke remain green;
 8. no frozen gameplay oracle snapshot changes.
 
