@@ -119,13 +119,16 @@ See [M2A_GAME_STATE_SCHEMA.md](M2A_GAME_STATE_SCHEMA.md) for the design authorit
 Established:
 
 - deeply frozen committed state and detached deterministic snapshots;
-- synchronous selectors over read-only committed state;
+- synchronous selectors over a read-only store facade;
+- a separate retained mutation-authority capability so read-side consumers cannot mint write scopes;
 - explicit named top-level mutation scopes instead of generic path setters;
 - detached mutable transaction drafts with full validation before atomic commit;
 - rollback on thrown/invalid/reentrant/async mutation attempts;
+- rejection of scope creation during selectors/transactions so failed work cannot leak scope registration;
 - post-validation scope-escape detection;
-- deterministic revisions and JSON Pointer change diagnostics;
-- a thin `GameStateStore` integration with zero premature gameplay mutation roots.
+- deterministic observational revisions and JSON Pointer-style change diagnostics;
+- transaction-level hardening against hostile/invalid M2A state shapes;
+- a thin `GameStateStore` integration with zero premature gameplay mutation roots and no authority factory exposed.
 
 M2B does not migrate gameplay authority, modify persistence, or synchronize with legacy `global`. `GAME_STATE_SCHEMA_VERSION` remains 1.
 
