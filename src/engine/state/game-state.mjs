@@ -3,12 +3,15 @@ import {
     canonicalizeStateValue,
     readClosedStateObject,
 } from './common.mjs';
+import { createStateStore } from './state-store.mjs';
 
 export const GAME_STATE_SCHEMA_VERSION = 1;
 
 const GAME_STATE_ROOT_FIELDS = Object.freeze([
     'schemaVersion',
 ]);
+
+const GAME_STATE_WRITABLE_ROOT_FIELDS = Object.freeze([]);
 
 export function createEmptyGameState(){
     return {
@@ -28,4 +31,12 @@ export function validateGameState(gameState){
     );
 
     return canonicalizeStateValue({ schemaVersion }, 'gameState');
+}
+
+export function createGameStateStore(initialState = createEmptyGameState()){
+    return createStateStore({
+        initialState,
+        validateState: validateGameState,
+        writableFields: GAME_STATE_WRITABLE_ROOT_FIELDS,
+    });
 }
