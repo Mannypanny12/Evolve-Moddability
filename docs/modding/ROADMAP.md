@@ -154,7 +154,7 @@ Define the first explicit state root and domain ownership rules.
 
 M2A now provides an independent minimal `GameState` root, a hardened inert plain-data state-value contract, fail-closed validation, and explicit ownership/layer rules without cloning legacy `global` or moving gameplay/save authority. See `M2A_GAME_STATE_SCHEMA.md`.
 
-### M2B State store and selectors
+### M2B State store and selectors - complete
 
 Provide:
 
@@ -163,6 +163,8 @@ Provide:
 - scoped mutation authority/transactions;
 - deterministic snapshots;
 - change diagnostics.
+
+M2B now separates the read-side store facade from the retained mutation-authority capability, so consumers that can query state cannot manufacture new write scopes. Transactions use detached validated drafts, rollback failed work atomically, and emit deterministic observational diagnostics. See `M2B_STATE_STORE_SELECTORS.md`.
 
 No generic public arbitrary-path setter.
 
