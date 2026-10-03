@@ -33,15 +33,21 @@ function exportedConstBindings(source){
         .sort();
 }
 
+let legacyApi;
+function legacy(){
+    if (!legacyApi){
+        const bundlePath = process.env.EVOLVE_LEGACY_TEST_BUNDLE;
+        assert.ok(bundlePath, 'EVOLVE_LEGACY_TEST_BUNDLE must be set by the test runner');
+        require(bundlePath);
+        legacyApi = globalThis.__EVOLVE_LEGACY_TEST_API__;
+        assert.ok(legacyApi, 'legacy bundle must expose __EVOLVE_LEGACY_TEST_API__');
+        assert.equal(typeof legacyApi.pristineLegacyState, 'function', 'legacy harness must expose pristineLegacyState()');
+    }
+    return legacyApi;
+}
+
 function loadInitializedLegacySettings(){
-    const bundlePath = process.env.EVOLVE_LEGACY_TEST_BUNDLE;
-    assert.ok(bundlePath, 'EVOLVE_LEGACY_TEST_BUNDLE must be set by the test runner');
-
-    delete require.cache[require.resolve(bundlePath)];
-    const legacy = require(bundlePath);
-    assert.equal(typeof legacy.getState, 'function', 'legacy harness must expose getState()');
-
-    const state = legacy.getState();
+    const state = legacy().pristineLegacyState();
     assert.ok(state && state.settings && typeof state.settings === 'object', 'initialized legacy state must expose settings');
     return state.settings;
 }
@@ -49,10 +55,10 @@ function loadInitializedLegacySettings(){
 test('M2C1 target policy classifies every known legacy setting exactly once', () => {
     assert.deepEqual(sortedKeys(SETTING_TARGET_POLICY), sortedKeys(SIMULATION_SETTING_POLICY));
 
-    for (const [key, legacy] of Object.entries(SIMULATION_SETTING_POLICY)){
+    for (const [key, legacyInfo] of Object.entries(SIMULATION_SETTING_POLICY)){
         assert.equal(
             SETTING_TARGET_POLICY[key].legacyMode,
-            legacy.mode,
+            legacyInfo.mode,
             `settings.${key}: M2 target classification must preserve M0 observation semantics`
         );
     }
