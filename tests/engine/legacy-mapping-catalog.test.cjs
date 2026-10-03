@@ -73,6 +73,35 @@ test('M1D legacy mapping catalog rejects family mismatch, malformed contextual m
     assert.equal(catalog.size, 1);
 });
 
+test('M1D mapping validation and inspection are safe for prototype-shaped keys', async () => {
+    const [{ LegacyMappingCatalog }, { inspectLegacyMappings }, { EngineContractError }] = await Promise.all([
+        catalogPromise,
+        inspectorPromise,
+        identityPromise,
+    ]);
+
+    const hostile = directRecord();
+    Object.defineProperty(hostile, '__proto__', {
+        value: 'unexpected',
+        enumerable: true,
+        configurable: true,
+    });
+    assert.throws(
+        () => new LegacyMappingCatalog().register(hostile),
+        error => error instanceof EngineContractError && error.code === 'UNKNOWN_LEGACY_MAPPING_FIELD'
+    );
+
+    const catalog = new LegacyMappingCatalog();
+    catalog.register(directRecord({
+        id: 'evolve.resource.constructor_domain',
+        domain: 'constructor',
+        legacyPath: 'global.resource.Constructor',
+        canonicalIds: ['evolve:resource/constructor_domain'],
+    }));
+    const snapshot = inspectLegacyMappings(catalog);
+    assert.deepEqual(snapshot.byDomain.constructor, ['evolve.resource.constructor_domain']);
+});
+
 test('M1D seeded Evolve mappings expose explicit lifecycle and contextual semantics', async () => {
     const [{ createEvolveLegacyMappingCatalog }, { inspectLegacyMappings }] = await Promise.all([
         evolvePromise,
