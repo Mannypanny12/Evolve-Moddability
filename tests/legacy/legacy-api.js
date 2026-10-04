@@ -12,6 +12,8 @@ import {
     atrack,
     callback_queue,
     active_rituals,
+    message_logs,
+    message_filters,
     webWorker,
     intervals
 } from '../../src/vars.js';
@@ -95,6 +97,14 @@ function clearObject(object){
     Object.keys(object).forEach(key => delete object[key]);
 }
 
+function resetMessageLogs(){
+    clearObject(message_logs);
+    message_logs.view = 'all';
+    message_filters.forEach(filter => {
+        message_logs[filter] = [];
+    });
+}
+
 let simulationModule = null;
 let simulationLifecycle = 'fresh';
 
@@ -119,6 +129,7 @@ function installLegacyState(state){
     [power_generated, p_on, support_on, int_on, gal_on, spire_on, active_rituals, intervals]
         .forEach(clearObject);
 
+    resetMessageLogs();
     callback_queue.clear();
     atrack.t = 0;
 
