@@ -125,7 +125,7 @@ The architecture report is now versioned and includes:
 - all M2E2 capability/write hardening;
 - both M2E3 selector/dependency gates.
 
-The report is genuine JSON data. Legacy mapping inspection no longer disappears during `JSON.stringify()`.
+The report is normalized into plain JSON data before it is returned or printed. The existing legacy mapping inspector shape `{ size, mappings, byDomain }` is preserved and explicitly covered by round-trip tests.
 
 The M2E4 closure gate cross-checks ownership domains, writable roots, selector domains, mutation-scope ownership, metadata non-writability, migration-gate presence and cumulative CI wiring rather than merely rerunning each individual scanner.
 
