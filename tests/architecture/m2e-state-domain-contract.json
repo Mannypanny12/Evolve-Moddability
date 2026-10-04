@@ -1,0 +1,25 @@
+{
+  "contractVersion": 1,
+  "metadataRoots": {
+    "schemaVersion": {
+      "owner": "game-state-schema"
+    }
+  },
+  "domains": {
+    "achievements": {
+      "owner": "achievement-state",
+      "schema": {
+        "module": "src/engine/state/achievement-state.mjs",
+        "validator": "validateAchievementState",
+        "emptyFactory": "createEmptyAchievementState"
+      },
+      "selectors": {
+        "module": "src/engine/state/achievement-selectors.mjs"
+      },
+      "mutationService": {
+        "module": "src/engine/state/achievement-state-service.mjs",
+        "factory": "createAchievementStateService"
+      }
+    }
+  }
+}
