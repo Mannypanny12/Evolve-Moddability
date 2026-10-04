@@ -67,7 +67,9 @@ The contract is deliberately closed and fail-closed:
 - module paths must be canonical repository-relative POSIX paths under `src/engine/state/`;
 - path traversal, absolute paths, backslashes, outside-layer modules, and non-`.mjs` paths are rejected;
 - schema, selector, and mutation-service modules must remain distinct;
-- declared symbol names must be JavaScript identifiers.
+- declared symbol names must be JavaScript identifiers;
+- duplicate JSON object keys are rejected before normal `JSON.parse()` semantics can silently keep the last value;
+- declared module paths may not traverse symbolic links or resolve outside the engine-state layer.
 
 ## Domain-owned defaults
 
@@ -99,9 +101,11 @@ The M2E1 gate executes each declared domain empty factory and proves that:
 
 1. it does not throw;
 2. its result passes the declared domain validator;
-3. the validator's canonical result equals the factory result;
-4. `createEmptyGameState()` contains the same domain value;
-5. the GameState factory's root keys exactly match `GAME_STATE_ROOT_FIELDS`.
+3. the validator returns a canonical value rather than `undefined`;
+4. the validator's canonical result equals the factory result;
+5. `createEmptyGameState()` contains the same domain value;
+6. the GameState factory returns a plain object whose root keys exactly match `GAME_STATE_ROOT_FIELDS`;
+7. the complete empty GameState passes `validateGameState()` and is already in canonical form.
 
 ## Declared domain surfaces
 
@@ -118,6 +122,8 @@ src/engine/state/achievement-state.mjs
 ```
 
 Both declared exports must exist and be functions.
+
+The composition checker additionally requires `game-state.mjs` to statically import both declared symbols from the declared schema module. `createEmptyGameState()` must initialize the root directly through the declared empty-state factory, and `validateGameState()` must call the declared validator. A manifest entry therefore cannot point at an unused decoy module that happens to expose matching names and values.
 
 ### Selector surface
 
@@ -140,7 +146,7 @@ src/engine/state/achievement-state-service.mjs
     createAchievementStateService
 ```
 
-The declared factory must exist and be a function.
+The declared factory must exist and be a function. `game-state.mjs` must statically import it from the declared module and `createGameStateRuntime()` must call it, which binds the manifest surface to the actual composition path without yet inspecting writable-root or scope semantics.
 
 M2E1 does not yet prove which writable roots or mutation scopes feed this service. M2E2 will connect the ownership contract to the actual capability graph.
 
@@ -156,26 +162,61 @@ tests/architecture/m2e1-state-ownership-fitness.cjs
 
 The checker reuses the strict M2C parser for `GAME_STATE_ROOT_FIELDS`; it does not invent a weaker second parser. If the root declaration becomes non-literal or otherwise uninspectable, ownership checking fails closed.
 
+## Post-implementation review hardening
+
+An adversarial review after the first green M2E1 implementation found several cases where the original checker could report a stronger guarantee than it actually proved.
+
+### Undefined and null default sentinels
+
+The first implementation used `undefined` and `null` as internal control sentinels. That allowed a domain empty factory returning `undefined`, or `createEmptyGameState()` returning `null`, to skip part of the intended validation path. The checker now tracks successful factory execution separately from the returned value, so those values are inspected rather than mistaken for “not executed.”
+
+### Complete GameState default validation
+
+The first implementation compared root keys and domain values but did not run the assembled default through `validateGameState()`. A wrong metadata value such as an invalid `schemaVersion` could therefore escape the ownership-specific checks even though ordinary engine tests would likely catch it elsewhere. M2E1 now independently proves that the complete assembled default is valid and canonical.
+
+### Decoy ownership modules
+
+The manifest originally proved that declared schema/service modules existed and exported the requested symbols, but it did not prove that GameState composition actually used those declared modules. A contract could point at an unused decoy module while `game-state.mjs` continued using another implementation.
+
+M2E1 now parser-checks GameState composition. The declared schema factory/validator and mutation-service factory must be static named imports from the declared module paths, and the relevant composition functions must actually call those imported symbols. The empty-state root initialization is additionally pinned directly to the declared domain factory.
+
+### Duplicate JSON keys
+
+Normal `JSON.parse()` silently keeps the last occurrence of a duplicate object key. That is undesirable for an architecture authority file because a visually duplicated `domains`, `owner`, or nested field could be interpreted differently than a reviewer expects. The contract reader now performs a strict recursive JSON key scan, including escaped key spellings such as `"owner"` versus `"\u006fwner"`, before parsing the document normally.
+
+### Filesystem aliases
+
+Lexical path validation alone did not prevent a reviewed-looking path under `src/engine/state/` from being a symbolic link to another file. The checker now rejects symlink traversal, resolves declared modules to real paths, verifies containment in the real engine-state directory, and ensures schema/selector/service paths resolve to three distinct real files.
+
+These corrections remain architecture-only. No achievement gameplay, compatibility, mutation, save, or persistence behavior changes were needed.
+
 ## Adversarial coverage
 
 Dedicated tests prove rejection of:
 
 - unknown top-level contract fields;
 - unsupported contract versions;
+- duplicate semantic JSON keys, including escaped spellings;
 - missing or incorrectly owned `schemaVersion` metadata;
 - `schemaVersion` classified as an authoritative domain;
 - malformed owner IDs;
 - unknown domain fields;
 - duplicate schema/selector/service modules;
-- path traversal, absolute paths, backslashes, outside-layer modules, and wrong extensions;
+- path traversal, absolute paths, backslashes, outside-layer modules, wrong extensions, and symlink traversal;
 - new unowned GameState roots;
 - stale contracted roots;
 - duplicate GameState roots;
 - uninspectable GameState root declarations;
 - missing declared modules;
 - missing declared function exports;
+- decoy schema modules not wired into GameState composition;
+- hard-coded GameState domain defaults that duplicate rather than call the owner factory;
 - selector modules with no selector functions;
 - non-function mutation-service factories;
+- `null` GameState defaults;
+- invalid complete GameState metadata/defaults;
+- `undefined` domain defaults;
+- validators returning `undefined`;
 - domain defaults that violate their validator;
 - GameState defaults that diverge from the domain-owned default;
 - GameState empty-root drift.
@@ -195,6 +236,7 @@ M2E1 does not:
 - expose mutation authority;
 - require one owner to own only one root;
 - replace M2D3 or M2D4 domain-specific guards;
+- police ordinary selector consumers beyond the existing M2D4 achievement-specific reader guard;
 - add integrated GameState ownership data to `inspect:architecture` yet;
 - promise a public Mod API.
 
@@ -205,15 +247,17 @@ M2E1 is complete when:
 1. every actual GameState root is explicitly classified as metadata or authoritative domain;
 2. `schemaVersion` is metadata owned by `game-state-schema`;
 3. `achievements` is an authoritative domain owned by `achievement-state`;
-4. the ownership contract is inert, closed, versioned, and machine-readable;
+4. the ownership contract is inert, closed, versioned, strict-JSON, and machine-readable;
 5. GameState root additions/removals without matching ownership changes fail CI;
-6. achievements owns its empty/default state factory;
+6. achievements owns its empty/default state factory and GameState composition directly uses it;
 7. the declared empty domain passes its declared validator and matches GameState composition;
-8. declared schema, selector, and mutation-service modules/symbols exist inside the engine state layer;
-9. malformed/stale/escaped ownership metadata fails closed;
-10. M2E1 is part of `npm run test:architecture`;
-11. existing M2C/M2D gates remain intact;
-12. full tests, architecture gates, production build, generated-output cleanliness, and real-browser smoke remain green;
-13. no gameplay/save/compatibility behavior changes.
+8. the complete empty GameState passes `validateGameState()` canonically;
+9. declared schema, selector, and mutation-service modules/symbols exist inside the real engine state layer;
+10. GameState composition is statically wired to the declared schema and mutation-service surfaces;
+11. malformed/stale/escaped/aliased ownership metadata fails closed;
+12. M2E1 is part of `npm run test:architecture`;
+13. existing M2C/M2D gates remain intact;
+14. full tests, architecture gates, production build, generated-output cleanliness, and real-browser smoke remain green;
+15. no gameplay/save/compatibility behavior changes.
 
 M2E2 can then use this contract as the authoritative index for proving that writable roots and mutation scopes grant write capability only to each declared state-domain owner.
