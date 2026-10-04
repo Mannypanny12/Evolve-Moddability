@@ -53,7 +53,7 @@ This makes the final M2C perimeter and the proven M2D domain-specific boundaries
 
 ## Post-reconciliation review hardening
 
-A separate adversarial review was performed after the initial reconciliation was green. It found four real ways in which the documented boundary was stronger than the machine enforcement.
+A separate adversarial review was performed after the initial reconciliation was green. It found five real ways in which the documented boundary was stronger than the machine enforcement.
 
 ### Mixed `global` import alias
 
@@ -92,6 +92,12 @@ M2D3 consumer discovery now reuses the parser-backed M0E5 module-reference extra
 The M2D3 adapter and M2D4 reader facade both claimed closed export surfaces, but their checks enumerated only `export function` declarations. A future `export const`, `export default`, class export, or re-export could have widened the authority/read surface without changing the reviewed function list.
 
 Both gates now fail closed unless every executable `export` declaration is one of the exact reviewed named function exports. M2D4 additionally requires exactly one canonical module reference from the reader facade to the achievement adapter, preventing a second alternate or dynamic adapter reference from hiding beside the reviewed read-only import.
+
+### Aliased direct legacy achievement readers
+
+M2D4 recursively scanned `src/**` for `global.stats.achieve`, but the detector initially recognized only the literal identifier `global`. A nested legacy or wiki module could therefore rename the imported binding or assign a simple local alias and continue reading the compatibility ledger directly.
+
+The reader detector now discovers simple ESM/local aliases of the legacy root and applies the same dot/bracket/optional-chain achievement-ledger detection to those aliases. Adversarial detector probes cover both local assignment and aliased `vars.js` import forms.
 
 ## Deliberately deferred to M2E
 
