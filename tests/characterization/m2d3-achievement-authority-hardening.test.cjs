@@ -217,3 +217,67 @@ test('M2D3 failed binding cannot replace an already-valid authoritative runtime'
     );
     assert.deepEqual(adapter.achievementStateSnapshot(), before);
 });
+
+test('M2D3 rejects replacement of the bound stats subtree without an explicit root rebind', async () => {
+    const adapter = await sourceAdapter();
+    const root = { stats: { achieve: { trade: { l: 1 } } } };
+    adapter.bindLegacyAchievementState(root);
+    const before = adapter.achievementStateSnapshot();
+
+    root.stats = { achieve: { trade: { l: 99 } } };
+
+    assert.throws(
+        () => adapter.advanceLegacyAchievement({
+            achievement: 'trade',
+            rank: 2,
+            advanceBase: true,
+            universeAffix: null,
+        }),
+        errorCode('LEGACY_ACHIEVEMENT_REBIND_REQUIRED')
+    );
+    assert.deepEqual(adapter.achievementStateSnapshot(), before);
+});
+
+test('M2D3 rolls authoritative state back when a mirror becomes hostile after projection preflight', async () => {
+    const adapter = await sourceAdapter();
+    let failWrites = false;
+
+    const ledgerTarget = { trade: { l: 1 } };
+    const ledger = new Proxy(ledgerTarget, {
+        defineProperty(target, key, descriptor){
+            if (failWrites){
+                throw new Error('projection write blocked');
+            }
+            return Reflect.defineProperty(target, key, descriptor);
+        },
+        deleteProperty(target, key){
+            return Reflect.deleteProperty(target, key);
+        }
+    });
+
+    const statsTarget = { achieve: ledger };
+    const stats = new Proxy(statsTarget, {
+        defineProperty(target, key, descriptor){
+            if (failWrites && key === 'achieve'){
+                throw new Error('projection replacement blocked');
+            }
+            return Reflect.defineProperty(target, key, descriptor);
+        }
+    });
+    const root = { stats };
+
+    adapter.bindLegacyAchievementState(root);
+    const before = adapter.achievementStateSnapshot();
+    failWrites = true;
+
+    assert.throws(
+        () => adapter.advanceLegacyAchievement({
+            achievement: 'trade',
+            rank: 2,
+            advanceBase: true,
+            universeAffix: null,
+        }),
+        errorCode('INVALID_LEGACY_ACHIEVEMENT_PROJECTION')
+    );
+    assert.deepEqual(adapter.achievementStateSnapshot(), before);
+});
