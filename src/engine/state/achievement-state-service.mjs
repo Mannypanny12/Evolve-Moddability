@@ -1,22 +1,43 @@
 import { EngineContractError } from '../identity.mjs';
+import {
+    ACHIEVEMENT_STANDARD_UNIVERSE,
+    ACHIEVEMENT_UNIVERSE_RANK_FIELDS,
+    assertAchievementRank,
+    assertAchievementStateId,
+    assertAchievementUniverse,
+} from './achievement-state.mjs';
 import { canonicalizeStateValue } from './common.mjs';
 
 const ACHIEVEMENT_MUTATION_SCOPE_ID = 'achievement-state';
 const ACHIEVEMENT_MUTATION_ROOT = 'achievements';
 const SERVICE_OPTION_FIELDS = Object.freeze(['mutationScope']);
 const MUTATION_SCOPE_FIELDS = Object.freeze(['fields', 'id', 'transaction']);
+const ADVANCE_FIELDS = Object.freeze([
+    'achievementId',
+    'advanceBase',
+    'rank',
+    'universe',
+]);
+const REMOVE_UNIVERSE_RANK_FIELDS = Object.freeze([
+    'achievementId',
+    'universe',
+]);
 
 function fail(code, message, details){
     throw new EngineContractError(code, message, details);
 }
 
-function assertPlainObject(value, path){
-    if (value === null || typeof value !== 'object' || Array.isArray(value)){
-        fail(
-            'INVALID_ACHIEVEMENT_STATE_SERVICE_CAPABILITY',
-            `${path} must be a plain object.`,
-            { path }
-        );
+function assertPlainObject(value, path, code = 'INVALID_ACHIEVEMENT_STATE_SERVICE_CAPABILITY'){
+    let array;
+    try {
+        array = Array.isArray(value);
+    }
+    catch {
+        fail(code, `${path} could not be safely inspected.`, { path });
+    }
+
+    if (value === null || typeof value !== 'object' || array){
+        fail(code, `${path} must be a plain object.`, { path });
     }
 
     let prototype;
@@ -24,43 +45,36 @@ function assertPlainObject(value, path){
         prototype = Object.getPrototypeOf(value);
     }
     catch {
-        fail(
-            'INVALID_ACHIEVEMENT_STATE_SERVICE_CAPABILITY',
-            `${path} could not be safely inspected.`,
-            { path }
-        );
+        fail(code, `${path} could not be safely inspected.`, { path });
     }
 
     if (prototype !== Object.prototype && prototype !== null){
-        fail(
-            'INVALID_ACHIEVEMENT_STATE_SERVICE_CAPABILITY',
-            `${path} must be a plain object.`,
-            { path }
-        );
+        fail(code, `${path} must be a plain object.`, { path });
     }
 
     return value;
 }
 
-function assertClosedDataObject(value, path, allowedFields){
-    const object = assertPlainObject(value, path);
+function assertClosedDataObject(
+    value,
+    path,
+    allowedFields,
+    code = 'INVALID_ACHIEVEMENT_STATE_SERVICE_CAPABILITY'
+){
+    const object = assertPlainObject(value, path, code);
     let keys;
     try {
         keys = Reflect.ownKeys(object);
     }
     catch {
-        fail(
-            'INVALID_ACHIEVEMENT_STATE_SERVICE_CAPABILITY',
-            `${path} keys could not be safely inspected.`,
-            { path }
-        );
+        fail(code, `${path} keys could not be safely inspected.`, { path });
     }
 
     const allowed = new Set(allowedFields);
     for (const key of keys){
         if (typeof key !== 'string' || !allowed.has(key)){
             fail(
-                'INVALID_ACHIEVEMENT_STATE_SERVICE_CAPABILITY',
+                code,
                 `${path} contains an unsupported field.`,
                 { path, field: typeof key === 'string' ? key : '[symbol]' }
             );
@@ -70,28 +84,49 @@ function assertClosedDataObject(value, path, allowedFields){
     return object;
 }
 
-function readDataField(object, field, path){
+function readDataField(
+    object,
+    field,
+    path,
+    code = 'INVALID_ACHIEVEMENT_STATE_SERVICE_CAPABILITY'
+){
     let descriptor;
     try {
         descriptor = Object.getOwnPropertyDescriptor(object, field);
     }
     catch {
-        fail(
-            'INVALID_ACHIEVEMENT_STATE_SERVICE_CAPABILITY',
-            `${path}.${field} could not be safely inspected.`,
-            { path: `${path}.${field}` }
-        );
+        fail(code, `${path}.${field} could not be safely inspected.`, { path: `${path}.${field}` });
     }
 
     if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value') || !descriptor.enumerable){
-        fail(
-            'INVALID_ACHIEVEMENT_STATE_SERVICE_CAPABILITY',
-            `${path}.${field} must be an enumerable data field.`,
-            { path: `${path}.${field}` }
-        );
+        fail(code, `${path}.${field} must be an enumerable data field.`, { path: `${path}.${field}` });
     }
 
     return descriptor.value;
+}
+
+function readOptionalDataField(
+    object,
+    field,
+    path,
+    code = 'INVALID_ACHIEVEMENT_STATE_SERVICE_CAPABILITY'
+){
+    let descriptor;
+    try {
+        descriptor = Object.getOwnPropertyDescriptor(object, field);
+    }
+    catch {
+        fail(code, `${path}.${field} could not be safely inspected.`, { path: `${path}.${field}` });
+    }
+
+    if (!descriptor){
+        return Object.freeze({ present: false, value: undefined });
+    }
+    if (!Object.prototype.hasOwnProperty.call(descriptor, 'value') || !descriptor.enumerable){
+        fail(code, `${path}.${field} must be an enumerable data field.`, { path: `${path}.${field}` });
+    }
+
+    return Object.freeze({ present: true, value: descriptor.value });
 }
 
 function assertMutationScope(value){
@@ -147,7 +182,120 @@ function assertMutationScope(value){
         );
     }
 
-    return scope;
+    return Object.freeze({ transaction });
+}
+
+function assertMutationUniverse(value, path){
+    const universe = assertAchievementUniverse(value, path);
+    if (universe === ACHIEVEMENT_STANDARD_UNIVERSE){
+        fail(
+            'INVALID_ACHIEVEMENT_UNIVERSE',
+            `${path} must name a non-standard achievement universe track.`,
+            { path, value }
+        );
+    }
+    if (!ACHIEVEMENT_UNIVERSE_RANK_FIELDS.includes(universe)){
+        fail(
+            'INVALID_ACHIEVEMENT_UNIVERSE',
+            `${path} must name a supported achievement universe track.`,
+            { path, value }
+        );
+    }
+    return universe;
+}
+
+function assertBoolean(value, path){
+    if (typeof value !== 'boolean'){
+        fail(
+            'INVALID_ACHIEVEMENT_STATE_MUTATION',
+            `${path} must be a boolean.`,
+            { path, valueType: typeof value }
+        );
+    }
+    return value;
+}
+
+function normalizeRank(value, path){
+    const rank = assertAchievementRank(value, path);
+    return Object.is(rank, -0) ? 0 : rank;
+}
+
+function validateAdvanceCommand(value){
+    const path = 'achievementStateService.advance';
+    const command = assertClosedDataObject(
+        value,
+        path,
+        ADVANCE_FIELDS,
+        'INVALID_ACHIEVEMENT_STATE_MUTATION'
+    );
+    const achievementId = assertAchievementStateId(
+        readDataField(command, 'achievementId', path, 'INVALID_ACHIEVEMENT_STATE_MUTATION'),
+        `${path}.achievementId`
+    );
+    const rank = normalizeRank(
+        readDataField(command, 'rank', path, 'INVALID_ACHIEVEMENT_STATE_MUTATION'),
+        `${path}.rank`
+    );
+    const advanceBase = assertBoolean(
+        readDataField(command, 'advanceBase', path, 'INVALID_ACHIEVEMENT_STATE_MUTATION'),
+        `${path}.advanceBase`
+    );
+    const universeField = readOptionalDataField(
+        command,
+        'universe',
+        path,
+        'INVALID_ACHIEVEMENT_STATE_MUTATION'
+    );
+    const universe = universeField.present
+        ? assertMutationUniverse(universeField.value, `${path}.universe`)
+        : null;
+
+    if (!advanceBase && universe === null){
+        fail(
+            'INVALID_ACHIEVEMENT_STATE_MUTATION',
+            'achievement advancement must target the base rank, a universe rank, or both.',
+            { path }
+        );
+    }
+
+    return Object.freeze({ achievementId, rank, advanceBase, universe });
+}
+
+function validateRemoveUniverseRankCommand(value){
+    const path = 'achievementStateService.removeUniverseRank';
+    const command = assertClosedDataObject(
+        value,
+        path,
+        REMOVE_UNIVERSE_RANK_FIELDS,
+        'INVALID_ACHIEVEMENT_STATE_MUTATION'
+    );
+    return Object.freeze({
+        achievementId: assertAchievementStateId(
+            readDataField(command, 'achievementId', path, 'INVALID_ACHIEVEMENT_STATE_MUTATION'),
+            `${path}.achievementId`
+        ),
+        universe: assertMutationUniverse(
+            readDataField(command, 'universe', path, 'INVALID_ACHIEVEMENT_STATE_MUTATION'),
+            `${path}.universe`
+        ),
+    });
+}
+
+function defineDataField(target, key, value){
+    Object.defineProperty(target, key, {
+        value,
+        enumerable: true,
+        writable: true,
+        configurable: true,
+    });
+}
+
+function hasOwn(target, key){
+    return Object.prototype.hasOwnProperty.call(target, key);
+}
+
+function freezeMutationResult(record){
+    return Object.freeze(record);
 }
 
 export function createAchievementStateService(rawOptions){
@@ -157,10 +305,127 @@ export function createAchievementStateService(rawOptions){
         SERVICE_OPTION_FIELDS
     );
     const mutationScope = readDataField(options, 'mutationScope', 'achievementStateServiceOptions');
-    assertMutationScope(mutationScope);
+    const { transaction } = assertMutationScope(mutationScope);
 
-    // M2D2b1 deliberately exposes no mutation operation yet. The scoped
-    // capability is validated and consumed here so M2D2b2 can add only
-    // achievement-specific operations without ever exposing the raw scope.
-    return Object.freeze({});
+    function advance(rawCommand){
+        const { achievementId, rank, advanceBase, universe } = validateAdvanceCommand(rawCommand);
+        let recordCreated = false;
+        let baseRankChanged = false;
+        let universeTrackCreated = false;
+        let universeRankChanged = false;
+        let previousBaseRank = 0;
+        let newBaseRank = 0;
+        let previousUniverseTrackPresent = universe === null ? null : false;
+        let newUniverseTrackPresent = universe === null ? null : false;
+        let previousUniverseRank = universe === null ? null : 0;
+        let newUniverseRank = universe === null ? null : 0;
+
+        const diagnostic = transaction('achievement.advance', draft => {
+            const achievements = draft.achievements;
+            let record = achievements[achievementId];
+            if (!hasOwn(achievements, achievementId)){
+                record = { rank: 0, universeRanks: {} };
+                defineDataField(achievements, achievementId, record);
+                recordCreated = true;
+            }
+
+            previousBaseRank = record.rank;
+            if (advanceBase && rank > record.rank){
+                record.rank = rank;
+                baseRankChanged = true;
+            }
+            newBaseRank = record.rank;
+
+            if (universe !== null){
+                previousUniverseTrackPresent = hasOwn(record.universeRanks, universe);
+                previousUniverseRank = previousUniverseTrackPresent
+                    ? record.universeRanks[universe]
+                    : 0;
+
+                if (!previousUniverseTrackPresent){
+                    defineDataField(record.universeRanks, universe, rank);
+                    universeTrackCreated = true;
+                    universeRankChanged = rank > 0;
+                }
+                else if (rank > record.universeRanks[universe]){
+                    record.universeRanks[universe] = rank;
+                    universeRankChanged = true;
+                }
+
+                newUniverseTrackPresent = true;
+                newUniverseRank = record.universeRanks[universe];
+            }
+        });
+
+        return freezeMutationResult({
+            operation: 'advance',
+            achievementId,
+            universe,
+            changed: diagnostic.committed,
+            recordCreated,
+            baseRankChanged,
+            universeTrackCreated,
+            universeRankChanged,
+            universeRankRemoved: false,
+            previousBaseRank,
+            newBaseRank,
+            previousUniverseTrackPresent,
+            newUniverseTrackPresent,
+            previousUniverseRank,
+            newUniverseRank,
+            diagnostic,
+        });
+    }
+
+    function removeUniverseRank(rawCommand){
+        const { achievementId, universe } = validateRemoveUniverseRankCommand(rawCommand);
+        let universeRankChanged = false;
+        let universeRankRemoved = false;
+        let previousBaseRank = 0;
+        let newBaseRank = 0;
+        let previousUniverseTrackPresent = false;
+        let newUniverseTrackPresent = false;
+        let previousUniverseRank = 0;
+        let newUniverseRank = 0;
+
+        const diagnostic = transaction('achievement.removeUniverseRank', draft => {
+            const achievements = draft.achievements;
+            if (!hasOwn(achievements, achievementId)) return;
+
+            const record = achievements[achievementId];
+            previousBaseRank = record.rank;
+            newBaseRank = record.rank;
+            previousUniverseTrackPresent = hasOwn(record.universeRanks, universe);
+            if (!previousUniverseTrackPresent) return;
+
+            previousUniverseRank = record.universeRanks[universe];
+            universeRankChanged = previousUniverseRank > 0;
+            universeRankRemoved = true;
+            delete record.universeRanks[universe];
+        });
+
+        return freezeMutationResult({
+            operation: 'removeUniverseRank',
+            achievementId,
+            universe,
+            changed: diagnostic.committed,
+            recordCreated: false,
+            baseRankChanged: false,
+            universeTrackCreated: false,
+            universeRankChanged,
+            universeRankRemoved,
+            previousBaseRank,
+            newBaseRank,
+            previousUniverseTrackPresent,
+            newUniverseTrackPresent,
+            previousUniverseRank,
+            newUniverseRank,
+            diagnostic,
+        });
+    }
+
+    return Object.freeze({
+        advance,
+        removeUniverseRank,
+    });
 }
