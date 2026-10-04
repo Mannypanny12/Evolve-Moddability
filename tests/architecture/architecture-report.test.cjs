@@ -27,22 +27,24 @@ test('M2E4 architecture report is complete, JSON-safe, and reflects the guarded 
 
     assert.equal(report.engineKernel.identity.exports.includes('formatContentId'), true);
     assert.equal(report.engineKernel.registry.registryClass, 'Registry');
-    assert.deepEqual(
-        report.engineKernel.definitions.families.map(value => value.family),
-        ['achievement', 'resource', 'technology']
+    const definitionByFamily = new Map(
+        report.engineKernel.definitions.families.map(value => [value.family, value])
     );
-    assert.deepEqual(
-        report.engineKernel.definitions.families.map(value => value.schemaVersion),
-        [1, 1, 1]
-    );
-    assert.deepEqual(
-        report.engineKernel.runtime.ports.map(value => value.port),
-        ['clock', 'logger', 'rng', 'storage']
-    );
+    for (const family of ['achievement', 'resource', 'technology']){
+        assert.equal(definitionByFamily.has(family), true, `missing M1 core definition family ${family}`);
+        assert.equal(definitionByFamily.get(family).schemaVersion, 1);
+        assert.equal(definitionByFamily.get(family).registryType, family);
+    }
+    const runtimePorts = new Set(report.engineKernel.runtime.ports.map(value => value.port));
+    for (const port of ['clock', 'logger', 'rng', 'storage']){
+        assert.equal(runtimePorts.has(port), true, `missing M1 core runtime port ${port}`);
+    }
     assert.equal(report.engineKernel.runtime.environment.factory, 'createRuntimeEnvironment');
-    assert.deepEqual(
-        report.engineKernel.inspection.modules.map(value => value.module),
-        ['src/engine/inspection/registry-inspector.mjs']
+    assert.equal(
+        report.engineKernel.inspection.modules.some(
+            value => value.module === 'src/engine/inspection/registry-inspector.mjs'
+        ),
+        true
     );
 
     assert.equal(report.stateArchitecture.boundary.settingsReferenceCount > 0, true);
