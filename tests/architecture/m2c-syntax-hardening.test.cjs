@@ -7,6 +7,7 @@ const test = require('node:test');
 const {
     stripReviewedNamedVarsImports,
     referenceTargetsVars,
+    hasAliasedGlobalVarsImport,
     unreviewedVarsReferenceViolations,
     settingsSyntaxViolations,
     parseStrictStringArrayBody,
@@ -23,6 +24,18 @@ test('M2C syntax hardening leaves the reviewed named vars import form intact', (
     const stripped = stripReviewedNamedVarsImports(source);
     assert.equal(/vars\.js/.test(stripped), false);
     assert.deepEqual(unreviewedVarsReferenceViolations(source, fakeMain, fakeRoot), []);
+});
+
+test('M2C syntax hardening permits the legacy global binding only under its inspectable name', () => {
+    const direct = "import { global, p_on } from './vars.js';";
+    const aliased = "import { global as legacyRoot, p_on } from './vars.js';";
+    assert.equal(hasAliasedGlobalVarsImport(direct), false);
+    assert.equal(hasAliasedGlobalVarsImport(aliased), true);
+    assert.deepEqual(unreviewedVarsReferenceViolations(direct, fakeMain, fakeRoot), []);
+    assert.match(
+        unreviewedVarsReferenceViolations(aliased, fakeMain, fakeRoot).join('\n'),
+        /may not alias the mixed legacy global binding/
+    );
 });
 
 test('M2C syntax hardening catches alternate or parser-ambiguous vars access forms', () => {
@@ -61,7 +74,11 @@ test('M2C syntax hardening catches settings syntax that bypasses path-specific d
         'const { settings } = global;',
         'const legacyRoot = global;',
         'legacyRoot2 = global;',
+        'const parenthesizedRoot = (global);',
+        'parenthesizedRoot2 = ((global));',
+        'const parenthesizedSettings = (global).settings.pause;',
         'const e = global[`settings`].pause;',
+        'const f = global[`set${suffix}tings`].pause;',
         '// const ignored = global?.settings.fake;',
         'const text = "const fakeRoot = global";',
     ].join('\n');
@@ -69,7 +86,7 @@ test('M2C syntax hardening catches settings syntax that bypasses path-specific d
     assert.match(violations, /optional chaining inside direct global\.settings access/);
     assert.match(violations, /destructuring settings from legacy global/);
     assert.match(violations, /aliasing the whole legacy global object/);
-    assert.match(violations, /template-literal access to global settings/);
+    assert.match(violations, /template-literal access to legacy global/);
 });
 
 test('M2C syntax hardening does not confuse unrelated direct or optional legacy-global access with whole-global aliasing', () => {
@@ -78,6 +95,7 @@ test('M2C syntax hardening does not confuse unrelated direct or optional legacy-
         'const b = global.eden?.mech_station?.count;',
         'const c = global.tech.primitive;',
         'const d = wiki?.count ?? 0;',
+        'const e = (global.tech.primitive);',
     ].join('\n');
     assert.deepEqual(settingsSyntaxViolations(source, fakeMain), []);
 });
