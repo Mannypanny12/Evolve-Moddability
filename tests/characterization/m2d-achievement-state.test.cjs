@@ -63,6 +63,7 @@ function seedAggregateChildren(state, prefix, count, universeAffix){
             state.stats.achieve[id][universeAffix] = 1;
         }
     });
+    legacy.rebindAchievementState();
     return ids;
 }
 
@@ -172,7 +173,7 @@ function analyzeAchievementAccesses(source){
 
         const prefix = masked.slice(Math.max(0, match.index - 24), match.index);
         const write = /\bdelete\s*$/.test(prefix) || isAssignmentAt(masked, cursor);
-        accesses.push({ write });
+        accesses.push({ write, index: match.index });
     }
 
     return accesses;
@@ -292,6 +293,7 @@ test('universe-only advancement changes state while the legacy boolean remains f
     const state = install('evil');
     state.race.no_plasmid = 1;
     state.stats.achieve.trade = { l: 3, e: 1 };
+    legacy.rebindAchievementState();
 
     assert.equal(legacy.achievementRankCap(), 2);
     assert.equal(legacy.unlockAchievement('trade', false, 2), false);
@@ -404,6 +406,82 @@ test('aggregate universe progress restores the universe rank only when enough ch
     assert.deepEqual(state.stats.achieve.mass_extinction, { l: 1, e: 1 });
 });
 
+test('M2D3 hydrates the complete legacy ledger into canonical authoritative GameState', () => {
+    const state = freshState('evil');
+    state.stats.achieve.trade = { l: 3, e: 2, h: 0, mg: undefined };
+    state.stats.achieve.legacy_unknown_achievement = { l: 1, a: 0 };
+    legacy.installLegacyState(state);
+
+    assert.deepEqual(legacy.authoritativeAchievementState(), {
+        schemaVersion: 2,
+        achievements: {
+            'evolve:achievement/legacy_unknown_achievement': {
+                rank: 1,
+                universeRanks: { antimatter: 0 }
+            },
+            'evolve:achievement/trade': {
+                rank: 3,
+                universeRanks: { evil: 2, heavy: 0 }
+            }
+        }
+    });
+    assert.deepEqual(legacy.legacyState().stats.achieve.trade, { l: 3, e: 2, h: 0 });
+});
+
+test('M2D3 treats legacy mirror drift as non-authoritative and repairs it on the next mutation', () => {
+    const state = install('evil');
+    state.race.no_plasmid = 1;
+
+    assert.equal(legacy.unlockAchievement('trade', false, 2), true);
+    assert.deepEqual(state.stats.achieve.trade, { l: 2, e: 2 });
+
+    state.stats.achieve.trade.l = 99;
+    state.stats.achieve.trade.e = 99;
+
+    assert.equal(legacy.unlockAchievement('trade', false, 1), false);
+    assert.deepEqual(state.stats.achieve.trade, { l: 2, e: 2 });
+    assert.deepEqual(
+        legacy.authoritativeAchievementState().achievements['evolve:achievement/trade'],
+        { rank: 2, universeRanks: { evil: 2 } }
+    );
+});
+
+test('M2D3 setGlobal rebinding hydrates the newly installed legacy root rather than retaining stale runtime state', () => {
+    const first = freshState('standard');
+    first.stats.achieve.trade = { l: 2 };
+    legacy.installLegacyState(first);
+    assert.equal(
+        legacy.authoritativeAchievementState().achievements['evolve:achievement/trade'].rank,
+        2
+    );
+
+    const second = freshState('heavy');
+    second.stats.achieve.explorer = { l: 4, h: 3 };
+    legacy.installLegacyState(second);
+    const snapshot = legacy.authoritativeAchievementState();
+    assert.equal(Object.prototype.hasOwnProperty.call(snapshot.achievements, 'evolve:achievement/trade'), false);
+    assert.deepEqual(snapshot.achievements['evolve:achievement/explorer'], {
+        rank: 4,
+        universeRanks: { heavy: 3 }
+    });
+});
+
+test('M2D3 aggregate clear keeps undefined only in the compatibility mirror, never in authoritative GameState', () => {
+    const state = install('evil');
+    seedAggregateChildren(state, 'extinct_', 25);
+
+    legacy.checkAchievementProgress();
+
+    assert.equal(Object.prototype.hasOwnProperty.call(state.stats.achieve.mass_extinction, 'e'), true);
+    assert.equal(state.stats.achieve.mass_extinction.e, undefined);
+    assert.deepEqual(
+        legacy.authoritativeAchievementState().achievements['evolve:achievement/mass_extinction'],
+        { rank: 1, universeRanks: {} }
+    );
+    const serialized = JSON.parse(JSON.stringify(state.stats.achieve));
+    assert.deepEqual(serialized.mass_extinction, { l: 1 });
+});
+
 test('historical vars.js achievement migrations remain ahead of the future GameState hydration seam', () => {
     const source = fs.readFileSync(path.join(repoRoot, 'src', 'vars.js'), 'utf8');
     const requiredMarkers = [
@@ -422,9 +500,21 @@ test('historical vars.js achievement migrations remain ahead of the future GameS
     requiredMarkers.forEach(marker => {
         assert.ok(source.includes(marker), `missing reviewed achievement migration marker: ${marker}`);
     });
+
+    const hydrationMarker = '// M2D3 authority cutover: historical vars.js migrations and shape repair above';
+    const hydrationIndex = source.indexOf(hydrationMarker);
+    assert.ok(hydrationIndex >= 0, 'missing M2D3 achievement hydration marker');
+
+    const writesAfterHydration = analyzeAchievementAccesses(source)
+        .filter(access => access.write && access.index > hydrationIndex);
+    assert.deepEqual(
+        writesAfterHydration,
+        [],
+        'vars.js must not directly mutate global.stats.achieve after GameState hydration'
+    );
 });
 
-test('M2D1 source inventory confines direct achievement writes to migration and achievement modules', () => {
+test('M2D3 authority ratchet leaves historical migrations as the only direct global achievement writer', () => {
     const inventory = achievementAccessInventory();
     const writerFiles = Object.entries(inventory)
         .filter(([, counts]) => counts.writes > 0)
@@ -433,7 +523,8 @@ test('M2D1 source inventory confines direct achievement writes to migration and 
 
     assert.ok(inventory['src/main.js'] && inventory['src/main.js'].reads > 0, 'expected ordinary gameplay readers');
     assert.ok(inventory['src/resets.js'] && inventory['src/resets.js'].reads > 0, 'expected reset gameplay readers');
-    assert.deepEqual(writerFiles, ['src/achieve.js', 'src/vars.js']);
-    assert.ok(inventory['src/achieve.js'].writes >= 3, 'expected unlock plus aggregate achievement writes');
-    assert.ok(inventory['src/vars.js'].writes >= 5, 'expected historical migration writes');
+    assert.deepEqual(writerFiles, ['src/vars.js']);
+    assert.ok(inventory['src/achieve.js'] && inventory['src/achieve.js'].reads > 0, 'expected legacy compatibility readers to remain until M2D4');
+    assert.equal(inventory['src/achieve.js'].writes, 0, 'ordinary achievement progression must mutate through the M2D3 adapter');
+    assert.ok(inventory['src/vars.js'].writes >= 5, 'expected historical migration writes to remain ahead of hydration');
 });

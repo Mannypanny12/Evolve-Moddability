@@ -34,7 +34,7 @@
   ],
   "legacyModules": {
     "achieve.js": {
-      "global": 644,
+      "global": 627,
       "browser": 33,
       "storage": 0,
       "clock": 1,
