@@ -16,7 +16,12 @@ import {
     intervals
 } from '../../src/vars.js';
 import '../../src/locale.js';
-import '../../src/achieve.js';
+import {
+    unlockAchieve,
+    universeLevel,
+    universeAffix,
+    alevel
+} from '../../src/achieve.js';
 import { modRes, loopTimers } from '../../src/functions.js';
 import '../../src/races.js';
 import '../../src/resources.js';
@@ -183,6 +188,22 @@ function eventEffect(id){
     return events[id].effect();
 }
 
+function unlockAchievement(id, small, rank, universe){
+    return unlockAchieve(id, small, rank, universe);
+}
+
+function achievementUniverseLevel(universe){
+    return universeLevel(universe);
+}
+
+function achievementUniverseAffix(universe){
+    return universeAffix(universe);
+}
+
+function achievementRankCap(){
+    return alevel();
+}
+
 function hydrateGarrisonDefaults(){
     const persisted = global.civic.garrison
         ? clone(global.civic.garrison)
@@ -280,6 +301,10 @@ globalThis.__EVOLVE_LEGACY_TEST_API__ = {
     technologyDefinition,
     actionCondition,
     eventEffect,
+    unlockAchievement,
+    achievementUniverseLevel,
+    achievementUniverseAffix,
+    achievementRankCap,
     hydrateSimulationState,
     runGameLoops,
     transientSimulationState,
