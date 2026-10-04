@@ -5,7 +5,7 @@ const path = require('node:path');
 const { extractModuleReferences, maskNonCode } = require('./architecture-fitness.cjs');
 
 const LEGACY_SOURCE_EXTENSIONS = new Set(['.js']);
-const REVIEWED_NAMED_VARS_IMPORT = /import\s*\{([\s\S]*?)\}\s*from\s*(['"])\.\/vars(?:\.js)?\2/g;
+const REVIEWED_NAMED_VARS_IMPORT = /import\s*\{\s*[$A-Z_a-z][$\w]*(?:\s+as\s+[$A-Z_a-z][$\w]*)?(?:\s*,\s*[$A-Z_a-z][$\w]*(?:\s+as\s+[$A-Z_a-z][$\w]*)?)*\s*,?\s*\}\s*from\s*(['"])\.\/vars(?:\.js)?\1\s*;?/g;
 
 function listLegacyRootModules(root){
     const srcRoot = path.join(root, 'src');
@@ -142,6 +142,12 @@ function hasOptionalSettingsAccess(source, masked){
     return false;
 }
 
+function hasBareGlobalAlias(masked){
+    const directDeclaration = /\b(?:const|let|var)\s+[$A-Z_a-z][$\w]*\s*=\s*global\b(?!\s*(?:\.|\[|\?\.))/;
+    const directAssignment = /(?:^|[;{}\n])\s*[$A-Z_a-z][$\w]*\s*=\s*global\b(?!\s*(?:\.|\[|\?\.))/m;
+    return directDeclaration.test(masked) || directAssignment.test(masked);
+}
+
 function readSimpleTemplate(source, index){
     if (source[index] !== '`') return null;
     let cursor = index + 1;
@@ -181,6 +187,9 @@ function settingsSyntaxViolations(source, sourcefile){
     }
     if (/\{[^}]*\bsettings\b[^}]*\}\s*=\s*global\b/.test(masked)){
         violations.push(`${moduleName}: M2C settings boundary forbids destructuring settings from legacy global; expose global.settings explicitly so $root capability debt is visible`);
+    }
+    if (hasBareGlobalAlias(masked)){
+        violations.push(`${moduleName}: M2C settings boundary forbids aliasing the whole legacy global object because settings access through the alias would evade the boundary ratchet`);
     }
     if (hasTemplateSettingsAccess(source, masked)){
         violations.push(`${moduleName}: M2C settings boundary forbids template-literal access to global settings; use the reviewed static property syntax`);
@@ -301,6 +310,7 @@ module.exports = {
     referenceTargetsVars,
     unreviewedVarsReferenceViolations,
     hasOptionalSettingsAccess,
+    hasBareGlobalAlias,
     settingsSyntaxViolations,
     parseStrictStringArrayBody,
     parseStrictGameStateRootFields,
