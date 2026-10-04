@@ -1,3 +1,5 @@
+import { bindLegacyAchievementState } from './legacy/bridge/achievement-state-adapter.mjs';
+
 export var save = window.localStorage;
 export var global = {
     seed: 1,
@@ -99,6 +101,7 @@ export function seededRandom(min, max, alt, useSeed) {
 
 export function setGlobal(gameState) {
     global = gameState;
+    bindLegacyAchievementState(global);
 }
 
 if (!global['version']){
@@ -1617,6 +1620,10 @@ export function setupStats(){
 }
 
 setupStats();
+
+// M2D3 authority cutover: historical vars.js migrations and shape repair above
+// remain legacy-owned. Hydration starts only after that compatibility work.
+bindLegacyAchievementState(global);
 
 if (!global.race['seeded']){
     global.race['seeded'] = false;

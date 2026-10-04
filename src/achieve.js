@@ -5,6 +5,7 @@ import { actions } from './actions.js';
 import { universe_affixes, universe_types, piracy } from './space.js';
 import { monsters } from './portal.js';
 import { loc } from './locale.js'
+import { advanceLegacyAchievement, removeLegacyAchievementUniverseRank } from './legacy/bridge/achievement-state-adapter.mjs';
 
 const achieve_list = {
     misc: [
@@ -339,29 +340,27 @@ export function unlockAchieve(achievement,small,rank,universe){
     if (typeof rank === "undefined" || rank > a_level){
         rank = a_level;
     }
-    let upgrade = true;
-    if (typeof global.stats.achieve[achievement] === "undefined"){
-        global.stats.achieve[achievement] = { l: 0 };
-        upgrade = false;
+
+    const advanceBase = (global.race.universe === 'micro' && small === true)
+        || (global.race.universe !== 'micro' && small !== true);
+    const targetAffix = universe === 'l' ? null : (universe || universeAffix());
+    const mutation = advanceLegacyAchievement({
+        achievement,
+        rank,
+        advanceBase,
+        universeAffix: targetAffix,
+    });
+
+    if (mutation.baseRankChanged){
+        global.settings.showAchieve = true;
+        messageQueue(loc(mutation.recordExisted ? 'achieve_unlock_achieve_upgrade' : 'achieve_unlock_achieve', [achievements[achievement].name] ),'special',false,['achievements']);
+        redraw = true;
+        unlock = true;
     }
-    if ((global.race.universe === 'micro' && small === true) || (global.race.universe !== 'micro' && small !== true)){
-        if (global.stats.achieve[achievement] && global.stats.achieve[achievement].l < rank){
-            global.settings.showAchieve = true;
-            global.stats.achieve[achievement].l = rank;
-            messageQueue(loc(upgrade ? 'achieve_unlock_achieve_upgrade' : 'achieve_unlock_achieve', [achievements[achievement].name] ),'special',false,['achievements']);
-            redraw = true;
-            unlock = true;
-        }
-    }
-    if (global.stats.achieve[achievement] && universe !== 'l'){
-        let u_affix = universe || universeAffix();
-        if (!global.stats.achieve[achievement][u_affix] || (global.stats.achieve[achievement][u_affix] && global.stats.achieve[achievement][u_affix] < rank)){
-            let i_upgrade = global.stats.achieve[achievement][u_affix] ? true : false;
-            global.stats.achieve[achievement][u_affix] = rank;
-            redraw = true;
-            if (!unlock){
-                messageQueue(loc(i_upgrade ? 'achieve_unlock_achieve_icon_upgrade' : 'achieve_unlock_achieve_icon', [achievements[achievement].name] ),'special',false,['achievements']);
-            }
+    if (mutation.legacyUniverseWrite){
+        redraw = true;
+        if (!unlock){
+            messageQueue(loc(mutation.legacyUniverseUpgrade ? 'achieve_unlock_achieve_icon_upgrade' : 'achieve_unlock_achieve_icon', [achievements[achievement].name] ),'special',false,['achievements']);
         }
     }
     if (redraw){
@@ -915,24 +914,9 @@ function checkBigAchievement(frag, name, num, level){
         if (total >= num){
             unlockAchieve(name,false,level);
             if (global.race.universe !== 'standard'){
-                switch (global.race.universe) {
-                    case 'evil':
-                        global.stats.achieve[name].e = undefined;
-                        break;
-                    case 'antimatter':
-                        global.stats.achieve[name].a = undefined;
-                        break;
-                    case 'heavy':
-                        global.stats.achieve[name].h = undefined;
-                        break;
-                    case 'micro':
-                        global.stats.achieve[name].m = undefined;
-                        break;
-                    case 'magic':
-                        global.stats.achieve[name].mg = undefined;
-                        break;
-                    default:
-                        break;
+                const affix = universeAffix();
+                if (affix !== 'l'){
+                    removeLegacyAchievementUniverseRank(name, affix, { preserveUndefined: true });
                 }
             }
         }

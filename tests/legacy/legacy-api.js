@@ -18,6 +18,7 @@ import {
     intervals
 } from '../../src/vars.js';
 import '../../src/locale.js';
+import { achievementStateSnapshot } from '../../src/legacy/bridge/achievement-state-adapter.mjs';
 import {
     achievements,
     unlockAchieve,
@@ -225,6 +226,15 @@ function achievementRankCap(){
     return alevel();
 }
 
+function authoritativeAchievementState(){
+    return achievementStateSnapshot();
+}
+
+function rebindAchievementState(){
+    setGlobal(global);
+    return global;
+}
+
 function hydrateGarrisonDefaults(){
     const persisted = global.civic.garrison
         ? clone(global.civic.garrison)
@@ -328,6 +338,8 @@ globalThis.__EVOLVE_LEGACY_TEST_API__ = {
     achievementUniverseLevel,
     achievementUniverseAffix,
     achievementRankCap,
+    authoritativeAchievementState,
+    rebindAchievementState,
     hydrateSimulationState,
     runGameLoops,
     transientSimulationState,
