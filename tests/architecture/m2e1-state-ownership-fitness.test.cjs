@@ -10,6 +10,7 @@ const {
     validateOwnershipContractShape,
     validateModulePath,
     compareGameStateRoots,
+    parseOwnershipContractText,
     readOwnershipContract,
     readGameStateRoots,
     scanStateOwnership,
@@ -53,13 +54,30 @@ function writeFile(rootDir, relative, content){
     fs.writeFileSync(file, content);
 }
 
+function defaultGameStateSource(){
+    return [
+        "import { createEmptyAchievementState, validateAchievementState } from './achievement-state.mjs';",
+        "import { createAchievementStateService } from './achievement-state-service.mjs';",
+        "const GAME_STATE_ROOT_FIELDS = Object.freeze(['achievements', 'schemaVersion']);",
+        'export function createEmptyGameState(){',
+        '  return { schemaVersion: 2, achievements: createEmptyAchievementState() };',
+        '}',
+        'export function validateGameState(gameState){',
+        "  if (!gameState || typeof gameState !== 'object' || Array.isArray(gameState)) throw new Error('invalid root');",
+        "  if (gameState.schemaVersion !== 2) throw new Error('invalid schema version');",
+        '  return { schemaVersion: 2, achievements: validateAchievementState(gameState.achievements) };',
+        '}',
+        'export function createGameStateRuntime(){',
+        '  const achievements = createAchievementStateService();',
+        '  return { achievements };',
+        '}',
+    ].join('\n');
+}
+
 async function withTempOwnershipRepo(options, callback){
     const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'evolve-m2e1-'));
     try {
-        writeFile(temp, 'src/engine/state/game-state.mjs', options.gameState ?? [
-            "const GAME_STATE_ROOT_FIELDS = Object.freeze(['achievements', 'schemaVersion']);",
-            'export function createEmptyGameState(){ return { schemaVersion: 2, achievements: {} }; }',
-        ].join('\n'));
+        writeFile(temp, 'src/engine/state/game-state.mjs', options.gameState ?? defaultGameStateSource());
         writeFile(temp, 'src/engine/state/achievement-state.mjs', options.schema ?? [
             'export function createEmptyAchievementState(){ return {}; }',
             'export function validateAchievementState(value){',
@@ -71,6 +89,9 @@ async function withTempOwnershipRepo(options, callback){
             'export function hasAchievement(){ return false; }\n');
         writeFile(temp, 'src/engine/state/achievement-state-service.mjs', options.service ??
             'export function createAchievementStateService(){ return {}; }\n');
+        for (const [relative, content] of Object.entries(options.extraFiles || {})){
+            writeFile(temp, relative, content);
+        }
         return await callback(temp);
     }
     finally {
@@ -100,6 +121,18 @@ test('M2E1 ownership contract is closed, versioned, and reserves schemaVersion a
     const gameplaySchemaVersion = baseContract();
     gameplaySchemaVersion.domains.schemaVersion = clone(gameplaySchemaVersion.domains.achievements);
     assert.match(validateOwnershipContractShape(gameplaySchemaVersion).join('\n'), /may not be declared as an authoritative domain/);
+});
+
+test('M2E1 strict JSON parsing rejects duplicate semantic keys before JSON.parse can overwrite them', () => {
+    assert.throws(
+        () => parseOwnershipContractText('{"owner":1,"owner":2}'),
+        /duplicate JSON object key "owner"/
+    );
+    assert.throws(
+        () => parseOwnershipContractText('{"owner":1,"\\u006fwner":2}'),
+        /duplicate JSON object key "owner"/
+    );
+    assert.deepEqual(parseOwnershipContractText('{"owner":1}'), { owner: 1 });
 });
 
 test('M2E1 validates stable owner IDs and closed domain declarations', () => {
@@ -164,6 +197,39 @@ test('M2E1 full implementation inspection accepts a coherent owned domain', asyn
     });
 });
 
+test('M2E1 ownership declarations must be wired into GameState composition, not merely exist as decoy modules', async () => {
+    await withTempOwnershipRepo({
+        extraFiles: {
+            'src/engine/state/decoy-achievement-state.mjs': [
+                'export function createEmptyAchievementState(){ return {}; }',
+                'export function validateAchievementState(value){ return value; }',
+            ].join('\n'),
+        },
+    }, async temp => {
+        const contract = baseContract();
+        contract.domains.achievements.schema.module = 'src/engine/state/decoy-achievement-state.mjs';
+        const result = await scanStateOwnership(temp, contract);
+        const violations = result.violations.join('\n');
+        assert.match(violations, /must statically reference declared domain module .*decoy-achievement-state\.mjs/);
+        assert.match(violations, /must statically import createEmptyAchievementState from .*decoy-achievement-state\.mjs/);
+        assert.match(violations, /must statically import validateAchievementState from .*decoy-achievement-state\.mjs/);
+    });
+});
+
+test('M2E1 requires GameState to compose the domain-owned empty factory rather than duplicate its current value', async () => {
+    const hardcoded = defaultGameStateSource().replace(
+        'return { schemaVersion: 2, achievements: createEmptyAchievementState() };',
+        'return { schemaVersion: 2, achievements: {} };'
+    );
+    await withTempOwnershipRepo({ gameState: hardcoded }, async temp => {
+        const result = await scanStateOwnership(temp, baseContract());
+        assert.match(
+            result.violations.join('\n'),
+            /createEmptyGameState\(\) must initialize achievements directly through createEmptyAchievementState\(\)/
+        );
+    });
+});
+
 test('M2E1 fails closed on missing modules and missing declared exports', async () => {
     await withTempOwnershipRepo({}, async temp => {
         const missingModule = baseContract();
@@ -175,6 +241,7 @@ test('M2E1 fails closed on missing modules and missing declared exports', async 
         missingExport.domains.achievements.schema.validator = 'missingValidator';
         result = await scanStateOwnership(temp, missingExport);
         assert.match(result.violations.join('\n'), /must export function missingValidator/);
+        assert.match(result.violations.join('\n'), /must statically import missingValidator/);
     });
 });
 
@@ -190,33 +257,89 @@ test('M2E1 requires a real selector surface and mutation-service factory', async
     });
 });
 
+test('M2E1 rejects null GameState defaults and validates the complete root including metadata', async () => {
+    const nullDefault = defaultGameStateSource().replace(
+        'return { schemaVersion: 2, achievements: createEmptyAchievementState() };',
+        'return null;'
+    );
+    await withTempOwnershipRepo({ gameState: nullDefault }, async temp => {
+        const result = await scanStateOwnership(temp, baseContract());
+        assert.match(result.violations.join('\n'), /must return a plain root object/);
+    });
+
+    const wrongVersion = defaultGameStateSource().replace(
+        'return { schemaVersion: 2, achievements: createEmptyAchievementState() };',
+        'return { schemaVersion: 99, achievements: createEmptyAchievementState() };'
+    );
+    await withTempOwnershipRepo({ gameState: wrongVersion }, async temp => {
+        const result = await scanStateOwnership(temp, baseContract());
+        assert.match(result.violations.join('\n'), /empty state fails validateGameState\(\): invalid schema version/);
+    });
+});
+
+test('M2E1 never skips undefined domain defaults or undefined validator results', async () => {
+    await withTempOwnershipRepo({
+        schema: [
+            'export function createEmptyAchievementState(){ return undefined; }',
+            'export function validateAchievementState(){ return {}; }',
+        ].join('\n'),
+    }, async temp => {
+        const result = await scanStateOwnership(temp, baseContract());
+        assert.match(result.violations.join('\n'), /empty factory must already return the validator's canonical empty representation/);
+    });
+
+    await withTempOwnershipRepo({
+        schema: [
+            'export function createEmptyAchievementState(){ return {}; }',
+            'export function validateAchievementState(){ return undefined; }',
+        ].join('\n'),
+    }, async temp => {
+        const result = await scanStateOwnership(temp, baseContract());
+        assert.match(result.violations.join('\n'), /validator returned undefined for its empty state/);
+    });
+});
+
 test('M2E1 proves owner defaults validate and GameState composes that exact default', async () => {
     await withTempOwnershipRepo({
         schema: [
             'export function createEmptyAchievementState(){ return { bad: true }; }',
             "export function validateAchievementState(){ throw new Error('domain invariant failed'); }",
         ].join('\n'),
-        gameState: [
-            "const GAME_STATE_ROOT_FIELDS = Object.freeze(['achievements', 'schemaVersion']);",
-            'export function createEmptyGameState(){ return { schemaVersion: 2, achievements: { other: true } }; }',
-        ].join('\n'),
+        gameState: defaultGameStateSource(),
     }, async temp => {
         const result = await scanStateOwnership(temp, baseContract());
         const violations = result.violations.join('\n');
         assert.match(violations, /empty state fails its declared validator: domain invariant failed/);
-        assert.match(violations, /must exactly match createEmptyAchievementState\(\)/);
+        assert.match(violations, /GameState empty state fails validateGameState\(\): domain invariant failed/);
     });
 });
 
 test('M2E1 catches GameState empty-root drift independently of the ownership manifest', async () => {
-    await withTempOwnershipRepo({
-        gameState: [
-            "const GAME_STATE_ROOT_FIELDS = Object.freeze(['achievements', 'schemaVersion']);",
-            'export function createEmptyGameState(){ return { schemaVersion: 2 }; }',
-        ].join('\n'),
-    }, async temp => {
+    const missingRoot = defaultGameStateSource().replace(
+        'return { schemaVersion: 2, achievements: createEmptyAchievementState() };',
+        'return { schemaVersion: 2 };'
+    );
+    await withTempOwnershipRepo({ gameState: missingRoot }, async temp => {
         const result = await scanStateOwnership(temp, baseContract());
         assert.match(result.violations.join('\n'), /empty factory roots .* do not match GAME_STATE_ROOT_FIELDS/);
+    });
+});
+
+test('M2E1 owned module paths may not hide behind symbolic links', async t => {
+    await withTempOwnershipRepo({}, async temp => {
+        const selector = path.join(temp, 'src', 'engine', 'state', 'achievement-selectors.mjs');
+        const outside = path.join(temp, 'src', 'engine', 'outside-selectors.mjs');
+        fs.writeFileSync(outside, 'export function hiddenSelector(){ return false; }\n');
+        fs.unlinkSync(selector);
+        try {
+            fs.symlinkSync('../outside-selectors.mjs', selector);
+        }
+        catch (error){
+            t.skip(`symlink creation unavailable on this host: ${error.message}`);
+            return;
+        }
+        const result = await scanStateOwnership(temp, baseContract());
+        assert.match(result.violations.join('\n'), /may not traverse symbolic links/);
     });
 });
 
