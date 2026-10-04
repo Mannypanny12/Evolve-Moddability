@@ -34,6 +34,20 @@ function withTempGameState(source, callback){
     }
 }
 
+function withTempBoundaryBaselines(legacy, nested, callback){
+    const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'evolve-m2c3-baseline-'));
+    try {
+        const dir = path.join(temp, 'tests', 'architecture');
+        fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(path.join(dir, 'm2c-boundary-baseline.json'), JSON.stringify(legacy));
+        fs.writeFileSync(path.join(dir, 'm2c-nested-boundary-baseline.json'), JSON.stringify(nested));
+        return callback(temp);
+    }
+    finally {
+        fs.rmSync(temp, { recursive: true, force: true });
+    }
+}
+
 function emptySnapshot(runtimeConsumers = {}){
     return { snapshotVersion: 2, settingsAccesses: {}, nestedSettingsAccesses: {}, runtimeConsumers };
 }
@@ -172,6 +186,25 @@ test('M2C3 validates the reviewed baseline shape before comparing debt', () => {
     assert.match(violations, /pause must be a non-negative safe integer/);
     assert.match(violations, /nestedSettingsAccesses must be an object/);
     assert.match(violations, /runtimeConsumers\.p_on must not contain duplicates/);
+});
+
+test('M2C3 composes the original and nested baselines and rejects component-version drift', () => {
+    const legacy = { snapshotVersion: 1, settingsAccesses: { 'a.js': { pause: 1 } }, runtimeConsumers: { '$namespace': [] } };
+    const nested = { snapshotVersion: 1, nestedSettingsAccesses: { 'a.js': { 'msgFilters.x.vis': 1 } } };
+    withTempBoundaryBaselines(legacy, nested, temp => {
+        assert.deepEqual(loadBoundaryBaseline(temp), {
+            snapshotVersion: 2,
+            settingsAccesses: legacy.settingsAccesses,
+            nestedSettingsAccesses: nested.nestedSettingsAccesses,
+            runtimeConsumers: legacy.runtimeConsumers,
+        });
+    });
+    withTempBoundaryBaselines({ ...legacy, snapshotVersion: 2 }, nested, temp => {
+        assert.throws(() => loadBoundaryBaseline(temp), /m2c-boundary-baseline\.json snapshotVersion must be 1/);
+    });
+    withTempBoundaryBaselines(legacy, { ...nested, snapshotVersion: 2 }, temp => {
+        assert.throws(() => loadBoundaryBaseline(temp), /m2c-nested-boundary-baseline\.json snapshotVersion must be 1/);
+    });
 });
 
 test('M2C3 permanently rejects generic non-authoritative GameState roots including layer-name variants', () => {
