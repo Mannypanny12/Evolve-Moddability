@@ -115,7 +115,7 @@ The achievement compatibility adapter is the sole reviewed raw GameState composi
 
 ### M2E4 integrated closure
 
-The architecture report is now versioned and includes:
+The architecture report is versioned and includes:
 
 - legacy architecture budgets;
 - platform and bridge boundaries;
@@ -125,9 +125,13 @@ The architecture report is now versioned and includes:
 - all M2E2 capability/write hardening;
 - both M2E3 selector/dependency gates.
 
-The report is normalized into plain JSON data before it is returned or printed. The existing legacy mapping inspector shape `{ size, mappings, byDomain }` is preserved and explicitly covered by round-trip tests.
+The report is normalized into plain JSON data only after a fail-closed losslessness check. Unsupported JSON values, negative zero, cycles and shared object references cannot silently disappear, normalize or duplicate during report serialization. The existing legacy mapping inspector shape `{ size, mappings, byDomain }` is preserved and explicitly covered by round-trip tests.
 
-The M2E4 closure gate cross-checks ownership domains, writable roots, selector domains, mutation-scope ownership, metadata non-writability, migration-gate presence and cumulative CI wiring rather than merely rerunning each individual scanner.
+The M2E4 closure gate cross-checks ownership domains, writable roots, reviewed mutation surfaces, selector domains, mutation-scope ownership, summary/root counts, metadata non-writability and migration-gate presence rather than merely rerunning each individual scanner.
+
+The M0-M2 architecture commands and report gates form a permanent required floor. They must remain present exactly once and in reviewed relative order, but M3 and later milestones may extend the cumulative architecture chain/report without reopening M2. GitHub Actions is also checked for the reviewed `npm test` -> architecture -> build -> browser-smoke path.
+
+Production JavaScript source aliases are not allowed to hide outside ordinary module enumeration: source-directory symlinks and `.js`/`.mjs`/`.cjs` source-module symlinks below `src/**` are rejected by the closure gate.
 
 ## What M2 does not claim
 
