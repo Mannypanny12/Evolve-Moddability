@@ -43,12 +43,21 @@ const REQUIRED_ARCHITECTURE_SCRIPTS = Object.freeze([
     'm2e4-state-architecture-closure.cjs',
 ]);
 
+const EXPECTED_ARCHITECTURE_SCRIPT = REQUIRED_ARCHITECTURE_SCRIPTS
+    .map(script => `node tests/architecture/${script}`)
+    .join(' && ');
+const EXPECTED_INSPECT_SCRIPT = 'node tests/architecture/architecture-report.cjs';
+
 function sortedStrings(values){
     return [...values].sort();
 }
 
 function domainRoots(summary){
     return (summary?.domains || []).map(entry => entry.root).sort();
+}
+
+function mutationSurfaceRoots(summary){
+    return (summary?.reviewedSurfaces || []).map(entry => entry.root).sort();
 }
 
 function hasJsonMappingShape(value){
@@ -80,12 +89,27 @@ function closureViolations(report){
     const state = report.stateArchitecture || {};
     const ownershipRoots = domainRoots(state.ownership);
     const mutationRoots = sortedStrings(state.mutation?.writableRoots || []);
+    const mutationReviewRoots = mutationSurfaceRoots(state.mutationReview);
     const selectorRoots = domainRoots(state.selectors);
     if (!isDeepStrictEqual(mutationRoots, ownershipRoots)){
         violations.push(`M2E4 writable roots must exactly equal ownership domains ${JSON.stringify(ownershipRoots)}; got ${JSON.stringify(mutationRoots)}`);
     }
+    if (!isDeepStrictEqual(mutationReviewRoots, ownershipRoots)){
+        violations.push(`M2E4 reviewed mutation surfaces must exactly equal ownership domains ${JSON.stringify(ownershipRoots)}; got ${JSON.stringify(mutationReviewRoots)}`);
+    }
     if (!isDeepStrictEqual(selectorRoots, ownershipRoots)){
         violations.push(`M2E4 selector domains must exactly equal ownership domains ${JSON.stringify(ownershipRoots)}; got ${JSON.stringify(selectorRoots)}`);
+    }
+
+    for (const selectorDomain of state.selectors?.domains || []){
+        if (!Number.isInteger(selectorDomain.selectorCount) || selectorDomain.selectorCount <= 0){
+            violations.push(`M2E4 domain ${selectorDomain.root} must expose at least one reviewed semantic selector`);
+        }
+    }
+    for (const surface of state.mutationReview?.reviewedSurfaces || []){
+        if (!Array.isArray(surface.publicMethods) || surface.publicMethods.length === 0){
+            violations.push(`M2E4 domain ${surface.root} must expose at least one reviewed semantic mutation method`);
+        }
     }
 
     const metadataRoots = sortedStrings(state.ownership?.metadataRoots || []);
@@ -132,22 +156,26 @@ function closureViolations(report){
     return [...new Set(violations)].sort();
 }
 
-function architectureScriptViolations(root){
+function architectureScriptContractViolations(architectureScript, inspectScript){
     const violations = [];
-    const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
-    const architectureScript = packageJson.scripts?.['test:architecture'];
-    if (typeof architectureScript !== 'string'){
-        return ['M2E4 package.json must define test:architecture'];
+    if (architectureScript !== EXPECTED_ARCHITECTURE_SCRIPT){
+        violations.push(
+            'M2E4 test:architecture must be the exact reviewed cumulative gate chain; ' +
+            `expected ${JSON.stringify(EXPECTED_ARCHITECTURE_SCRIPT)}, got ${JSON.stringify(architectureScript)}`
+        );
     }
-    for (const script of REQUIRED_ARCHITECTURE_SCRIPTS){
-        if (!architectureScript.includes(`tests/architecture/${script}`)){
-            violations.push(`M2E4 test:architecture is missing required cumulative gate ${script}`);
-        }
-    }
-    if (packageJson.scripts?.['inspect:architecture'] !== 'node tests/architecture/architecture-report.cjs'){
-        violations.push('M2E4 inspect:architecture must execute the integrated architecture report');
+    if (inspectScript !== EXPECTED_INSPECT_SCRIPT){
+        violations.push('M2E4 inspect:architecture must execute the integrated architecture report exactly');
     }
     return violations;
+}
+
+function architectureScriptViolations(root){
+    const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+    return architectureScriptContractViolations(
+        packageJson.scripts?.['test:architecture'],
+        packageJson.scripts?.['inspect:architecture']
+    );
 }
 
 async function scanM2StateArchitectureClosure(root){
@@ -191,9 +219,13 @@ async function main(){
 module.exports = {
     REQUIRED_REPORT_GATES,
     REQUIRED_ARCHITECTURE_SCRIPTS,
+    EXPECTED_ARCHITECTURE_SCRIPT,
+    EXPECTED_INSPECT_SCRIPT,
     domainRoots,
+    mutationSurfaceRoots,
     hasJsonMappingShape,
     closureViolations,
+    architectureScriptContractViolations,
     architectureScriptViolations,
     scanM2StateArchitectureClosure,
     runM2StateArchitectureClosure,
