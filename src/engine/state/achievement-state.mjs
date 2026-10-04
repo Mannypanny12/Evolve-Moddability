@@ -51,6 +51,10 @@ function assertStateObject(value, path){
     return canonical;
 }
 
+export function createEmptyAchievementState(){
+    return {};
+}
+
 export function assertAchievementStateId(value, path = 'achievementId'){
     let parsed;
     try {
