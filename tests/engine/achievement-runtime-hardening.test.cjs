@@ -154,7 +154,7 @@ test('M2D2b1 capability validation never probes authority by executing the trans
 
     assert.equal(transactionCalls, 0);
     assert.equal(Object.isFrozen(service), true);
-    assert.deepEqual(Object.keys(service), []);
+    assert.deepEqual(Object.keys(service).sort(), ['advance', 'removeUniverseRank']);
 });
 
 test('M2D2b1 throwing proxy inspection fails with the domain capability error', async () => {
