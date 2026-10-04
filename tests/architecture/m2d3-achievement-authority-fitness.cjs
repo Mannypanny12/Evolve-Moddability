@@ -2,10 +2,11 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { extractModuleReferences } = require('./architecture-fitness.cjs');
 
 const root = path.resolve(__dirname, '..', '..');
 const sourceRoot = path.join(root, 'src');
-const adapterImports = ['legacy/bridge/achievement-state-adapter.mjs', './achievement-state-adapter.mjs'];
+const adapterPath = path.join(sourceRoot, 'legacy', 'bridge', 'achievement-state-adapter.mjs');
 
 function read(relativePath){
     return fs.readFileSync(path.join(root, relativePath), 'utf8');
@@ -35,6 +36,38 @@ function listSourceFiles(directory){
         }
     }
     return files.sort();
+}
+
+function referenceTargetsAdapter(specifier, sourcefile){
+    if (!specifier || !specifier.startsWith('.')) return false;
+    const target = path.resolve(path.dirname(sourcefile), specifier);
+    return target === adapterPath || target + '.mjs' === adapterPath;
+}
+
+function sourceReferencesAdapter(file){
+    const source = fs.readFileSync(file, 'utf8');
+    let references;
+    try {
+        references = extractModuleReferences(source, file);
+    }
+    catch (error){
+        throw new Error(
+            `M2D3 cannot inspect module references in ${path.relative(root, file)}: ${error.message}`
+        );
+    }
+    return references.some(reference => referenceTargetsAdapter(reference.specifier, file));
+}
+
+const detectorProbe = path.join(sourceRoot, 'm2d3-detector-probe.js');
+for (const source of [
+    "import { advanceLegacyAchievement } from './legacy/bridge/achievement-state-adapter.mjs';",
+    "import { advanceLegacyAchievement } from './legacy/bridge/../bridge/achievement-state-adapter.mjs';",
+    "const adapter = import('./legacy/bridge/achievement-state-adapter.mjs');",
+]){
+    const references = extractModuleReferences(source, detectorProbe);
+    if (!references.some(reference => referenceTargetsAdapter(reference.specifier, detectorProbe))){
+        throw new Error(`M2D3 adapter-consumer detector missed reviewed module syntax: ${source}`);
+    }
 }
 
 const vars = read('src/vars.js');
@@ -105,8 +138,8 @@ forbidText(
 );
 
 const adapterConsumers = listSourceFiles(sourceRoot)
-    .filter(file => file !== path.join(sourceRoot, 'legacy', 'bridge', 'achievement-state-adapter.mjs'))
-    .filter(file => adapterImports.some(adapterImport => fs.readFileSync(file, 'utf8').includes(adapterImport)))
+    .filter(file => file !== adapterPath)
+    .filter(sourceReferencesAdapter)
     .map(file => path.relative(root, file).split(path.sep).join('/'))
     .sort();
 
