@@ -54,9 +54,10 @@ test('M2E4 architecture report is complete, JSON-safe, and reflects the guarded 
     assert.equal(roundTrip.legacyMappings.mappings.length, 2, 'legacy mapping records must survive report serialization');
 });
 
-test('M2E4 JSON normalization fails closed instead of silently dropping unsupported report data', () => {
+test('M2E4 JSON normalization fails closed instead of silently losing unsupported report data', () => {
     assert.throws(() => normalizeJsonData({ hidden: undefined }), /unsupported JSON value type undefined/);
     assert.throws(() => normalizeJsonData({ count: Infinity }), /non-finite number/);
+    assert.throws(() => normalizeJsonData({ count: -0 }), /negative zero/);
     assert.throws(() => normalizeJsonData(new Map([['hidden', true]])), /plain or null object prototype/);
 
     const symbolData = { visible: true };
@@ -66,4 +67,10 @@ test('M2E4 JSON normalization fails closed instead of silently dropping unsuppor
     const cycle = {};
     cycle.self = cycle;
     assert.throws(() => normalizeJsonData(cycle), /cycle/);
+
+    const shared = { value: true };
+    assert.throws(
+        () => normalizeJsonData({ first: shared, second: shared }),
+        /shared object reference that JSON would duplicate/
+    );
 });
