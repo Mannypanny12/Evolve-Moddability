@@ -6,6 +6,8 @@ const { maskNonCode } = require('./architecture-fitness.cjs');
 const { RUNTIME_STATE_CONTRACT } = require('./m2c-state-layer-contract.cjs');
 
 const SNAPSHOT_VERSION = 2;
+const LEGACY_BASELINE_VERSION = 1;
+const NESTED_BASELINE_VERSION = 1;
 const RUNTIME_NAMESPACE_KEY = '$namespace';
 const NESTED_SETTING_DEPTHS = Object.freeze({
     arpa: 2,
@@ -421,8 +423,30 @@ function summarizeSnapshot(snapshot){
     };
 }
 
+function readJsonBaseline(root, filename, expectedVersion){
+    const file = path.join(root, 'tests', 'architecture', filename);
+    let parsed;
+    try {
+        parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
+    }
+    catch (error){
+        throw new Error(`M2C boundary baseline ${filename} cannot be read as JSON: ${error.message}`);
+    }
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) || parsed.snapshotVersion !== expectedVersion){
+        throw new Error(`M2C boundary baseline ${filename} snapshotVersion must be ${expectedVersion}`);
+    }
+    return parsed;
+}
+
 function loadBoundaryBaseline(root){
-    return JSON.parse(fs.readFileSync(path.join(root, 'tests', 'architecture', 'm2c-boundary-baseline.json'), 'utf8'));
+    const legacy = readJsonBaseline(root, 'm2c-boundary-baseline.json', LEGACY_BASELINE_VERSION);
+    const nested = readJsonBaseline(root, 'm2c-nested-boundary-baseline.json', NESTED_BASELINE_VERSION);
+    return {
+        snapshotVersion: SNAPSHOT_VERSION,
+        settingsAccesses: legacy.settingsAccesses,
+        nestedSettingsAccesses: nested.nestedSettingsAccesses,
+        runtimeConsumers: legacy.runtimeConsumers,
+    };
 }
 
 function scanM2CBoundary(root, baseline = loadBoundaryBaseline(root)){
@@ -456,6 +480,8 @@ function main(){
 
 module.exports = {
     SNAPSHOT_VERSION,
+    LEGACY_BASELINE_VERSION,
+    NESTED_BASELINE_VERSION,
     RUNTIME_NAMESPACE_KEY,
     NESTED_SETTING_DEPTHS,
     PROHIBITED_GAME_STATE_ROOTS,
