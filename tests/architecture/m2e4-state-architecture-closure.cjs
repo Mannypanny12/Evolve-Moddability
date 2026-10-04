@@ -47,6 +47,14 @@ const REQUIRED_ARCHITECTURE_COMMANDS = Object.freeze(
 );
 const EXPECTED_ARCHITECTURE_SCRIPT = REQUIRED_ARCHITECTURE_COMMANDS.join(' && ');
 const EXPECTED_INSPECT_SCRIPT = 'node tests/architecture/architecture-report.cjs';
+const CI_WORKFLOW_FILE = '.github/workflows/baseline-build.yml';
+const REQUIRED_CI_RUN_COMMANDS = Object.freeze([
+    'npm test',
+    'npm run test:architecture',
+    'npm run build',
+    'npm run test:browser',
+]);
+const SOURCE_EXTENSIONS = new Set(['.js', '.mjs', '.cjs']);
 
 function sortedStrings(values){
     return [...values].sort();
@@ -276,11 +284,98 @@ function architectureScriptViolations(root){
     );
 }
 
+function ciWorkflowContractViolations(source){
+    const violations = [];
+    if (typeof source !== 'string') return ['M2E4 CI workflow must be readable text'];
+    const lines = source.split(/\r?\n/);
+    let previousLine = -1;
+
+    for (const command of REQUIRED_CI_RUN_COMMANDS){
+        const expectedLine = `run: ${command}`;
+        const positions = [];
+        for (let index = 0; index < lines.length; index++){
+            if (lines[index].trim() === expectedLine) positions.push(index);
+        }
+        if (positions.length !== 1){
+            violations.push(
+                `M2E4 CI workflow must contain exactly one executable ${JSON.stringify(expectedLine)} line; ` +
+                `found ${positions.length}`
+            );
+            continue;
+        }
+        if (positions[0] <= previousLine){
+            violations.push('M2E4 CI workflow must keep test, architecture, build, and browser smoke commands in reviewed order');
+        }
+        previousLine = positions[0];
+    }
+    return violations;
+}
+
+function ciWorkflowViolations(root){
+    const workflow = path.join(root, ...CI_WORKFLOW_FILE.split('/'));
+    if (!fs.existsSync(workflow) || !fs.statSync(workflow).isFile()){
+        return [`M2E4 CI workflow is missing: ${CI_WORKFLOW_FILE}`];
+    }
+    if (fs.lstatSync(workflow).isSymbolicLink()){
+        return [`M2E4 CI workflow may not be a symbolic link: ${CI_WORKFLOW_FILE}`];
+    }
+    return ciWorkflowContractViolations(fs.readFileSync(workflow, 'utf8'));
+}
+
+function sourceSymlinkViolations(root){
+    const violations = [];
+    const sourceRoot = path.join(root, 'src');
+    if (!fs.existsSync(sourceRoot)) return ['M2E4 production source root src/ is missing'];
+    if (fs.lstatSync(sourceRoot).isSymbolicLink()){
+        return ['M2E4 production source root src/ may not be a symbolic link'];
+    }
+
+    function visit(directory){
+        for (const entry of fs.readdirSync(directory, { withFileTypes: true })){
+            const target = path.join(directory, entry.name);
+            if (entry.isDirectory()){
+                visit(target);
+                continue;
+            }
+            if (!entry.isSymbolicLink()) continue;
+
+            const relative = path.relative(root, target).split(path.sep).join('/');
+            let stat;
+            let realTarget;
+            try {
+                stat = fs.statSync(target);
+                realTarget = fs.realpathSync(target);
+            }
+            catch (error){
+                violations.push(`${relative}: M2E4 cannot inspect production source symlink: ${error.message}`);
+                continue;
+            }
+
+            if (stat.isDirectory()){
+                violations.push(`${relative}: M2E4 production source directory symlinks are forbidden because they can hide unreviewed modules`);
+                continue;
+            }
+            if (!stat.isFile()) continue;
+
+            const entryExtension = path.extname(entry.name);
+            const targetExtension = path.extname(realTarget);
+            if (SOURCE_EXTENSIONS.has(entryExtension) || SOURCE_EXTENSIONS.has(targetExtension)){
+                violations.push(`${relative}: M2E4 production source module symlinks are forbidden because they can bypass canonical module enumeration`);
+            }
+        }
+    }
+
+    visit(sourceRoot);
+    return violations.sort();
+}
+
 async function scanM2StateArchitectureClosure(root){
     const report = await buildArchitectureReport(root);
     const violations = [
         ...closureViolations(report),
         ...architectureScriptViolations(root),
+        ...ciWorkflowViolations(root),
+        ...sourceSymlinkViolations(root),
     ];
     return {
         summary: {
@@ -292,6 +387,7 @@ async function scanM2StateArchitectureClosure(root){
             cumulativeGateCount: Object.keys(report.gateViolations || {}).length,
             requiredM2GateCount: REQUIRED_REPORT_GATES.length,
             legacyMappingCount: hasJsonMappingShape(report.legacyMappings) ? report.legacyMappings.size : 0,
+            sourceSymlinkViolationCount: sourceSymlinkViolations(root).length,
             violationCount: violations.length,
         },
         violations: [...new Set(violations)].sort(),
@@ -323,6 +419,8 @@ module.exports = {
     REQUIRED_ARCHITECTURE_COMMANDS,
     EXPECTED_ARCHITECTURE_SCRIPT,
     EXPECTED_INSPECT_SCRIPT,
+    CI_WORKFLOW_FILE,
+    REQUIRED_CI_RUN_COMMANDS,
     domainRoots,
     mutationSurfaceRoots,
     hasJsonMappingShape,
@@ -331,6 +429,9 @@ module.exports = {
     splitCommandChain,
     architectureScriptContractViolations,
     architectureScriptViolations,
+    ciWorkflowContractViolations,
+    ciWorkflowViolations,
+    sourceSymlinkViolations,
     scanM2StateArchitectureClosure,
     runM2StateArchitectureClosure,
 };
