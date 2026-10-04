@@ -2,7 +2,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { extractModuleReferences } = require('./architecture-fitness.cjs');
+const { extractModuleReferences, maskNonCode } = require('./architecture-fitness.cjs');
 
 const root = path.resolve(__dirname, '..', '..');
 const sourceRoot = path.join(root, 'src');
@@ -152,9 +152,17 @@ if (JSON.stringify(adapterConsumers) !== JSON.stringify(expectedAdapterConsumers
     );
 }
 
-const exportedFunctions = [...adapter.matchAll(/\bexport\s+function\s+([A-Za-z_$][\w$]*)\s*\(/g)]
+const adapterCode = maskNonCode(adapter);
+const exportedFunctions = [...adapterCode.matchAll(/\bexport\s+function\s+([A-Za-z_$][\w$]*)\s*\(/g)]
     .map(match => match[1])
     .sort();
+const exportKeywordCount = [...adapterCode.matchAll(/\bexport\b/g)].length;
+if (exportKeywordCount !== exportedFunctions.length){
+    throw new Error(
+        'M2D3 achievement adapter may export only the reviewed named function surface; ' +
+        `found ${exportKeywordCount} export declarations but ${exportedFunctions.length} reviewed function exports.`
+    );
+}
 const expectedExports = [
     'achievementStateSnapshot',
     'advanceLegacyAchievement',
