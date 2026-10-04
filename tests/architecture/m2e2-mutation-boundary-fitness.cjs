@@ -4,10 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { isDeepStrictEqual } = require('node:util');
-const {
-    extractModuleReferences,
-    maskNonCode,
-} = require('./architecture-fitness.cjs');
+const { extractModuleReferences, maskNonCode } = require('./architecture-fitness.cjs');
 const { parseStrictStringArrayBody } = require('./m2c-syntax-hardening.cjs');
 const {
     readOwnershipContract,
@@ -17,10 +14,7 @@ const {
 const GAME_STATE_FILE = 'src/engine/state/game-state.mjs';
 const STATE_STORE_FILE = 'src/engine/state/state-store.mjs';
 const SOURCE_EXTENSIONS = new Set(['.js', '.mjs', '.cjs']);
-const RAW_AUTHORITY_IDENTIFIERS = Object.freeze([
-    'mutationAuthority',
-    'createMutationScope',
-]);
+const RAW_AUTHORITY_IDENTIFIERS = Object.freeze(['mutationAuthority', 'createMutationScope']);
 const FORBIDDEN_PUBLIC_CAPABILITIES = new Set([
     'createMutationScope',
     'mutationAuthority',
@@ -115,8 +109,7 @@ function staticNamedImports(source, sourceRelativePath){
         const target = relativeImportTarget(sourceRelativePath, match[3]);
         if (!target) continue;
         const bindings = imports.get(target) || new Map();
-        const cleanBody = maskNonCode(match[1]);
-        for (const part of cleanBody.split(',')){
+        for (const part of maskNonCode(match[1]).split(',')){
             const binding = part.trim();
             if (!binding) continue;
             const parsed = binding.match(/^([$A-Z_a-z][$\w]*)(?:\s+as\s+([$A-Z_a-z][$\w]*))?$/);
@@ -139,7 +132,8 @@ function parseScopeDeclarations(runtimeBody){
     const pattern = /\bconst\s+([$A-Z_a-z][$\w]*)\s*=\s*mutationAuthority\s*\.\s*createMutationScope\s*\(\s*\{\s*id\s*:\s*(['"])([^'"\r\n]+)\2\s*,\s*fields\s*:\s*\[\s*(['"])([^'"\r\n]+)\4\s*\]\s*,?\s*\}\s*\)\s*;/g;
     const scopes = [];
     let match;
-    while ((match = pattern.exec(masked)) !== null){
+    while ((match = pattern.exec(runtimeBody)) !== null){
+        if (masked.slice(match.index, match.index + 5) !== 'const') continue;
         scopes.push({ variable: match[1], id: match[3], field: match[5] });
     }
     const callCount = (masked.match(/\bcreateMutationScope\s*\(/g) || []).length;
@@ -159,6 +153,7 @@ function parseFrozenReturnObject(body){
         if (!entry) continue;
         let parsed = entry.match(/^([$A-Z_a-z][$\w]*)$/);
         if (parsed){
+            if (entries.has(parsed[1])) return null;
             entries.set(parsed[1], parsed[1]);
             continue;
         }
@@ -181,9 +176,9 @@ function analyzeGameStateComposition(source, contract){
     const violations = [];
     const expectedRoots = expectedWritableRoots(contract);
     const metadataRoots = Object.keys(contract.metadataRoots);
-
     const readOnlyRoots = parseStrictFrozenStringArray(source, 'GAME_STATE_READ_ONLY_WRITABLE_ROOT_FIELDS');
     const runtimeRoots = parseStrictFrozenStringArray(source, 'GAME_STATE_RUNTIME_WRITABLE_ROOT_FIELDS');
+
     if (readOnlyRoots === null){
         violations.push('M2E2 read-only writable-root declaration must remain one frozen literal string array');
     }
@@ -198,9 +193,7 @@ function analyzeGameStateComposition(source, contract){
             violations.push(`M2E2 runtime writable roots must exactly equal reviewed authoritative domains ${JSON.stringify(expectedRoots)}; got ${JSON.stringify(runtimeRoots)}`);
         }
         for (const rootName of runtimeRoots){
-            if (metadataRoots.includes(rootName)){
-                violations.push(`M2E2 GameState metadata root ${rootName} may not be runtime writable`);
-            }
+            if (metadataRoots.includes(rootName)) violations.push(`M2E2 GameState metadata root ${rootName} may not be runtime writable`);
         }
     }
 
@@ -230,7 +223,6 @@ function analyzeGameStateComposition(source, contract){
     if (!/const\s*\{\s*store\s*,\s*mutationAuthority\s*\}\s*=\s*createGameStateInfrastructure\s*\(\s*initialState\s*,\s*GAME_STATE_RUNTIME_WRITABLE_ROOT_FIELDS\s*\)\s*;/.test(maskedRuntime)){
         violations.push('M2E2 createGameStateRuntime() must retain store plus raw mutationAuthority only from the reviewed runtime infrastructure');
     }
-
     if (countCalls(source, 'createGameStateInfrastructure') !== 3){
         violations.push('M2E2 createGameStateInfrastructure() must have exactly two callers: createGameStateStore() and createGameStateRuntime()');
     }
@@ -262,11 +254,7 @@ function analyzeGameStateComposition(source, contract){
             violations.push(`M2E2 raw scope ${scope.variable} for ${rootName} may only be declared and passed once to its mutation service`);
         }
 
-        const factoryLocal = requireImportedLocal(
-            imports,
-            domain.mutationService.module,
-            domain.mutationService.factory
-        );
+        const factoryLocal = requireImportedLocal(imports, domain.mutationService.module, domain.mutationService.factory);
         if (!factoryLocal){
             violations.push(`M2E2 domain ${rootName} mutation-service factory must be a static named import from ${domain.mutationService.module}`);
             continue;
@@ -288,8 +276,7 @@ function analyzeGameStateComposition(source, contract){
         serviceVariables.set(rootName, serviceMatch[1]);
     }
 
-    const expectedAuthorityUses = 1 + scopes.length;
-    if (countIdentifier(runtimeBody, 'mutationAuthority') !== expectedAuthorityUses){
+    if (countIdentifier(runtimeBody, 'mutationAuthority') !== 1 + scopes.length){
         violations.push('M2E2 raw mutationAuthority may only be captured once and used to mint the reviewed domain scopes');
     }
 
@@ -302,9 +289,7 @@ function analyzeGameStateComposition(source, contract){
         if (!sameSortedStrings(returned.keys(), expectedKeys)){
             violations.push(`M2E2 runtime public surface must be exactly ${JSON.stringify(expectedKeys)}; got ${JSON.stringify([...returned.keys()].sort())}`);
         }
-        if (returned.get('store') !== 'store'){
-            violations.push('M2E2 runtime store property must expose only the read-side store facade');
-        }
+        if (returned.get('store') !== 'store') violations.push('M2E2 runtime store property must expose only the read-side store facade');
         for (const rootName of expectedRoots){
             const serviceVariable = serviceVariables.get(rootName);
             if (serviceVariable && returned.get(rootName) !== serviceVariable){
@@ -435,9 +420,7 @@ async function runtimeCapabilityViolations(root, contract){
             violations.push(`M2E2 runtime object must be frozen with exactly ${JSON.stringify(expectedRuntimeKeys)}`);
         }
         for (const forbidden of FORBIDDEN_PUBLIC_CAPABILITIES){
-            if (Object.prototype.hasOwnProperty.call(runtime, forbidden)){
-                violations.push(`M2E2 runtime may not expose raw capability ${forbidden}`);
-            }
+            if (Object.prototype.hasOwnProperty.call(runtime, forbidden)) violations.push(`M2E2 runtime may not expose raw capability ${forbidden}`);
         }
     }
     catch (error){
@@ -463,11 +446,7 @@ async function runtimeCapabilityViolations(root, contract){
             transactionCalls++;
             throw new Error('M2E2 construction probe must never execute transaction authority');
         };
-        const validScope = Object.freeze({
-            id: domain.owner,
-            fields: Object.freeze([rootName]),
-            transaction,
-        });
+        const validScope = Object.freeze({ id: domain.owner, fields: Object.freeze([rootName]), transaction });
         let service;
         try {
             service = factory({ mutationScope: validScope });
@@ -476,19 +455,11 @@ async function runtimeCapabilityViolations(root, contract){
             violations.push(`M2E2 ${rootName} service rejected its reviewed owner/root capability: ${error.message}`);
             continue;
         }
-        if (transactionCalls !== 0){
-            violations.push(`M2E2 ${rootName} service construction executed raw transaction authority`);
-        }
-        if (!Object.isFrozen(service)){
-            violations.push(`M2E2 ${rootName} semantic mutation service must be frozen`);
-        }
+        if (transactionCalls !== 0) violations.push(`M2E2 ${rootName} service construction executed raw transaction authority`);
+        if (!Object.isFrozen(service)) violations.push(`M2E2 ${rootName} semantic mutation service must be frozen`);
         for (const key of sortedOwnKeys(service)){
-            if (FORBIDDEN_PUBLIC_CAPABILITIES.has(key)){
-                violations.push(`M2E2 ${rootName} mutation service may not expose raw capability ${key}`);
-            }
-            if (service[key] === transaction){
-                violations.push(`M2E2 ${rootName} mutation service may not return its raw transaction closure directly`);
-            }
+            if (FORBIDDEN_PUBLIC_CAPABILITIES.has(key)) violations.push(`M2E2 ${rootName} mutation service may not expose raw capability ${key}`);
+            if (service[key] === transaction) violations.push(`M2E2 ${rootName} mutation service may not return its raw transaction closure directly`);
         }
         if (runtime && runtime[rootName] && !isDeepStrictEqual(sortedOwnKeys(runtime[rootName]), sortedOwnKeys(service))){
             violations.push(`M2E2 runtime ${rootName} service surface must match its declared mutation-service factory`);
@@ -527,8 +498,7 @@ async function scanMutationBoundary(root, contract = readOwnershipContract(root)
         };
     }
 
-    const gameStateSource = readSource(root, GAME_STATE_FILE);
-    const composition = analyzeGameStateComposition(gameStateSource, contract);
+    const composition = analyzeGameStateComposition(readSource(root, GAME_STATE_FILE), contract);
     const violations = [
         ...composition.violations,
         ...productionCapabilityConsumerViolations(root, contract),
