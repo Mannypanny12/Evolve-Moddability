@@ -15,9 +15,19 @@ const {
 } = require('./m2e4-state-architecture-closure.cjs');
 
 const root = path.resolve(__dirname, '..', '..');
+let reportPromise;
+
+function actualReport(){
+    if (!reportPromise) reportPromise = buildArchitectureReport(root);
+    return reportPromise;
+}
 
 function clone(value){
     return JSON.parse(JSON.stringify(value));
+}
+
+async function clonedReport(){
+    return clone(await actualReport());
 }
 
 test('M2E4 closure accepts the actual integrated M2 architecture', async () => {
@@ -30,31 +40,31 @@ test('M2E4 closure accepts the actual integrated M2 architecture', async () => {
 });
 
 test('M2E4 closure fails if a cumulative report gate disappears', async () => {
-    const report = clone(await buildArchitectureReport(root));
+    const report = await clonedReport();
     delete report.gateViolations.selectorReview;
     assert.match(closureViolations(report).join('\n'), /gates must be exactly/);
 });
 
 test('M2E4 closure fails if writable roots drift from authoritative ownership', async () => {
-    const report = clone(await buildArchitectureReport(root));
+    const report = await clonedReport();
     report.stateArchitecture.mutation.writableRoots = [];
     assert.match(closureViolations(report).join('\n'), /writable roots must exactly equal ownership domains/);
 });
 
 test('M2E4 closure fails if reviewed mutation surfaces drift from authoritative ownership', async () => {
-    const report = clone(await buildArchitectureReport(root));
+    const report = await clonedReport();
     report.stateArchitecture.mutationReview.reviewedSurfaces = [];
     assert.match(closureViolations(report).join('\n'), /reviewed mutation surfaces must exactly equal ownership domains/);
 });
 
 test('M2E4 closure fails if selector domains drift from authoritative ownership', async () => {
-    const report = clone(await buildArchitectureReport(root));
+    const report = await clonedReport();
     report.stateArchitecture.selectors.domains = [];
     assert.match(closureViolations(report).join('\n'), /selector domains must exactly equal ownership domains/);
 });
 
 test('M2E4 closure requires non-empty reviewed read and mutation surfaces', async () => {
-    const report = clone(await buildArchitectureReport(root));
+    const report = await clonedReport();
     report.stateArchitecture.selectors.domains[0].selectorCount = 0;
     report.stateArchitecture.mutationReview.reviewedSurfaces[0].publicMethods = [];
     const violations = closureViolations(report).join('\n');
@@ -63,25 +73,25 @@ test('M2E4 closure requires non-empty reviewed read and mutation surfaces', asyn
 });
 
 test('M2E4 closure fails if mutation scope ownership no longer matches domain ownership', async () => {
-    const report = clone(await buildArchitectureReport(root));
+    const report = await clonedReport();
     report.stateArchitecture.mutation.scopes[0].id = 'wrong-owner';
     assert.match(closureViolations(report).join('\n'), /must have exactly one mutation scope owned by/);
 });
 
 test('M2E4 closure fails if GameState metadata becomes writable', async () => {
-    const report = clone(await buildArchitectureReport(root));
+    const report = await clonedReport();
     report.stateArchitecture.mutation.writableRoots.push('schemaVersion');
     assert.match(closureViolations(report).join('\n'), /metadata root schemaVersion may not be runtime writable/);
 });
 
 test('M2E4 closure fails if either achievement authority migration gate is absent or failing', async () => {
-    const report = clone(await buildArchitectureReport(root));
+    const report = await clonedReport();
     report.stateArchitecture.migration.gates.achievementReaders.passed = false;
     assert.match(closureViolations(report).join('\n'), /migration gate achievementReaders must be present and passing/);
 });
 
 test('M2E4 closure fails if the legacy mapping inspector shape becomes opaque or incomplete', async () => {
-    const report = clone(await buildArchitectureReport(root));
+    const report = await clonedReport();
     report.legacyMappings = {};
     assert.match(closureViolations(report).join('\n'), /legacyMappings must preserve the reviewed JSON-safe/);
 });
