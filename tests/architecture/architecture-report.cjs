@@ -8,6 +8,7 @@ const {
 } = require('./architecture-fitness.cjs');
 const { scanPlatform } = require('./platform-fitness.cjs');
 const { scanLegacyBridge } = require('./legacy-bridge-fitness.cjs');
+const { scanM1Kernel } = require('./m1-kernel-inspector.cjs');
 const { loadBoundaryBaseline, scanM2CBoundary } = require('./m2c-boundary-fitness.cjs');
 const { scanM2CSyntaxHardening } = require('./m2c-syntax-hardening.cjs');
 const { scanM2MigrationGates } = require('./m2-migration-gate-adapter.cjs');
@@ -19,7 +20,7 @@ const { scanDynamicEngineLoaders } = require('./m2e2-dynamic-loader-hardening.cj
 const { scanSelectorStateDependencies } = require('./m2e3-selector-state-dependencies-fitness.cjs');
 const { scanM2E3ReviewHardening } = require('./m2e3-selector-review-hardening.cjs');
 
-const ARCHITECTURE_REPORT_VERSION = 2;
+const ARCHITECTURE_REPORT_VERSION = 3;
 
 function sortedUnique(values){
     return [...new Set(values)].sort();
@@ -98,6 +99,7 @@ async function buildArchitectureReport(root){
     const architecture = scanRepository(root, baseline);
     const platform = scanPlatform(root);
     const bridge = scanLegacyBridge(root);
+    const m1Kernel = await scanM1Kernel(root);
     const stateBoundary = scanM2CBoundary(root, loadBoundaryBaseline(root));
     const stateSyntax = scanM2CSyntaxHardening(root);
     const migration = scanM2MigrationGates(root);
@@ -133,6 +135,7 @@ async function buildArchitectureReport(root){
             platformFileCount: platform.summary.platformFileCount,
             bridgeFileCount: bridge.summary.bridgeFileCount,
         },
+        engineKernel: m1Kernel.summary,
         stateArchitecture: {
             boundary: stateBoundary.summary,
             syntax: stateSyntax.summary,
@@ -150,6 +153,7 @@ async function buildArchitectureReport(root){
             architecture: architecture.violations,
             platform: platform.violations,
             bridge: bridge.violations,
+            m1Kernel: m1Kernel.violations,
             stateBoundary: stateBoundary.violations,
             stateSyntax: stateSyntax.violations,
             achievementMigration: migration.violations,
