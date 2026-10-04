@@ -185,7 +185,26 @@ function assertMutationScope(value){
     return Object.freeze({ transaction });
 }
 
+function assertMutationAchievementId(value, path){
+    if (typeof value !== 'string'){
+        fail(
+            'INVALID_ACHIEVEMENT_STATE_ID',
+            `${path} must be a canonical achievement content ID string.`,
+            { path, valueType: typeof value }
+        );
+    }
+    return assertAchievementStateId(value, path);
+}
+
 function assertMutationUniverse(value, path){
+    if (typeof value !== 'string'){
+        fail(
+            'INVALID_ACHIEVEMENT_UNIVERSE',
+            `${path} must name a non-standard achievement universe track.`,
+            { path, valueType: typeof value }
+        );
+    }
+
     const universe = assertAchievementUniverse(value, path);
     if (universe === ACHIEVEMENT_STANDARD_UNIVERSE){
         fail(
@@ -216,6 +235,13 @@ function assertBoolean(value, path){
 }
 
 function normalizeRank(value, path){
+    if (typeof value !== 'number'){
+        fail(
+            'INVALID_ACHIEVEMENT_STATE_RANK',
+            `${path} must be a non-negative safe integer.`,
+            { path, valueType: typeof value }
+        );
+    }
     const rank = assertAchievementRank(value, path);
     return Object.is(rank, -0) ? 0 : rank;
 }
@@ -228,7 +254,7 @@ function validateAdvanceCommand(value){
         ADVANCE_FIELDS,
         'INVALID_ACHIEVEMENT_STATE_MUTATION'
     );
-    const achievementId = assertAchievementStateId(
+    const achievementId = assertMutationAchievementId(
         readDataField(command, 'achievementId', path, 'INVALID_ACHIEVEMENT_STATE_MUTATION'),
         `${path}.achievementId`
     );
@@ -270,7 +296,7 @@ function validateRemoveUniverseRankCommand(value){
         'INVALID_ACHIEVEMENT_STATE_MUTATION'
     );
     return Object.freeze({
-        achievementId: assertAchievementStateId(
+        achievementId: assertMutationAchievementId(
             readDataField(command, 'achievementId', path, 'INVALID_ACHIEVEMENT_STATE_MUTATION'),
             `${path}.achievementId`
         ),
