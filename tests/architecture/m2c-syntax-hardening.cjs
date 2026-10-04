@@ -6,6 +6,7 @@ const { extractModuleReferences, maskNonCode } = require('./architecture-fitness
 
 const LEGACY_SOURCE_EXTENSIONS = new Set(['.js']);
 const REVIEWED_NAMED_VARS_IMPORT = /import\s*\{\s*[$A-Z_a-z][$\w]*(?:\s+as\s+[$A-Z_a-z][$\w]*)?(?:\s*,\s*[$A-Z_a-z][$\w]*(?:\s+as\s+[$A-Z_a-z][$\w]*)?)*\s*,?\s*\}\s*from\s*(['"])\.\/vars(?:\.js)?\1\s*;?/g;
+const NAMED_VARS_IMPORT = /import\s*\{([\s\S]*?)\}\s*from\s*(['"])\.\/vars(?:\.js)?\2\s*;?/g;
 
 function listLegacyRootModules(root){
     const srcRoot = path.join(root, 'src');
@@ -30,18 +31,36 @@ function referenceTargetsVars(specifier, sourcefile, root){
     return target === varsFile || target + '.js' === varsFile;
 }
 
+function hasAliasedGlobalVarsImport(source){
+    NAMED_VARS_IMPORT.lastIndex = 0;
+    let match;
+    while ((match = NAMED_VARS_IMPORT.exec(source)) !== null){
+        for (const part of match[1].split(',')){
+            if (/^\s*global\s+as\s+[$A-Z_a-z][$\w]*\s*$/.test(part)) return true;
+        }
+    }
+    return false;
+}
+
 function unreviewedVarsReferenceViolations(source, sourcefile, root){
+    const violations = [];
+    if (hasAliasedGlobalVarsImport(source)){
+        violations.push(`${path.basename(sourcefile)}: M2C runtime vars access may not alias the mixed legacy global binding because aliased settings access would evade path-specific debt tracking`);
+    }
+
     const stripped = stripReviewedNamedVarsImports(source);
     let references;
     try {
         references = extractModuleReferences(stripped, sourcefile);
     }
     catch (error){
-        return [`${path.basename(sourcefile)}: M2C syntax hardening cannot parse module references: ${error.message}`];
+        violations.push(`${path.basename(sourcefile)}: M2C syntax hardening cannot parse module references: ${error.message}`);
+        return violations;
     }
-    return references
+    violations.push(...references
         .filter(reference => referenceTargetsVars(reference.specifier, sourcefile, root))
-        .map(reference => `${path.basename(sourcefile)}: M2C runtime vars access must use the reviewed named-import form; found ${reference.kind} ${reference.specifier}`);
+        .map(reference => `${path.basename(sourcefile)}: M2C runtime vars access must use the reviewed named-import form; found ${reference.kind} ${reference.specifier}`));
+    return violations;
 }
 
 function skipWhitespace(source, index){
@@ -143,8 +162,9 @@ function hasOptionalSettingsAccess(source, masked){
 }
 
 function hasBareGlobalAlias(masked){
-    const directDeclaration = /\b(?:const|let|var)\s+[$A-Z_a-z][$\w]*\s*=\s*global\b(?!\s*(?:\.|\[|\?\.))/;
-    const directAssignment = /(?:^|[;{}\n])\s*[$A-Z_a-z][$\w]*\s*=\s*global\b(?!\s*(?:\.|\[|\?\.))/m;
+    const bareGlobal = String.raw`\(*\s*global\b(?!\s*(?:\.|\[|\?\.))`;
+    const directDeclaration = new RegExp(String.raw`\b(?:const|let|var)\s+[$A-Z_a-z][$\w]*\s*=\s*${bareGlobal}`);
+    const directAssignment = new RegExp(String.raw`(?:^|[;{}\n])\s*[$A-Z_a-z][$\w]*\s*=\s*${bareGlobal}`, 'm');
     return directDeclaration.test(masked) || directAssignment.test(masked);
 }
 
@@ -169,8 +189,10 @@ function hasTemplateSettingsAccess(source, masked){
         let cursor = skipWhitespace(source, match.index + match[0].length);
         if (source[cursor] !== '[') continue;
         cursor = skipWhitespace(source, cursor + 1);
+        if (source[cursor] !== '`') continue;
         const template = readSimpleTemplate(source, cursor);
-        if (!template || template.value !== 'settings') continue;
+        if (!template) return true;
+        if (template.value !== 'settings') continue;
         cursor = skipWhitespace(source, template.end);
         if (source[cursor] === ']') return true;
     }
@@ -185,14 +207,14 @@ function settingsSyntaxViolations(source, sourcefile){
     if (hasOptionalSettingsAccess(source, masked)){
         violations.push(`${moduleName}: M2C settings boundary forbids optional chaining inside direct global.settings access because it bypasses path-specific debt tracking`);
     }
-    if (/\{[^}]*\bsettings\b[^}]*\}\s*=\s*global\b/.test(masked)){
+    if (/\{[^}]*\bsettings\b[^}]*\}\s*=\s*\(*\s*global\b/.test(masked)){
         violations.push(`${moduleName}: M2C settings boundary forbids destructuring settings from legacy global; expose global.settings explicitly so $root capability debt is visible`);
     }
     if (hasBareGlobalAlias(masked)){
         violations.push(`${moduleName}: M2C settings boundary forbids aliasing the whole legacy global object because settings access through the alias would evade the boundary ratchet`);
     }
     if (hasTemplateSettingsAccess(source, masked)){
-        violations.push(`${moduleName}: M2C settings boundary forbids template-literal access to global settings; use the reviewed static property syntax`);
+        violations.push(`${moduleName}: M2C settings boundary forbids template-literal access to legacy global that can hide the settings root; use the reviewed static property syntax`);
     }
 
     return violations;
@@ -308,6 +330,7 @@ function main(){
 module.exports = {
     stripReviewedNamedVarsImports,
     referenceTargetsVars,
+    hasAliasedGlobalVarsImport,
     unreviewedVarsReferenceViolations,
     hasOptionalSettingsAccess,
     hasBareGlobalAlias,
