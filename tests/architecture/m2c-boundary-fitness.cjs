@@ -5,12 +5,39 @@ const path = require('node:path');
 const { maskNonCode } = require('./architecture-fitness.cjs');
 const { RUNTIME_STATE_CONTRACT } = require('./m2c-state-layer-contract.cjs');
 
-const SNAPSHOT_VERSION = 1;
+const SNAPSHOT_VERSION = 2;
+const LEGACY_BASELINE_VERSION = 1;
+const NESTED_BASELINE_VERSION = 1;
 const RUNTIME_NAMESPACE_KEY = '$namespace';
+const NESTED_SETTING_DEPTHS = Object.freeze({
+    arpa: 2,
+    eden: 2,
+    keyMap: 2,
+    msgFilters: 3,
+    portal: 2,
+    resBar: 2,
+    space: 2,
+    tau: 2,
+});
 const PROHIBITED_GAME_STATE_ROOTS = Object.freeze([
-    'settings', 'preferences', 'ui', 'uiState', 'cache', 'caches', 'transient', 'transients',
-    'runtime', 'tmp', 'tmp_vars', 'migration', 'debug',
+    'settings', 'applicationSettings', 'appSettings',
+    'preferences', 'applicationPreferences', 'userPreferences',
+    'control', 'applicationControl',
+    'ui', 'uiState', 'uiSession',
+    'derived', 'derivedState',
+    'cache', 'caches', 'transient', 'transients',
+    'working', 'workingState', 'simulationWorking', 'applicationWorking',
+    'runtime', 'runtimeState', 'runtimeServices',
+    'platform', 'platformState', 'platformServices', 'services',
+    'tmp', 'tmp_vars',
+    'migration', 'migrationState',
+    'debug', 'debugState',
 ]);
+const PROHIBITED_GAME_STATE_ROOT_KEYS = new Set(PROHIBITED_GAME_STATE_ROOTS.map(normalizeRootName));
+
+function normalizeRootName(value){
+    return String(value).replace(/[-_\s]/g, '').toLowerCase();
+}
 
 function sortedObject(value){
     return Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)));
@@ -48,13 +75,30 @@ function readQuotedString(source, index){
     return null;
 }
 
+function findClosingBracket(masked, index){
+    let depth = 0;
+    for (let cursor = index; cursor < masked.length; cursor++){
+        if (masked[cursor] === '[') depth++;
+        else if (masked[cursor] === ']'){
+            depth--;
+            if (depth === 0) return cursor;
+        }
+    }
+    return -1;
+}
+
 function readStaticBracketProperty(source, masked, index){
     let cursor = skipWhitespace(source, index + 1);
     const stringValue = readQuotedString(source, cursor);
-    if (!stringValue) return { dynamic: true, end: index + 1 };
-    cursor = skipWhitespace(source, stringValue.end);
-    if (source[cursor] !== ']') return { dynamic: true, end: cursor };
-    return { dynamic: false, value: stringValue.value, end: cursor + 1 };
+    if (stringValue){
+        cursor = skipWhitespace(source, stringValue.end);
+        if (source[cursor] === ']'){
+            return { dynamic: false, value: stringValue.value, end: cursor + 1 };
+        }
+    }
+
+    const closing = findClosingBracket(masked, index);
+    return { dynamic: true, end: closing === -1 ? index + 1 : closing + 1 };
 }
 
 function readProperty(source, masked, index){
@@ -83,40 +127,77 @@ function incrementCount(counts, key){
     counts[key] = (Object.prototype.hasOwnProperty.call(counts, key) ? counts[key] : 0) + 1;
 }
 
-function analyzeSettingsAccesses(source){
+function forEachSettingsRoot(source, callback){
     const masked = maskNonCode(source);
-    const counts = Object.create(null);
     const globalPattern = /\bglobal\b/g;
     let match;
-
     while ((match = globalPattern.exec(masked)) !== null){
         const settingsProperty = readProperty(source, masked, match.index + match[0].length);
         if (!settingsProperty || settingsProperty.dynamic || settingsProperty.value !== 'settings') continue;
+        callback({ source, masked, settingsEnd: settingsProperty.end });
+    }
+}
 
-        const settingProperty = readProperty(source, masked, settingsProperty.end);
+function analyzeSettingsAccesses(source){
+    const counts = Object.create(null);
+    forEachSettingsRoot(source, ({ source: raw, masked, settingsEnd }) => {
+        const settingProperty = readProperty(raw, masked, settingsEnd);
         if (!settingProperty){
             incrementCount(counts, '$root');
-            continue;
+            return;
         }
         if (settingProperty.dynamic){
             incrementCount(counts, '$dynamic');
-            continue;
+            return;
         }
         if (settingProperty.value === 'hasOwnProperty'){
-            const checkedKey = readHasOwnPropertyKey(source, masked, settingProperty.end);
+            const checkedKey = readHasOwnPropertyKey(raw, masked, settingProperty.end);
             if (checkedKey){
-                if (checkedKey.dynamic){
-                    incrementCount(counts, '$dynamic');
-                }
-                else {
-                    incrementCount(counts, checkedKey.value);
-                }
-                continue;
+                incrementCount(counts, checkedKey.dynamic ? '$dynamic' : checkedKey.value);
+                return;
             }
         }
         incrementCount(counts, settingProperty.value);
-    }
+    });
+    return sortedObject(counts);
+}
 
+function analyzeNestedSettingsAccesses(source){
+    const counts = Object.create(null);
+    forEachSettingsRoot(source, ({ source: raw, masked, settingsEnd }) => {
+        const first = readProperty(raw, masked, settingsEnd);
+        if (!first || first.dynamic || first.value === 'hasOwnProperty') return;
+        const maxDepth = NESTED_SETTING_DEPTHS[first.value];
+        if (!maxDepth) return;
+
+        const segments = [first.value];
+        let cursor = first.end;
+        while (segments.length < maxDepth){
+            const next = readProperty(raw, masked, cursor);
+            if (!next){
+                segments.push('$root');
+                break;
+            }
+            if (next.dynamic){
+                segments.push('$dynamic');
+                cursor = next.end;
+                continue;
+            }
+            if (next.value === 'hasOwnProperty'){
+                const checkedKey = readHasOwnPropertyKey(raw, masked, next.end);
+                if (checkedKey){
+                    segments.push(checkedKey.dynamic ? '$dynamic' : checkedKey.value);
+                }
+                else {
+                    segments.push('hasOwnProperty');
+                }
+                break;
+            }
+            segments.push(next.value);
+            cursor = next.end;
+        }
+        incrementCount(counts, segments.join('.'));
+    });
     return sortedObject(counts);
 }
 
@@ -140,6 +221,15 @@ function importedVarsBindings(source){
     if (/import\s*\*\s*as\s+[$A-Z_a-z][$\w]*\s*from\s*['"]\.\/vars(?:\.js)?['"]/.test(source)){
         imported.add(RUNTIME_NAMESPACE_KEY);
     }
+    if (/import\s+[$A-Z_a-z][$\w]*\s+from\s*['"]\.\/vars(?:\.js)?['"]/.test(source)){
+        imported.add(RUNTIME_NAMESPACE_KEY);
+    }
+    if (/\brequire\s*\(\s*['"]\.\/vars(?:\.js)?['"]\s*\)/.test(source)){
+        imported.add(RUNTIME_NAMESPACE_KEY);
+    }
+    if (/\bimport\s*\(\s*['"]\.\/vars(?:\.js)?['"]\s*\)/.test(source)){
+        imported.add(RUNTIME_NAMESPACE_KEY);
+    }
     return [...imported].sort();
 }
 
@@ -157,6 +247,7 @@ function managedRuntimeBindings(){
 
 function buildBoundarySnapshot(root){
     const settingsAccesses = {};
+    const nestedSettingsAccesses = {};
     const runtimeConsumers = Object.fromEntries(
         [...managedRuntimeBindings(), RUNTIME_NAMESPACE_KEY].sort().map(name => [name, []])
     );
@@ -166,6 +257,8 @@ function buildBoundarySnapshot(root){
         const source = fs.readFileSync(file, 'utf8');
         const settingCounts = analyzeSettingsAccesses(source);
         if (Object.keys(settingCounts).length > 0) settingsAccesses[moduleName] = settingCounts;
+        const nestedCounts = analyzeNestedSettingsAccesses(source);
+        if (Object.keys(nestedCounts).length > 0) nestedSettingsAccesses[moduleName] = nestedCounts;
 
         for (const binding of importedVarsBindings(source)){
             if (Object.prototype.hasOwnProperty.call(runtimeConsumers, binding)){
@@ -179,6 +272,7 @@ function buildBoundarySnapshot(root){
     return {
         snapshotVersion: SNAPSHOT_VERSION,
         settingsAccesses: sortedObject(settingsAccesses),
+        nestedSettingsAccesses: sortedObject(nestedSettingsAccesses),
         runtimeConsumers: sortedObject(runtimeConsumers),
     };
 }
@@ -226,6 +320,52 @@ function compareRuntimeConsumers(actual, expected, violations){
     }
 }
 
+function validateCountMap(value, label, violations){
+    if (!value || typeof value !== 'object' || Array.isArray(value)){
+        violations.push(`${label} must be an object`);
+        return;
+    }
+    for (const [moduleName, counts] of Object.entries(value)){
+        if (!counts || typeof counts !== 'object' || Array.isArray(counts)){
+            violations.push(`${label}.${moduleName} must be an object`);
+            continue;
+        }
+        for (const [key, count] of Object.entries(counts)){
+            if (!Number.isSafeInteger(count) || count < 0){
+                violations.push(`${label}.${moduleName}.${key} must be a non-negative safe integer`);
+            }
+        }
+    }
+}
+
+function validateBoundaryBaseline(expected){
+    const violations = [];
+    if (!expected || typeof expected !== 'object' || Array.isArray(expected)){
+        return ['M2C boundary baseline must be an object'];
+    }
+    if (expected.snapshotVersion !== SNAPSHOT_VERSION){
+        violations.push(`M2C boundary baseline snapshotVersion must be ${SNAPSHOT_VERSION}`);
+        return violations;
+    }
+    validateCountMap(expected.settingsAccesses, 'M2C baseline settingsAccesses', violations);
+    validateCountMap(expected.nestedSettingsAccesses, 'M2C baseline nestedSettingsAccesses', violations);
+    if (!expected.runtimeConsumers || typeof expected.runtimeConsumers !== 'object' || Array.isArray(expected.runtimeConsumers)){
+        violations.push('M2C baseline runtimeConsumers must be an object');
+    }
+    else {
+        for (const [binding, consumers] of Object.entries(expected.runtimeConsumers)){
+            if (!Array.isArray(consumers) || consumers.some(name => typeof name !== 'string')){
+                violations.push(`M2C baseline runtimeConsumers.${binding} must be an array of module names`);
+                continue;
+            }
+            if (new Set(consumers).size !== consumers.length){
+                violations.push(`M2C baseline runtimeConsumers.${binding} must not contain duplicates`);
+            }
+        }
+    }
+    return violations;
+}
+
 function parseGameStateRootFields(source){
     const match = source.match(/const\s+GAME_STATE_ROOT_FIELDS\s*=\s*Object\.freeze\s*\(\s*\[([\s\S]*?)\]\s*\)\s*;/);
     if (!match) return null;
@@ -237,18 +377,16 @@ function gameStateRootViolations(root){
     const source = fs.readFileSync(file, 'utf8');
     const fields = parseGameStateRootFields(source);
     if (!fields) return ['M2C3 cannot inspect GAME_STATE_ROOT_FIELDS; schema boundary changed and requires review'];
-    const prohibited = fields.filter(field => PROHIBITED_GAME_STATE_ROOTS.includes(field));
+    const prohibited = fields.filter(field => PROHIBITED_GAME_STATE_ROOT_KEYS.has(normalizeRootName(field)));
     return prohibited.map(field => `M2C3 forbids generic non-authoritative GameState root: ${field}`);
 }
 
 function compareBoundarySnapshot(actual, expected){
-    const violations = [];
-    if (!expected || expected.snapshotVersion !== SNAPSHOT_VERSION){
-        violations.push(`M2C boundary baseline snapshotVersion must be ${SNAPSHOT_VERSION}`);
-        return violations;
-    }
-    compareCountMaps(actual.settingsAccesses, expected.settingsAccesses || {}, 'M2C settings-access', violations);
-    compareRuntimeConsumers(actual.runtimeConsumers, expected.runtimeConsumers || {}, violations);
+    const violations = validateBoundaryBaseline(expected);
+    if (violations.length) return violations;
+    compareCountMaps(actual.settingsAccesses, expected.settingsAccesses, 'M2C settings-access', violations);
+    compareCountMaps(actual.nestedSettingsAccesses, expected.nestedSettingsAccesses, 'M2C nested-settings-access', violations);
+    compareRuntimeConsumers(actual.runtimeConsumers, expected.runtimeConsumers, violations);
     return violations;
 }
 
@@ -263,19 +401,52 @@ function summarizeSnapshot(snapshot){
             else settingKeys.add(key);
         }
     }
+    let nestedSettingsReferenceCount = 0;
+    const nestedSettingPaths = new Set();
+    for (const counts of Object.values(snapshot.nestedSettingsAccesses)){
+        for (const [key, count] of Object.entries(counts)){
+            nestedSettingsReferenceCount += count;
+            nestedSettingPaths.add(key);
+        }
+    }
     const runtimeConsumerEdges = Object.values(snapshot.runtimeConsumers).reduce((sum, consumers) => sum + consumers.length, 0);
     return {
         settingsModuleCount: Object.keys(snapshot.settingsAccesses).length,
         settingsReferenceCount,
         dynamicSettingsSites,
         reviewedSettingKeys: [...settingKeys].sort(),
+        nestedSettingsModuleCount: Object.keys(snapshot.nestedSettingsAccesses).length,
+        nestedSettingsReferenceCount,
+        reviewedNestedSettingPaths: [...nestedSettingPaths].sort(),
         runtimeBindingCount: Object.keys(snapshot.runtimeConsumers).length - 1,
         runtimeConsumerEdges,
     };
 }
 
+function readJsonBaseline(root, filename, expectedVersion){
+    const file = path.join(root, 'tests', 'architecture', filename);
+    let parsed;
+    try {
+        parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
+    }
+    catch (error){
+        throw new Error(`M2C boundary baseline ${filename} cannot be read as JSON: ${error.message}`);
+    }
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) || parsed.snapshotVersion !== expectedVersion){
+        throw new Error(`M2C boundary baseline ${filename} snapshotVersion must be ${expectedVersion}`);
+    }
+    return parsed;
+}
+
 function loadBoundaryBaseline(root){
-    return JSON.parse(fs.readFileSync(path.join(root, 'tests', 'architecture', 'm2c-boundary-baseline.json'), 'utf8'));
+    const legacy = readJsonBaseline(root, 'm2c-boundary-baseline.json', LEGACY_BASELINE_VERSION);
+    const nested = readJsonBaseline(root, 'm2c-nested-boundary-baseline.json', NESTED_BASELINE_VERSION);
+    return {
+        snapshotVersion: SNAPSHOT_VERSION,
+        settingsAccesses: legacy.settingsAccesses,
+        nestedSettingsAccesses: nested.nestedSettingsAccesses,
+        runtimeConsumers: legacy.runtimeConsumers,
+    };
 }
 
 function scanM2CBoundary(root, baseline = loadBoundaryBaseline(root)){
@@ -309,12 +480,17 @@ function main(){
 
 module.exports = {
     SNAPSHOT_VERSION,
+    LEGACY_BASELINE_VERSION,
+    NESTED_BASELINE_VERSION,
     RUNTIME_NAMESPACE_KEY,
+    NESTED_SETTING_DEPTHS,
     PROHIBITED_GAME_STATE_ROOTS,
     analyzeSettingsAccesses,
+    analyzeNestedSettingsAccesses,
     importedVarsBindings,
     buildBoundarySnapshot,
     compareBoundarySnapshot,
+    validateBoundaryBaseline,
     parseGameStateRootFields,
     gameStateRootViolations,
     summarizeSnapshot,

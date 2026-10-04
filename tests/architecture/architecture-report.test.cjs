@@ -18,6 +18,9 @@ test('M1D/M2C3 architecture report is executable and reflects the guarded reposi
     assert.equal(report.protectedLayers.platformFileCount > 0, true);
     assert.equal(report.protectedLayers.bridgeFileCount > 0, true);
     assert.equal(report.stateBoundary.settingsReferenceCount > 0, true);
+    assert.equal(report.stateBoundary.nestedSettingsModuleCount > 0, true);
+    assert.equal(report.stateBoundary.nestedSettingsReferenceCount > 0, true);
+    assert.equal(report.stateBoundary.reviewedNestedSettingPaths.length > 0, true);
     assert.equal(report.stateBoundary.runtimeBindingCount > 0, true);
     assert.equal(report.legacyMappings.size, 2);
     assert.deepEqual(report.gateViolations.architecture, []);
