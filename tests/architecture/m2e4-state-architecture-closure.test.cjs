@@ -23,6 +23,7 @@ test('M2E4 closure accepts the actual integrated M2 architecture', async () => {
     assert.deepEqual(result.summary.authoritativeDomains, ['achievements']);
     assert.deepEqual(result.summary.metadataRoots, ['schemaVersion']);
     assert.equal(result.summary.cumulativeGateCount, 13);
+    assert.equal(result.summary.legacyMappingCount, 2);
 });
 
 test('M2E4 closure fails if a cumulative report gate disappears', async () => {
@@ -61,10 +62,10 @@ test('M2E4 closure fails if either achievement authority migration gate is absen
     assert.match(closureViolations(report).join('\n'), /migration gate achievementReaders must be present and passing/);
 });
 
-test('M2E4 closure fails if the report regresses to an opaque legacy mapping object', async () => {
+test('M2E4 closure fails if the legacy mapping inspector shape becomes opaque or incomplete', async () => {
     const report = clone(await buildArchitectureReport(root));
     report.legacyMappings = {};
-    assert.match(closureViolations(report).join('\n'), /legacyMappings must be JSON-safe array data/);
+    assert.match(closureViolations(report).join('\n'), /legacyMappings must preserve the reviewed JSON-safe/);
 });
 
 test('M2E4 package architecture chain contains every cumulative M2 closure gate', () => {
