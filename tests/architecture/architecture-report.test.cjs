@@ -6,6 +6,8 @@ const test = require('node:test');
 
 const {
     ARCHITECTURE_REPORT_VERSION,
+    assertJsonData,
+    normalizeJsonData,
     buildArchitectureReport,
     reportViolations,
 } = require('./architecture-report.cjs');
@@ -34,6 +36,7 @@ test('M2E4 architecture report is complete, JSON-safe, and reflects the guarded 
         { root: 'achievements', owner: 'achievement-state' },
     ]);
     assert.deepEqual(report.stateArchitecture.mutation.writableRoots, ['achievements']);
+    assert.deepEqual(report.stateArchitecture.mutationReview.reviewedSurfaces.map(value => value.root), ['achievements']);
     assert.equal(report.stateArchitecture.migration.gates.achievementAuthority.passed, true);
     assert.equal(report.stateArchitecture.migration.gates.achievementReaders.passed, true);
     assert.equal(report.stateArchitecture.selectors.domainCount, 1);
@@ -43,9 +46,24 @@ test('M2E4 architecture report is complete, JSON-safe, and reflects the guarded 
     assert.equal(typeof report.legacyMappings.byDomain, 'object');
     assert.deepEqual(reportViolations(report), []);
 
+    assert.doesNotThrow(() => assertJsonData(report));
     const serialized = JSON.stringify(report);
     const roundTrip = JSON.parse(serialized);
     assert.deepEqual(roundTrip, report);
     assert.equal(roundTrip.legacyMappings.size, 2, 'legacy mappings must survive report serialization');
     assert.equal(roundTrip.legacyMappings.mappings.length, 2, 'legacy mapping records must survive report serialization');
+});
+
+test('M2E4 JSON normalization fails closed instead of silently dropping unsupported report data', () => {
+    assert.throws(() => normalizeJsonData({ hidden: undefined }), /unsupported JSON value type undefined/);
+    assert.throws(() => normalizeJsonData({ count: Infinity }), /non-finite number/);
+    assert.throws(() => normalizeJsonData(new Map([['hidden', true]])), /plain or null object prototype/);
+
+    const symbolData = { visible: true };
+    symbolData[Symbol('hidden')] = true;
+    assert.throws(() => normalizeJsonData(symbolData), /symbol keys/);
+
+    const cycle = {};
+    cycle.self = cycle;
+    assert.throws(() => normalizeJsonData(cycle), /cycle/);
 });
