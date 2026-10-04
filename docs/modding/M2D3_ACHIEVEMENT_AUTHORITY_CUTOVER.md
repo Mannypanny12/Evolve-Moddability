@@ -71,7 +71,7 @@ The explicit `undefined` therefore exists only in the compatibility mirror. JSON
 
 Before an authoritative mutation is granted, the adapter inspects whether the currently bound legacy mirror can be updated safely. A non-writable, non-configurable mirror fails before GameState can advance. A replaceable invalid mirror can instead be reconstructed from the authoritative state.
 
-The adapter also snapshots authoritative state before each compatibility-projected mutation. If an unexpected projection failure still occurs after the engine commit, the achievement runtime is recreated from that snapshot before the error is surfaced. This prevents a failed compatibility write from leaving GameState and the legacy mirror knowingly split.
+The adapter also snapshots authoritative state before each compatibility-projected mutation. If an unexpected projection failure still occurs after the engine commit, the achievement runtime is recreated from that snapshot before the error is surfaced and the adapter attempts to reproject the restored authority. With ordinary mutable legacy objects this restores both sides. A deliberately hostile object or Proxy can refuse the repair write itself; in that case the operation still throws with authoritative GameState rolled back, but the hostile compatibility mirror cannot be promised to be repairable in place and must be replaced or rebound before it can be trusted again.
 
 Replacing `global.stats` behind the adapter is rejected and requires a proper `setGlobal()` rebind. The adapter does not silently follow a new nested root after authority was established.
 
@@ -110,6 +110,8 @@ M2D3 adds characterization coverage for:
 - locked-mirror projection preflight;
 - replaceable invalid-mirror repair;
 - failed-bind preservation of the previous authority;
+- rejection of a replaced bound `global.stats` subtree without rebind;
+- authoritative rollback when a hostile mirror fails after projection preflight;
 - the source-authority ratchet that leaves `vars.js` migrations as the only direct achievement writer, and only before hydration.
 
 `tests/architecture/m2d3-achievement-authority-fitness.cjs` additionally locks the hydration order, fail-atomic rebinding order, bridge consumer/export surface, mutation-service delegation, projection preflight/rollback, aggregate clear delegation, and removal of the former direct gameplay writes.
