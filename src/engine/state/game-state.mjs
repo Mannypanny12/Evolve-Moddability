@@ -14,10 +14,11 @@ const GAME_STATE_ROOT_FIELDS = Object.freeze([
     'schemaVersion',
 ]);
 
-// M2D2b1 enables the first real writable GameState domain internally. The
-// normal GameState store remains a read-only facade; only the composition
-// runtime below retains authority long enough to mint the dedicated scope.
-const GAME_STATE_WRITABLE_ROOT_FIELDS = Object.freeze([
+// The compatibility read facade remains backed by infrastructure that cannot
+// mint a writable gameplay scope at all. Only createGameStateRuntime() opts in
+// to the first writable domain root.
+const GAME_STATE_READ_ONLY_WRITABLE_ROOT_FIELDS = Object.freeze([]);
+const GAME_STATE_RUNTIME_WRITABLE_ROOT_FIELDS = Object.freeze([
     'achievements',
 ]);
 
@@ -43,21 +44,27 @@ export function validateGameState(gameState){
     return canonicalizeStateValue({ schemaVersion, achievements }, 'gameState');
 }
 
-function createGameStateInfrastructure(initialState){
+function createGameStateInfrastructure(initialState, writableFields){
     return createStateStore({
         initialState,
         validateState: validateGameState,
-        writableFields: GAME_STATE_WRITABLE_ROOT_FIELDS,
+        writableFields,
     });
 }
 
 export function createGameStateStore(initialState = createEmptyGameState()){
-    const { store } = createGameStateInfrastructure(initialState);
+    const { store } = createGameStateInfrastructure(
+        initialState,
+        GAME_STATE_READ_ONLY_WRITABLE_ROOT_FIELDS
+    );
     return store;
 }
 
 export function createGameStateRuntime(initialState = createEmptyGameState()){
-    const { store, mutationAuthority } = createGameStateInfrastructure(initialState);
+    const { store, mutationAuthority } = createGameStateInfrastructure(
+        initialState,
+        GAME_STATE_RUNTIME_WRITABLE_ROOT_FIELDS
+    );
     const mutationScope = mutationAuthority.createMutationScope({
         id: 'achievement-state',
         fields: ['achievements'],
