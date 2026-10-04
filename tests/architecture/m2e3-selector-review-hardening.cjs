@@ -5,6 +5,7 @@ const path = require('node:path');
 const { extractModuleReferences, maskNonCode } = require('./architecture-fitness.cjs');
 const { readOwnershipContract, validateOwnershipContractShape } = require('./m2e1-state-ownership-fitness.cjs');
 
+const ENGINE_IDENTITY_FILE = 'src/engine/identity.mjs';
 const GAME_STATE_FILE = 'src/engine/state/game-state.mjs';
 const STATE_STORE_FILE = 'src/engine/state/state-store.mjs';
 const STATE_COMMON_FILE = 'src/engine/state/common.mjs';
@@ -107,6 +108,52 @@ function allowedDependency(source, target){
     return false;
 }
 
+function reviewedDependencies(source, ownershipContract){
+    const shared = [ENGINE_IDENTITY_FILE, STATE_COMMON_FILE];
+    if (source.role === 'common') return new Set([ENGINE_IDENTITY_FILE]);
+    if (source.role === 'store') return new Set(shared);
+    if (source.role === 'schema') return new Set(shared);
+    if (source.role === 'selectors' || source.role === 'mutationService'){
+        const domain = ownershipContract.domains[source.rootName];
+        return new Set([...shared, domain.schema.module]);
+    }
+    if (source.role === 'composition'){
+        const allowed = new Set([...shared, STATE_STORE_FILE]);
+        for (const domain of Object.values(ownershipContract.domains || {})){
+            allowed.add(domain.schema.module);
+            allowed.add(domain.mutationService.module);
+        }
+        return allowed;
+    }
+    return new Set();
+}
+
+function exactRoleDependencyViolations(root, ownershipContract){
+    const violations = [];
+    const roles = buildRealRoleMap(root, ownershipContract, violations);
+
+    for (const source of roles.byModule.values()){
+        const file = repoPath(root, source.modulePath);
+        const code = fs.readFileSync(file, 'utf8');
+        const allowed = reviewedDependencies(source, ownershipContract);
+        for (const reference of moduleReferences(code, source.modulePath, violations)){
+            const target = normalizeLocalTarget(source.modulePath, reference.specifier);
+            if (
+                reference.kind !== 'import-statement'
+                || /[?#]/.test(reference.specifier)
+                || !target
+                || !allowed.has(target)
+            ){
+                violations.push(
+                    `M2E3 hardening ${source.modulePath} (${source.role}) has unreviewed dependency ` +
+                    `${JSON.stringify(reference.specifier)} (${reference.kind})`
+                );
+            }
+        }
+    }
+    return violations;
+}
+
 function realpathDependencyViolations(root, ownershipContract){
     const violations = [];
     const roles = buildRealRoleMap(root, ownershipContract, violations);
@@ -125,6 +172,30 @@ function realpathDependencyViolations(root, ownershipContract){
                     `${target.modulePath} (${target.role}) is forbidden; referenced as ${JSON.stringify(reference.specifier)}`
                 );
             }
+        }
+    }
+    return violations;
+}
+
+function listSourceFiles(directory){
+    if (!fs.existsSync(directory)) return [];
+    const files = [];
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })){
+        const target = path.join(directory, entry.name);
+        if (entry.isDirectory()) files.push(...listSourceFiles(target));
+        else if (entry.isFile() && SOURCE_EXTENSIONS.has(path.extname(entry.name))) files.push(target);
+    }
+    return files.sort();
+}
+
+function unclassifiedStateModuleViolations(root, ownershipContract){
+    const violations = [];
+    const roles = buildRealRoleMap(root, ownershipContract, violations);
+    const stateRoot = path.join(root, 'src', 'engine', 'state');
+    for (const file of listSourceFiles(stateRoot)){
+        const relative = path.relative(root, file).split(path.sep).join('/');
+        if (!roles.byModule.has(relative)){
+            violations.push(`M2E3 hardening unclassified engine state module: ${relative}`);
         }
     }
     return violations;
@@ -203,17 +274,6 @@ function selectorWholeStateFlowViolations(root, ownershipContract){
     return violations;
 }
 
-function listSourceFiles(directory){
-    if (!fs.existsSync(directory)) return [];
-    const files = [];
-    for (const entry of fs.readdirSync(directory, { withFileTypes: true })){
-        const target = path.join(directory, entry.name);
-        if (entry.isDirectory()) files.push(...listSourceFiles(target));
-        else if (entry.isFile() && SOURCE_EXTENSIONS.has(path.extname(entry.name))) files.push(target);
-    }
-    return files.sort();
-}
-
 function compositionAliasViolations(root){
     const violations = [];
     const gameStateFile = repoPath(root, GAME_STATE_FILE);
@@ -269,15 +329,39 @@ function achievementSnapshotEscapeViolations(root){
     return violations;
 }
 
+function achievementBindingReturnViolations(root){
+    const violations = [];
+    const varsFile = repoPath(root, 'src/vars.js');
+    if (!fs.existsSync(varsFile)) return violations;
+    const source = fs.readFileSync(varsFile, 'utf8');
+    const allowed = new Set([
+        'bindLegacyAchievementState(global);',
+        'bindLegacyAchievementState(gameState);',
+    ]);
+    for (const line of source.split(/\r?\n/)){
+        if (!line.includes('bindLegacyAchievementState(')) continue;
+        const trimmed = line.trim();
+        if (!allowed.has(trimmed)){
+            violations.push(
+                `M2E3 hardening vars.js must ignore the compatibility bind snapshot result; found ${JSON.stringify(trimmed)}`
+            );
+        }
+    }
+    return violations;
+}
+
 function scanM2E3ReviewHardening(root){
     const ownershipContract = readOwnershipContract(root);
     const ownershipViolations = validateOwnershipContractShape(ownershipContract);
     const violations = [...ownershipViolations];
     if (ownershipViolations.length === 0){
+        violations.push(...exactRoleDependencyViolations(root, ownershipContract));
         violations.push(...realpathDependencyViolations(root, ownershipContract));
+        violations.push(...unclassifiedStateModuleViolations(root, ownershipContract));
         violations.push(...selectorWholeStateFlowViolations(root, ownershipContract));
         violations.push(...compositionAliasViolations(root));
         violations.push(...achievementSnapshotEscapeViolations(root));
+        violations.push(...achievementBindingReturnViolations(root));
     }
     return [...new Set(violations)].sort();
 }
@@ -297,11 +381,14 @@ function main(){
 module.exports = {
     normalizeLocalTarget,
     resolvedLocalTarget,
+    exactRoleDependencyViolations,
     realpathDependencyViolations,
+    unclassifiedStateModuleViolations,
     wholeStateFlowViolations,
     selectorWholeStateFlowViolations,
     compositionAliasViolations,
     achievementSnapshotEscapeViolations,
+    achievementBindingReturnViolations,
     scanM2E3ReviewHardening,
 };
 
