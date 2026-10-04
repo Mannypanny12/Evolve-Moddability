@@ -2,7 +2,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { maskNonCode } = require('./architecture-fitness.cjs');
+const { extractModuleReferences, maskNonCode } = require('./architecture-fitness.cjs');
 
 const root = path.resolve(__dirname, '..', '..');
 const sourceRoot = path.join(root, 'src');
@@ -17,6 +17,12 @@ function files(directory){
         else if (entry.isFile() && /\.(?:js|mjs|cjs)$/.test(entry.name)) result.push(target);
     }
     return result.sort();
+}
+
+function referenceTargetsAdapter(specifier, sourcefile){
+    if (!specifier || !specifier.startsWith('.')) return false;
+    const target = path.resolve(path.dirname(sourcefile), specifier);
+    return target === adapterPath || target + '.mjs' === adapterPath;
 }
 
 function skipWhitespace(source, index){
@@ -157,6 +163,25 @@ if (selectBypasses.length){
 
 const reader = fs.readFileSync(readerPath, 'utf8');
 const readerCode = maskNonCode(reader);
+let readerModuleReferences;
+try {
+    readerModuleReferences = extractModuleReferences(reader, readerPath);
+}
+catch (error){
+    throw new Error(`M2D4 cannot inspect reader module references: ${error.message}`);
+}
+const readerAdapterReferences = readerModuleReferences.filter(reference =>
+    referenceTargetsAdapter(reference.specifier, readerPath)
+);
+if (
+    readerAdapterReferences.length !== 1
+    || readerAdapterReferences[0].specifier !== './achievement-state-adapter.mjs'
+){
+    throw new Error(
+        'M2D4 reader must have exactly one canonical reference to the achievement adapter; found ' +
+        JSON.stringify(readerAdapterReferences)
+    );
+}
 const adapterImports = [...reader.matchAll(/\bimport\s+([^;]+?)\s+from\s+['"]\.\/achievement-state-adapter\.mjs['"]\s*;/g)]
     .map(match => match[1].replace(/\s+/g, ' ').trim());
 if (adapterImports.length !== 1 || adapterImports[0] !== '{ selectLegacyAchievementState }'){
@@ -175,6 +200,13 @@ for (const forbidden of [
 const readerExports = [...readerCode.matchAll(/\bexport\s+function\s+([A-Za-z_$][\w$]*)\s*\(/g)]
     .map(match => match[1])
     .sort();
+const readerExportKeywordCount = [...readerCode.matchAll(/\bexport\b/g)].length;
+if (readerExportKeywordCount !== readerExports.length){
+    throw new Error(
+        'M2D4 reader may export only the reviewed named function facade; ' +
+        `found ${readerExportKeywordCount} export declarations but ${readerExports.length} reviewed function exports.`
+    );
+}
 const expectedReaderExports = [
     'hasLegacyAchievement',
     'hasLegacyAchievementTrack',
