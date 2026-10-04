@@ -146,13 +146,13 @@ The full M1 closure audit is recorded in `M1_CLOSURE_REVIEW.md`. It hardens M1A-
 
 ---
 
-## M2: Explicit state architecture
+## M2: Explicit state architecture - complete
 
 ### M2A GameState schema - complete
 
 Define the first explicit state root and domain ownership rules.
 
-M2A now provides an independent minimal `GameState` root, a hardened inert plain-data state-value contract, fail-closed validation, and explicit ownership/layer rules without cloning legacy `global` or moving gameplay/save authority. See `M2A_GAME_STATE_SCHEMA.md`.
+M2A provides an independent `GameState` root, a hardened inert plain-data state-value contract, fail-closed validation, and explicit ownership/layer rules without cloning legacy `global`. See `M2A_GAME_STATE_SCHEMA.md`.
 
 ### M2B State store and selectors - complete
 
@@ -164,32 +164,40 @@ Provide:
 - deterministic snapshots;
 - change diagnostics.
 
-M2B now separates the read-side store facade from the retained mutation-authority capability, so consumers that can query state cannot manufacture new write scopes. Transactions use detached validated drafts, rollback failed work atomically, and emit deterministic observational diagnostics. See `M2B_STATE_STORE_SELECTORS.md`.
+M2B separates the read-side store facade from the retained mutation-authority capability, so consumers that can query state cannot manufacture new write scopes. Transactions use detached validated drafts, rollback failed work atomically, and emit deterministic observational diagnostics. See `M2B_STATE_STORE_SELECTORS.md`.
 
 No generic public arbitrary-path setter.
 
-### M2C Settings and transient-state separation
+### M2C Settings and transient-state separation - complete
 
-Separate:
+Separated and machine-classified:
 
 - simulation state;
 - user preferences;
-- UI state;
-- derived/transient caches.
+- application control;
+- UI-session state;
+- derived/transient caches;
+- simulation/application working state;
+- runtime/platform services;
+- migration/debug concerns.
 
-Do not persist derived values merely because legacy `global` did.
+Legacy settings/runtime debt is ratcheted downward, and generic settings/UI/cache/transient/runtime/migration/debug catch-all roots are prohibited from becoming authoritative GameState domains. See `M2C3_STATE_BOUNDARY_CLOSURE.md`.
 
-### M2D First state-domain migration
+### M2D First state-domain migration - complete
 
-Migrate one small real domain end-to-end, likely achievements/statistics metadata or a constrained resource slice.
+Achievements are the first real domain migrated end to end.
 
-Use dual-read/write or translation only while necessary, then remove that adapter for the migrated slice.
+`GameState.achievements` is authoritative after hydration. Ordinary persistent writes use the semantic achievement mutation service; ordinary reads use the semantic facade backed by `store.select()`. `global.stats.achieve` remains only as historical pre-hydration migration state and a synchronous compatibility/save projection until persistence v2. See `M2D3_ACHIEVEMENT_AUTHORITY_CUTOVER.md` and `M2D4_ACHIEVEMENT_READER_CUTOVER.md`.
 
-### M2E State architecture guard expansion
+### M2E State architecture guard expansion - complete
 
-Extend the M0E5 architecture gate with explicit `GameState` ownership, mutation-boundary, selector, and state-layer dependency rules. Keep tightening the existing legacy-reference and dependency-cycle ratchets as migrated state leaves the legacy architecture.
+The M0E5 architecture gate is extended with explicit GameState ownership, mutation-boundary, selector, state-layer dependency, and whole-M2 closure rules.
 
-Exit: `GameState` is authoritative for at least one real domain, the migration pattern is proven, and CI enforces the new state boundary.
+M2E1 pins domain ownership and composition. M2E2 confines write capabilities and semantic mutation surfaces. M2E3 confines semantic reads and the state-layer dependency DAG. M2E4 integrates the M2C/M2D/M2E guards into a versioned JSON architecture report and cross-checks the complete state architecture as one closure gate.
+
+The full M2 exit audit is recorded in `M2_CLOSURE_REVIEW.md`.
+
+Exit achieved: `GameState` is authoritative for one real domain, the migration pattern is proven, and CI enforces the new state boundary.
 
 ---
 
@@ -325,7 +333,7 @@ This is intentionally a long milestone family. Each slice follows:
 
 ### M6A Achievements, feats, statistics
 
-A comparatively clean starting content family.
+A comparatively clean starting content family. M2 already proved authoritative achievement-state migration; M6A expands the broader achievement/feat/statistics content family onto the later command/calculation/simulation contracts rather than repeating the M2 state-foundation work.
 
 ### M6B Resources, crafting, trade
 
