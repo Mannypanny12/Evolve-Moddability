@@ -106,13 +106,27 @@ function readProperty(source, masked, index){
     return null;
 }
 
-function directAchievementAccesses(source){
-    const masked = maskNonCode(source);
+function simpleGlobalAliases(masked){
+    const aliases = new Set();
+    for (const match of masked.matchAll(/\bglobal\s+as\s+([$A-Z_a-z][$\w]*)/g)){
+        aliases.add(match[1]);
+    }
+    for (const match of masked.matchAll(/\b(?:const|let|var)\s+([$A-Z_a-z][$\w]*)\s*=\s*\(*\s*global\s*\)*\s*(?=;|,|\n|\r|$)/g)){
+        aliases.add(match[1]);
+    }
+    for (const match of masked.matchAll(/(?:^|[;{}\n])\s*([$A-Z_a-z][$\w]*)\s*=\s*\(*\s*global\s*\)*\s*(?=;|\n|\r|$)/gm)){
+        aliases.add(match[1]);
+    }
+    return [...aliases].sort();
+}
+
+function achievementAccessesForRoot(source, masked, rootName){
     const accesses = [];
-    const globalPattern = /\bglobal\b/g;
+    const escaped = rootName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const rootPattern = new RegExp(`\\b${escaped}\\b`, 'g');
     let match;
 
-    while ((match = globalPattern.exec(masked)) !== null){
+    while ((match = rootPattern.exec(masked)) !== null){
         const statsProperty = readProperty(source, masked, match.index + match[0].length);
         if (!statsProperty || statsProperty.dynamic || statsProperty.value !== 'stats') continue;
         const achievementProperty = readProperty(source, masked, statsProperty.end);
@@ -122,12 +136,20 @@ function directAchievementAccesses(source){
     return accesses;
 }
 
+function directAchievementAccesses(source){
+    const masked = maskNonCode(source);
+    const roots = ['global', ...simpleGlobalAliases(masked)];
+    return roots.flatMap(rootName => achievementAccessesForRoot(source, masked, rootName));
+}
+
 for (const source of [
     'global.stats.achieve',
     "global [ 'stats' ] [ \"achieve\" ]",
     'global?.stats?.achieve',
     "global?.['stats']?.[\"achieve\"]",
     'global[`stats`][`achieve`]',
+    'const legacyRoot = global; legacyRoot.stats.achieve',
+    "import { global as legacyRoot } from './../vars.js'; legacyRoot?.stats?.achieve",
 ]){
     if (directAchievementAccesses(source).length !== 1){
         throw new Error(`M2D4 direct-reader detector missed reviewed syntax: ${source}`);
@@ -137,6 +159,7 @@ for (const source of [
     "'global.stats.achieve'",
     '// global[\'stats\'][\'achieve\']',
     'global.stats.other',
+    'const legacyRoot = global.tech; legacyRoot.stats.achieve',
 ]){
     if (directAchievementAccesses(source).length !== 0){
         throw new Error(`M2D4 direct-reader detector produced a false positive: ${source}`);
