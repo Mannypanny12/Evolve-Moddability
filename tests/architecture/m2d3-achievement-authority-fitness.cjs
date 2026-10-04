@@ -46,11 +46,18 @@ requireText(
     "import { bindLegacyAchievementState } from './legacy/bridge/achievement-state-adapter.mjs';",
     'M2D3 requires vars.js to own the post-migration achievement hydration seam.'
 );
-requireText(
-    vars,
-    'export function setGlobal(gameState) {\n    bindLegacyAchievementState(gameState);\n    global = gameState;\n}',
-    'setGlobal() must bind achievement authority successfully before publishing a replacement legacy root.'
-);
+
+const setGlobalStart = vars.indexOf('export function setGlobal(gameState) {');
+const setGlobalEnd = setGlobalStart < 0 ? -1 : vars.indexOf('\n}', setGlobalStart);
+if (setGlobalStart < 0 || setGlobalEnd < 0){
+    throw new Error('M2D3 requires an inspectable setGlobal(gameState) function.');
+}
+const setGlobalBlock = vars.slice(setGlobalStart, setGlobalEnd);
+const bindIndex = setGlobalBlock.indexOf('bindLegacyAchievementState(gameState);');
+const publishIndex = setGlobalBlock.indexOf('global = gameState;');
+if (bindIndex < 0 || publishIndex < 0 || bindIndex >= publishIndex){
+    throw new Error('setGlobal() must bind achievement authority successfully before publishing a replacement legacy root.');
+}
 
 const migrationMarker = "global.stats.achieve[key] = { l: global.stats.achieve[key] };";
 const hydrationMarker = '// M2D3 authority cutover: historical vars.js migrations and shape repair above';
