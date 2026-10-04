@@ -73,7 +73,7 @@ The final rule is monotonic instead:
 - later milestones may add their own commands before, between or after the established M2 commands without reopening M2;
 - `inspect:architecture` remains pinned to the integrated report entry point.
 
-The same extension rule applies to report gates. The thirteen M2 prerequisite gates are a permanent required floor, not an exclusive list. Future report gates may be added without making M2 fail merely because the architecture has grown.
+The same extension rule applies to report gates. The M2 prerequisite gates are a permanent required floor, not an exclusive list. Future report gates may be added without making M2 fail merely because the architecture has grown.
 
 M2E4 evaluates failures from the required M2 prerequisite gates. Future milestone gates retain responsibility for their own failures while remaining free to coexist in the same cumulative report.
 
@@ -81,7 +81,7 @@ M2E4 evaluates failures from the required M2 prerequisite gates. Future mileston
 
 Checking `package.json` is not enough if GitHub Actions stops invoking those scripts.
 
-The closure gate now also verifies that `.github/workflows/baseline-build.yml` retains one executable inline invocation of each of these commands in reviewed order:
+The closure gate verifies that `.github/workflows/baseline-build.yml` retains one executable inline invocation of each of these commands in reviewed order:
 
 ```text
 npm test
@@ -106,17 +106,23 @@ M2E4 therefore rejects:
 
 This makes the ordinary recursive source enumeration used by the earlier architecture gates exhaustive instead of allowing an unreviewed filesystem alias to sit outside it.
 
-## 7. M2D3/M2D4 integration without logic duplication
+## 7. M2D3/M2D4 composable scanners
 
-M2D3 and M2D4 predate the scanner-return style used by M2E1-M2E3. Their mature architecture gates are standalone executable scripts.
+M2D3 and M2D4 originally predated the scanner-return style used by M2E1-M2E3. At initial M2 closure they were mature standalone executable scripts, so M2E4 first integrated them through a narrow subprocess adapter rather than duplicating their rules.
 
-Rather than duplicate or substantially refactor their already-reviewed source-analysis logic during the closure milestone, M2E4 adds a narrow subprocess adapter that executes those authoritative gates and converts their real exit status into report data.
+A post-closure tooling polish subsequently modernized both gates without changing their architecture laws:
 
-This preserves one implementation of each migration rule while making their status composable inside the integrated architecture report.
+- M2D3 now exports `scanAchievementAuthority(root)` and `runAchievementAuthorityCheck(root)`;
+- M2D4 now exports `scanAchievementReaders(root)` and `runAchievementReaderCheck(root)`;
+- their CLI behavior remains available behind `require.main === module`;
+- the M2 migration-gate aggregator now calls those scanners directly instead of launching child Node processes;
+- the architecture report therefore consumes the exact same rule implementations as the standalone CLI gates with no subprocess indirection.
+
+This removes an older tooling asymmetry while preserving one implementation of each migration rule.
 
 ## 8. Adversarial closure checks
 
-M2E4 negative controls now prove closure fails when:
+M2E4 negative controls prove closure fails when:
 
 - a required M2 report gate disappears;
 - writable domains drift from ownership;
@@ -138,9 +144,11 @@ The inverse future-compatibility controls are also explicit: later report gates 
 
 ## 9. Test-work reduction
 
-The first adversarial test suite rebuilt the full integrated architecture report separately for every negative-control mutation. Because report construction also executes the mature M2D3/M2D4 migration gates, this was correct but unnecessarily expensive.
+The first adversarial test suite rebuilt the full integrated architecture report separately for every negative-control mutation. During the first M2E4 implementation, report construction also spawned the mature M2D3/M2D4 gates, which made that repetition especially expensive.
 
-The final test suite performs one real whole-repository M2E4 closure scan per test process and deep-clones its returned report for synthetic negative controls. This reduces repeated work without weakening production coverage.
+The closure test suite was changed to perform one real whole-repository M2E4 scan per test process and deep-clone its returned report for synthetic negative controls. The later M2D scanner modernization further reduces report overhead by composing those gates in-process.
+
+This reduces repeated work without weakening production coverage.
 
 ## 10. Design-authority reconciliation
 
@@ -152,19 +160,38 @@ The final M2 audit found stale cross-document state:
 
 Those documents are reconciled with the final M2 laws. The target architecture keeps future package-specific persistent state behind explicit reviewed ownership/persistence contracts rather than a generic state bucket.
 
+A later navigation polish adds `CURRENT_ARCHITECTURE.md` as the compact authority index. It points readers to the current closure authority per topic while preserving slice-specific documents as migration history.
+
+## 11. M1 structural visibility
+
+The integrated report originally represented M1 mainly through protected-layer counts and architecture gate status.
+
+A post-closure inspector polish adds a concrete M1 kernel summary to the same JSON report. It discovers and reports:
+
+- identity and registry module exports;
+- definition families, schema versions, validators and registry factories;
+- actual registry family types produced by those factories;
+- Clock/RNG/Storage/Logger runtime-port modules and factories;
+- runtime-environment composition;
+- engine inspection modules and exports.
+
+The report remains fail-closed: malformed or missing M1 structure becomes an `m1Kernel` report violation rather than silently disappearing from inspection.
+
 ## Final review result
 
-After both review passes, M2E4 provides:
+After the review and follow-up tooling polish, M2E4 provides:
 
-1. a versioned integrated architecture report over the complete M2 state safety net;
+1. a versioned integrated architecture report over the complete M0-M2 safety net;
 2. fail-closed, lossless JSON report semantics;
-3. cumulative visibility of M2C, M2D and M2E prerequisite gates;
-4. cross-contract agreement between ownership, writable roots, mutation surfaces, scopes and selectors;
-5. monotonic M0-M2 command/report-gate enforcement that can coexist with M3+ extensions;
-6. direct CI-workflow safety-path verification;
-7. filesystem-alias closure for production source enumeration;
-8. adversarial negative controls for whole-M2 closure drift and future extensibility;
-9. reconciled roadmap/backlog/target-architecture authority;
-10. no production `src/**` changes.
+3. concrete M1 kernel structure as well as M2 state structure;
+4. cumulative visibility of M2C, M2D and M2E prerequisite gates;
+5. cross-contract agreement between ownership, writable roots, mutation surfaces, scopes and selectors;
+6. composable M2D3/M2D4 migration scanners with standalone CLI compatibility;
+7. monotonic M0-M2 command/report-gate enforcement that can coexist with M3+ extensions;
+8. direct CI-workflow safety-path verification;
+9. filesystem-alias closure for production source enumeration;
+10. adversarial negative controls for whole-M2 closure drift and future extensibility;
+11. a compact current-architecture navigation authority;
+12. no production `src/**` changes from the closure/tooling work.
 
-`M2_CLOSURE_REVIEW.md` records the final M2 exit architecture. M3 can begin only after the complete CI/build/browser safety net is green on the hardened M2E4 head.
+`M2_CLOSURE_REVIEW.md` records the final M2 exit architecture. `CURRENT_ARCHITECTURE.md` is the navigation starting point for deciding which current authority to read. M3 can begin only after the complete CI/build/browser safety net is green on the hardened head.
