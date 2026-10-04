@@ -1,15 +1,21 @@
 'use strict';
 
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
 
 const {
     EXPECTED_ARCHITECTURE_SCRIPT,
     EXPECTED_INSPECT_SCRIPT,
+    REQUIRED_CI_RUN_COMMANDS,
     closureViolations,
     architectureScriptContractViolations,
     architectureScriptViolations,
+    ciWorkflowContractViolations,
+    ciWorkflowViolations,
+    sourceSymlinkViolations,
     scanM2StateArchitectureClosure,
 } = require('./m2e4-state-architecture-closure.cjs');
 
@@ -37,6 +43,7 @@ test('M2E4 closure accepts the actual integrated M2 architecture', async () => {
     assert.equal(result.summary.requiredM2GateCount, 13);
     assert.equal(result.summary.cumulativeGateCount >= result.summary.requiredM2GateCount, true);
     assert.equal(result.summary.legacyMappingCount, 2);
+    assert.equal(result.summary.sourceSymlinkViolationCount, 0);
 });
 
 test('M2E4 closure fails if a required M2 report gate disappears', async () => {
@@ -156,4 +163,53 @@ test('M2E4 package architecture chain preserves every M0-M2 gate exactly once an
         architectureScriptContractViolations(EXPECTED_ARCHITECTURE_SCRIPT, 'node other-report.cjs').join('\n'),
         /integrated architecture report exactly/
     );
+});
+
+test('M2E4 closure pins the CI workflow to the tested architecture/build/browser path', () => {
+    assert.deepEqual(ciWorkflowViolations(root), []);
+
+    const reviewed = REQUIRED_CI_RUN_COMMANDS.map(command => `      - name: ${command}\n        run: ${command}`).join('\n');
+    assert.deepEqual(ciWorkflowContractViolations(reviewed), []);
+
+    assert.match(
+        ciWorkflowContractViolations(reviewed.replace('run: npm run test:architecture', 'run: echo skipped')).join('\n'),
+        /npm run test:architecture/
+    );
+
+    const reordered = reviewed.replace(
+        'run: npm test',
+        'run: __TEMP__'
+    ).replace(
+        'run: npm run build',
+        'run: npm test'
+    ).replace(
+        'run: __TEMP__',
+        'run: npm run build'
+    );
+    assert.match(ciWorkflowContractViolations(reordered).join('\n'), /reviewed order/);
+});
+
+test('M2E4 closure rejects source symlinks that could escape production-module enumeration', t => {
+    const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'm2e4-source-symlink-'));
+    try {
+        const src = path.join(temp, 'src');
+        fs.mkdirSync(src, { recursive: true });
+        const real = path.join(src, 'real.mjs');
+        fs.writeFileSync(real, 'export const value = true;\n');
+        try {
+            fs.symlinkSync('real.mjs', path.join(src, 'alias.mjs'));
+        }
+        catch (error){
+            t.skip(`host cannot create symlinks: ${error.code || error.message}`);
+            return;
+        }
+
+        assert.match(
+            sourceSymlinkViolations(temp).join('\n'),
+            /production source module symlinks are forbidden/
+        );
+    }
+    finally {
+        fs.rmSync(temp, { recursive: true, force: true });
+    }
 });
