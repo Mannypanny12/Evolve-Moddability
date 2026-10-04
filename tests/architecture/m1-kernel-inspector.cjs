@@ -10,6 +10,8 @@ const DEFINITIONS_DIR = 'src/engine/definitions';
 const RUNTIME_DIR = 'src/engine/runtime';
 const INSPECTION_DIR = 'src/engine/inspection';
 const RUNTIME_ENVIRONMENT_MODULE = 'src/engine/runtime/environment.mjs';
+const CORE_DEFINITION_FAMILIES = Object.freeze(['achievement', 'resource', 'technology']);
+const CORE_RUNTIME_PORTS = Object.freeze(['clock', 'logger', 'rng', 'storage']);
 
 function relativeModulePath(root, file){
     return path.relative(root, file).split(path.sep).join('/');
@@ -42,7 +44,7 @@ function exportedNames(module){
     return module ? Object.keys(module).sort() : [];
 }
 
-function singleExport(module, predicate){
+function matchingExports(module, predicate){
     return Object.entries(module || {}).filter(([name]) => predicate(name));
 }
 
@@ -50,16 +52,23 @@ async function inspectDefinitionFamilies(root, violations){
     const directory = path.join(root, ...DEFINITIONS_DIR.split('/'));
     const files = listMjsFiles(directory).filter(file => path.basename(file) !== 'common.mjs');
     const families = [];
+    const extensionModules = [];
 
     for (const file of files){
         const relativePath = relativeModulePath(root, file);
         const stem = path.basename(file, '.mjs');
-        const module = await importModule(root, relativePath, `definition family ${stem}`, violations);
+        const module = await importModule(root, relativePath, `definition module ${stem}`, violations);
         if (!module) continue;
 
-        const schemaExports = singleExport(module, name => name.endsWith('_DEFINITION_SCHEMA_VERSION'));
-        const validatorExports = singleExport(module, name => /^validate.+Definition$/.test(name));
-        const factoryExports = singleExport(module, name => /^create.+Registry$/.test(name));
+        const schemaExports = matchingExports(module, name => name.endsWith('_DEFINITION_SCHEMA_VERSION'));
+        const validatorExports = matchingExports(module, name => /^validate.+Definition$/.test(name));
+        const factoryExports = matchingExports(module, name => /^create.+Registry$/.test(name));
+        const looksLikeFamily = schemaExports.length > 0 || validatorExports.length > 0 || factoryExports.length > 0;
+
+        if (!looksLikeFamily){
+            extensionModules.push({ module: relativePath, exports: exportedNames(module) });
+            continue;
+        }
 
         if (schemaExports.length !== 1){
             violations.push(`M1 definition ${relativePath} must export exactly one *_DEFINITION_SCHEMA_VERSION`);
@@ -103,7 +112,15 @@ async function inspectDefinitionFamilies(root, violations){
         });
     }
 
-    return families.sort((a, b) => a.family.localeCompare(b.family));
+    const discovered = new Set(families.map(value => value.family));
+    for (const family of CORE_DEFINITION_FAMILIES){
+        if (!discovered.has(family)) violations.push(`M1 core definition family ${family} is missing`);
+    }
+
+    return {
+        families: families.sort((a, b) => a.family.localeCompare(b.family)),
+        extensionModules: extensionModules.sort((a, b) => a.module.localeCompare(b.module)),
+    };
 }
 
 async function inspectRuntime(root, violations){
@@ -111,13 +128,20 @@ async function inspectRuntime(root, violations){
     const files = listMjsFiles(directory)
         .filter(file => !['common.mjs', 'environment.mjs'].includes(path.basename(file)));
     const ports = [];
+    const extensionModules = [];
 
     for (const file of files){
         const relativePath = relativeModulePath(root, file);
         const port = path.basename(file, '.mjs');
-        const expectedFactory = 'create' + port[0].toUpperCase() + port.slice(1);
-        const module = await importModule(root, relativePath, `runtime port ${port}`, violations);
+        const module = await importModule(root, relativePath, `runtime module ${port}`, violations);
         if (!module) continue;
+
+        if (!CORE_RUNTIME_PORTS.includes(port)){
+            extensionModules.push({ module: relativePath, exports: exportedNames(module) });
+            continue;
+        }
+
+        const expectedFactory = 'create' + port[0].toUpperCase() + port.slice(1);
         if (typeof module[expectedFactory] !== 'function'){
             violations.push(`M1 runtime port ${relativePath} must export ${expectedFactory}()`);
         }
@@ -127,6 +151,11 @@ async function inspectRuntime(root, violations){
             factory: typeof module[expectedFactory] === 'function' ? expectedFactory : null,
             exports: exportedNames(module),
         });
+    }
+
+    const discovered = new Set(ports.map(value => value.port));
+    for (const port of CORE_RUNTIME_PORTS){
+        if (!discovered.has(port)) violations.push(`M1 core runtime port ${port} is missing`);
     }
 
     const environment = await importModule(
@@ -140,8 +169,9 @@ async function inspectRuntime(root, violations){
     }
 
     return {
-        portCount: ports.length,
+        corePortCount: ports.length,
         ports: ports.sort((a, b) => a.port.localeCompare(b.port)),
+        extensionModules: extensionModules.sort((a, b) => a.module.localeCompare(b.module)),
         environment: {
             module: RUNTIME_ENVIRONMENT_MODULE,
             factory: environment && typeof environment.createRuntimeEnvironment === 'function'
@@ -178,7 +208,7 @@ async function scanM1Kernel(root){
         violations.push('M1 registry module must export Registry');
     }
 
-    const definitions = await inspectDefinitionFamilies(root, violations);
+    const definitionInspection = await inspectDefinitionFamilies(root, violations);
     const runtime = await inspectRuntime(root, violations);
     const inspection = await inspectInspectionSurface(root, violations);
 
@@ -194,8 +224,10 @@ async function scanM1Kernel(root){
                 registryClass: registry && typeof registry.Registry === 'function' ? 'Registry' : null,
             },
             definitions: {
-                familyCount: definitions.length,
-                families: definitions,
+                coreFamilies: [...CORE_DEFINITION_FAMILIES],
+                familyCount: definitionInspection.families.length,
+                families: definitionInspection.families,
+                extensionModules: definitionInspection.extensionModules,
             },
             runtime,
             inspection,
@@ -221,6 +253,8 @@ module.exports = {
     DEFINITIONS_DIR,
     RUNTIME_DIR,
     INSPECTION_DIR,
+    CORE_DEFINITION_FAMILIES,
+    CORE_RUNTIME_PORTS,
     scanM1Kernel,
 };
 
