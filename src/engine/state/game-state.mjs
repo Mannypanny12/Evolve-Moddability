@@ -3,7 +3,10 @@ import {
     canonicalizeStateValue,
     readClosedStateObject,
 } from './common.mjs';
-import { validateAchievementState } from './achievement-state.mjs';
+import {
+    createEmptyAchievementState,
+    validateAchievementState,
+} from './achievement-state.mjs';
 import { createAchievementStateService } from './achievement-state-service.mjs';
 import { createStateStore } from './state-store.mjs';
 
@@ -25,7 +28,7 @@ const GAME_STATE_RUNTIME_WRITABLE_ROOT_FIELDS = Object.freeze([
 export function createEmptyGameState(){
     return {
         schemaVersion: GAME_STATE_SCHEMA_VERSION,
-        achievements: {},
+        achievements: createEmptyAchievementState(),
     };
 }
 
