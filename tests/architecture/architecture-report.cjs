@@ -36,11 +36,8 @@ function normalizeViolationOnlyGate(violations, summary = {}){
     };
 }
 
-function serializeLegacyMappings(mappings){
-    if (!mappings || typeof mappings.entries !== 'function') return [];
-    return [...mappings.entries()]
-        .map(([legacyPath, mapping]) => ({ legacyPath, mapping }))
-        .sort((a, b) => a.legacyPath.localeCompare(b.legacyPath));
+function normalizeJsonData(value){
+    return JSON.parse(JSON.stringify(value));
 }
 
 async function buildArchitectureReport(root){
@@ -69,7 +66,7 @@ async function buildArchitectureReport(root){
     const inspectorModule = await import(pathToFileURL(path.join(root, 'src/legacy/bridge/inspector.mjs')).href);
     const mappings = inspectorModule.inspectLegacyMappings(mappingModule.createEvolveLegacyMappingCatalog());
 
-    return {
+    return normalizeJsonData({
         reportVersion: ARCHITECTURE_REPORT_VERSION,
         legacy: {
             baselineSourceCommit: baseline.sourceCommit,
@@ -95,7 +92,7 @@ async function buildArchitectureReport(root){
             selectors: selectors.summary,
             selectorReview: selectorReview.summary,
         },
-        legacyMappings: serializeLegacyMappings(mappings),
+        legacyMappings: mappings,
         gateViolations: {
             architecture: architecture.violations,
             platform: platform.violations,
@@ -111,7 +108,7 @@ async function buildArchitectureReport(root){
             selectorDependencies: selectors.violations,
             selectorReview: selectorReview.violations,
         },
-    };
+    });
 }
 
 function reportViolations(report){
@@ -130,7 +127,7 @@ async function main(){
 module.exports = {
     ARCHITECTURE_REPORT_VERSION,
     normalizeViolationOnlyGate,
-    serializeLegacyMappings,
+    normalizeJsonData,
     buildArchitectureReport,
     reportViolations,
 };
