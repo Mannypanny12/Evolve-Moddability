@@ -6,7 +6,6 @@ const { isDeepStrictEqual } = require('node:util');
 const {
     ARCHITECTURE_REPORT_VERSION,
     buildArchitectureReport,
-    reportViolations,
 } = require('./architecture-report.cjs');
 
 const REQUIRED_REPORT_GATES = Object.freeze([
@@ -43,9 +42,10 @@ const REQUIRED_ARCHITECTURE_SCRIPTS = Object.freeze([
     'm2e4-state-architecture-closure.cjs',
 ]);
 
-const EXPECTED_ARCHITECTURE_SCRIPT = REQUIRED_ARCHITECTURE_SCRIPTS
-    .map(script => `node tests/architecture/${script}`)
-    .join(' && ');
+const REQUIRED_ARCHITECTURE_COMMANDS = Object.freeze(
+    REQUIRED_ARCHITECTURE_SCRIPTS.map(script => `node tests/architecture/${script}`)
+);
+const EXPECTED_ARCHITECTURE_SCRIPT = REQUIRED_ARCHITECTURE_COMMANDS.join(' && ');
 const EXPECTED_INSPECT_SCRIPT = 'node tests/architecture/architecture-report.cjs';
 
 function sortedStrings(values){
@@ -53,21 +53,65 @@ function sortedStrings(values){
 }
 
 function domainRoots(summary){
-    return (summary?.domains || []).map(entry => entry.root).sort();
+    return Array.isArray(summary?.domains)
+        ? summary.domains.map(entry => entry.root).sort()
+        : [];
 }
 
 function mutationSurfaceRoots(summary){
-    return (summary?.reviewedSurfaces || []).map(entry => entry.root).sort();
+    return Array.isArray(summary?.reviewedSurfaces)
+        ? summary.reviewedSurfaces.map(entry => entry.root).sort()
+        : [];
 }
 
 function hasJsonMappingShape(value){
     return value
         && typeof value === 'object'
+        && !Array.isArray(value)
         && Number.isInteger(value.size)
+        && value.size >= 0
         && Array.isArray(value.mappings)
         && value.byDomain
         && typeof value.byDomain === 'object'
+        && !Array.isArray(value.byDomain)
         && value.size === value.mappings.length;
+}
+
+function requiredReportGateViolations(report){
+    const violations = [];
+    const gates = report?.gateViolations;
+    if (!gates || typeof gates !== 'object' || Array.isArray(gates)){
+        return ['M2E4 architecture report gateViolations must be an object'];
+    }
+
+    const missing = REQUIRED_REPORT_GATES.filter(name => !Object.prototype.hasOwnProperty.call(gates, name));
+    if (missing.length){
+        violations.push(`M2E4 architecture report is missing required M2 gates ${JSON.stringify(missing)}`);
+    }
+
+    for (const name of REQUIRED_REPORT_GATES){
+        if (!Object.prototype.hasOwnProperty.call(gates, name)) continue;
+        const gateViolations = gates[name];
+        if (!Array.isArray(gateViolations)){
+            violations.push(`M2E4 prerequisite gate ${name} violations must be an array`);
+            continue;
+        }
+        for (const violation of gateViolations){
+            if (typeof violation !== 'string'){
+                violations.push(`M2E4 prerequisite gate ${name} emitted a non-string violation`);
+            }
+            else {
+                violations.push(`M2E4 prerequisite gate violation: ${violation}`);
+            }
+        }
+    }
+    return violations;
+}
+
+function summaryCountViolation(label, actual, expected){
+    return actual === expected
+        ? null
+        : `M2E4 ${label} must equal authoritative domain count ${expected}; got ${JSON.stringify(actual)}`;
 }
 
 function closureViolations(report){
@@ -77,18 +121,13 @@ function closureViolations(report){
         violations.push(`M2E4 architecture reportVersion must be ${ARCHITECTURE_REPORT_VERSION}`);
     }
 
-    const gateKeys = Object.keys(report.gateViolations || {}).sort();
-    if (!isDeepStrictEqual(gateKeys, sortedStrings(REQUIRED_REPORT_GATES))){
-        violations.push(
-            `M2E4 architecture report gates must be exactly ${JSON.stringify(sortedStrings(REQUIRED_REPORT_GATES))}; ` +
-            `got ${JSON.stringify(gateKeys)}`
-        );
-    }
-    for (const violation of reportViolations(report)) violations.push(`M2E4 prerequisite gate violation: ${violation}`);
+    violations.push(...requiredReportGateViolations(report));
 
     const state = report.stateArchitecture || {};
     const ownershipRoots = domainRoots(state.ownership);
-    const mutationRoots = sortedStrings(state.mutation?.writableRoots || []);
+    const mutationRoots = Array.isArray(state.mutation?.writableRoots)
+        ? sortedStrings(state.mutation.writableRoots)
+        : [];
     const mutationReviewRoots = mutationSurfaceRoots(state.mutationReview);
     const selectorRoots = domainRoots(state.selectors);
     if (!isDeepStrictEqual(mutationRoots, ownershipRoots)){
@@ -99,6 +138,33 @@ function closureViolations(report){
     }
     if (!isDeepStrictEqual(selectorRoots, ownershipRoots)){
         violations.push(`M2E4 selector domains must exactly equal ownership domains ${JSON.stringify(ownershipRoots)}; got ${JSON.stringify(selectorRoots)}`);
+    }
+
+    const authoritativeDomainCount = ownershipRoots.length;
+    for (const [label, actual] of [
+        ['ownership domainCount', state.ownership?.domainCount],
+        ['mutation domainCount', state.mutation?.domainCount],
+        ['mutation-review domainCount', state.mutationReview?.domainCount],
+        ['selector domainCount', state.selectors?.domainCount],
+    ]){
+        const violation = summaryCountViolation(label, actual, authoritativeDomainCount);
+        if (violation) violations.push(violation);
+    }
+
+    const metadataRoots = Array.isArray(state.ownership?.metadataRoots)
+        ? sortedStrings(state.ownership.metadataRoots)
+        : [];
+    if (state.ownership?.metadataRootCount !== metadataRoots.length){
+        violations.push(
+            `M2E4 ownership metadataRootCount must equal metadata root list length ${metadataRoots.length}; ` +
+            `got ${JSON.stringify(state.ownership?.metadataRootCount)}`
+        );
+    }
+    if (state.ownership?.rootCount !== metadataRoots.length + authoritativeDomainCount){
+        violations.push(
+            `M2E4 ownership rootCount must equal metadata plus authoritative roots ` +
+            `${metadataRoots.length + authoritativeDomainCount}; got ${JSON.stringify(state.ownership?.rootCount)}`
+        );
     }
 
     for (const selectorDomain of state.selectors?.domains || []){
@@ -112,15 +178,22 @@ function closureViolations(report){
         }
     }
 
-    const metadataRoots = sortedStrings(state.ownership?.metadataRoots || []);
     for (const rootName of metadataRoots){
         if (mutationRoots.includes(rootName)){
             violations.push(`M2E4 metadata root ${rootName} may not be runtime writable`);
         }
     }
 
-    const owners = new Map((state.ownership?.domains || []).map(entry => [entry.root, entry.owner]));
-    const scopes = state.mutation?.scopes || [];
+    const owners = new Map();
+    for (const entry of state.ownership?.domains || []){
+        if (typeof entry.root !== 'string' || typeof entry.owner !== 'string' || entry.owner.length === 0){
+            violations.push('M2E4 ownership domain summaries must contain non-empty string root/owner pairs');
+            continue;
+        }
+        owners.set(entry.root, entry.owner);
+    }
+
+    const scopes = Array.isArray(state.mutation?.scopes) ? state.mutation.scopes : [];
     for (const rootName of ownershipRoots){
         const matching = scopes.filter(scope => scope.field === rootName && scope.id === owners.get(rootName));
         if (matching.length !== 1){
@@ -156,14 +229,39 @@ function closureViolations(report){
     return [...new Set(violations)].sort();
 }
 
+function splitCommandChain(script){
+    if (typeof script !== 'string') return null;
+    const commands = script.split('&&').map(command => command.trim());
+    return commands.length > 0 && commands.every(Boolean) ? commands : null;
+}
+
 function architectureScriptContractViolations(architectureScript, inspectScript){
     const violations = [];
-    if (architectureScript !== EXPECTED_ARCHITECTURE_SCRIPT){
-        violations.push(
-            'M2E4 test:architecture must be the exact reviewed cumulative gate chain; ' +
-            `expected ${JSON.stringify(EXPECTED_ARCHITECTURE_SCRIPT)}, got ${JSON.stringify(architectureScript)}`
-        );
+    const commands = splitCommandChain(architectureScript);
+    if (!commands){
+        violations.push('M2E4 test:architecture must be an inspectable &&-chained command sequence');
     }
+    else {
+        let previousIndex = -1;
+        for (const requiredCommand of REQUIRED_ARCHITECTURE_COMMANDS){
+            const positions = [];
+            for (let index = 0; index < commands.length; index++){
+                if (commands[index] === requiredCommand) positions.push(index);
+            }
+            if (positions.length !== 1){
+                violations.push(
+                    `M2E4 required architecture command must appear exactly once: ${JSON.stringify(requiredCommand)}; ` +
+                    `found ${positions.length}`
+                );
+                continue;
+            }
+            if (positions[0] <= previousIndex){
+                violations.push('M2E4 required M0-M2 architecture commands must remain in their reviewed relative order');
+            }
+            previousIndex = positions[0];
+        }
+    }
+
     if (inspectScript !== EXPECTED_INSPECT_SCRIPT){
         violations.push('M2E4 inspect:architecture must execute the integrated architecture report exactly');
     }
@@ -188,8 +286,11 @@ async function scanM2StateArchitectureClosure(root){
         summary: {
             reportVersion: report.reportVersion,
             authoritativeDomains: domainRoots(report.stateArchitecture?.ownership),
-            metadataRoots: sortedStrings(report.stateArchitecture?.ownership?.metadataRoots || []),
+            metadataRoots: Array.isArray(report.stateArchitecture?.ownership?.metadataRoots)
+                ? sortedStrings(report.stateArchitecture.ownership.metadataRoots)
+                : [],
             cumulativeGateCount: Object.keys(report.gateViolations || {}).length,
+            requiredM2GateCount: REQUIRED_REPORT_GATES.length,
             legacyMappingCount: hasJsonMappingShape(report.legacyMappings) ? report.legacyMappings.size : 0,
             violationCount: violations.length,
         },
@@ -219,12 +320,15 @@ async function main(){
 module.exports = {
     REQUIRED_REPORT_GATES,
     REQUIRED_ARCHITECTURE_SCRIPTS,
+    REQUIRED_ARCHITECTURE_COMMANDS,
     EXPECTED_ARCHITECTURE_SCRIPT,
     EXPECTED_INSPECT_SCRIPT,
     domainRoots,
     mutationSurfaceRoots,
     hasJsonMappingShape,
+    requiredReportGateViolations,
     closureViolations,
+    splitCommandChain,
     architectureScriptContractViolations,
     architectureScriptViolations,
     scanM2StateArchitectureClosure,
