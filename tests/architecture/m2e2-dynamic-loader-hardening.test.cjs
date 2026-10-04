@@ -6,6 +6,7 @@ const test = require('node:test');
 
 const {
     dynamicLoaderViolationsForSource,
+    gameStatePrimitiveAliasViolations,
     scanDynamicEngineLoaders,
 } = require('./m2e2-dynamic-loader-hardening.cjs');
 
@@ -26,7 +27,18 @@ test('M2E2 dynamic-loader hardening rejects computed import and require but igno
     );
 });
 
-test('current engine has no dynamic module-loader escape route around capability review', () => {
+test('M2E2 GameState cannot alias the low-level createStateStore primitive', () => {
+    const reviewed = [
+        "import { createStateStore } from './state-store.mjs';",
+        'function createGameStateInfrastructure(){ return createStateStore({}); }',
+    ].join('\n');
+    assert.deepEqual(gameStatePrimitiveAliasViolations(reviewed), []);
+
+    const aliased = reviewed + '\nconst makeStore = createStateStore;\n';
+    assert.match(gameStatePrimitiveAliasViolations(aliased).join('\n'), /aliases or extra uses are forbidden/);
+});
+
+test('current engine has no dynamic loader or low-level store alias escape route around capability review', () => {
     const violations = scanDynamicEngineLoaders(root);
     assert.deepEqual(violations, [], violations.join('\n'));
 });
