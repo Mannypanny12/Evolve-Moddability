@@ -1,7 +1,10 @@
 'use strict';
 
+const fs = require('node:fs');
+const path = require('node:path');
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const { maskNonCode } = require('../architecture/architecture-fitness.cjs');
 const {
     loadFixtureById,
     materializePersistedFixture
@@ -14,6 +17,7 @@ if (!legacy){
     throw new Error('Legacy test API did not initialize');
 }
 
+const repoRoot = path.resolve(__dirname, '..', '..');
 const fixture = loadFixtureById('early-civilization-human');
 
 function freshState(universe = 'standard'){
@@ -46,6 +50,147 @@ function freshState(universe = 'standard'){
 function install(universe = 'standard'){
     legacy.installLegacyState(freshState(universe));
     return legacy.legacyState();
+}
+
+function seedAggregateChildren(state, prefix, count, universeAffix){
+    const ids = legacy.achievementIds()
+        .filter(id => id.startsWith(prefix))
+        .slice(0, count);
+    assert.equal(ids.length, count, `expected at least ${count} known ${prefix} achievements`);
+    ids.forEach(id => {
+        state.stats.achieve[id] = { l: 1 };
+        if (universeAffix){
+            state.stats.achieve[id][universeAffix] = 1;
+        }
+    });
+    return ids;
+}
+
+function listSourceFiles(directory){
+    const files = [];
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })){
+        const target = path.join(directory, entry.name);
+        if (entry.isDirectory()){
+            files.push(...listSourceFiles(target));
+        }
+        else if (entry.isFile() && /\.(?:cjs|js|mjs)$/.test(entry.name)){
+            files.push(target);
+        }
+    }
+    return files.sort();
+}
+
+function skipWhitespace(source, index){
+    while (index < source.length && /\s/.test(source[index])) index++;
+    return index;
+}
+
+function readIdentifier(source, index){
+    const match = source.slice(index).match(/^[$A-Z_a-z][$\w]*/);
+    return match ? { value: match[0], end: index + match[0].length } : null;
+}
+
+function readQuotedString(source, index){
+    const quote = source[index];
+    if (quote !== "'" && quote !== '"') return null;
+    let cursor = index + 1;
+    let value = '';
+    while (cursor < source.length){
+        const ch = source[cursor];
+        if (ch === '\\'){
+            if (cursor + 1 >= source.length) return null;
+            value += source[cursor + 1];
+            cursor += 2;
+            continue;
+        }
+        if (ch === quote){
+            return { value, end: cursor + 1 };
+        }
+        value += ch;
+        cursor++;
+    }
+    return null;
+}
+
+function readProperty(source, masked, index){
+    let cursor = skipWhitespace(masked, index);
+    if (masked[cursor] === '.'){
+        cursor = skipWhitespace(masked, cursor + 1);
+        const identifier = readIdentifier(masked, cursor);
+        return identifier
+            ? { dynamic: false, value: identifier.value, end: identifier.end }
+            : null;
+    }
+    if (masked[cursor] !== '[') return null;
+
+    const valueStart = skipWhitespace(source, cursor + 1);
+    const stringValue = readQuotedString(source, valueStart);
+    if (stringValue){
+        const closing = skipWhitespace(source, stringValue.end);
+        if (source[closing] === ']'){
+            return { dynamic: false, value: stringValue.value, end: closing + 1 };
+        }
+    }
+
+    let depth = 1;
+    for (let i = cursor + 1; i < masked.length; i++){
+        if (masked[i] === '[') depth++;
+        else if (masked[i] === ']'){
+            depth--;
+            if (depth === 0){
+                return { dynamic: true, value: '$dynamic', end: i + 1 };
+            }
+        }
+    }
+    return null;
+}
+
+function isAssignmentAt(masked, index){
+    const tail = masked.slice(index);
+    return /^(?:\+\+|--|\*\*=|&&=|\|\|=|\?\?=|<<=|>>>=|>>=|[+\-*/%&|^]=|=(?!=|>))/.test(tail);
+}
+
+function analyzeAchievementAccesses(source){
+    const masked = maskNonCode(source);
+    const accesses = [];
+    const globalPattern = /\bglobal\b/g;
+    let match;
+
+    while ((match = globalPattern.exec(masked)) !== null){
+        const statsProperty = readProperty(source, masked, match.index + match[0].length);
+        if (!statsProperty || statsProperty.dynamic || statsProperty.value !== 'stats') continue;
+
+        const achievementProperty = readProperty(source, masked, statsProperty.end);
+        if (!achievementProperty || achievementProperty.dynamic || achievementProperty.value !== 'achieve') continue;
+
+        let cursor = achievementProperty.end;
+        let property;
+        while ((property = readProperty(source, masked, cursor)) !== null){
+            cursor = property.end;
+        }
+        cursor = skipWhitespace(masked, cursor);
+
+        const prefix = masked.slice(Math.max(0, match.index - 24), match.index);
+        const write = /\bdelete\s*$/.test(prefix) || isAssignmentAt(masked, cursor);
+        accesses.push({ write });
+    }
+
+    return accesses;
+}
+
+function achievementAccessInventory(){
+    const inventory = {};
+    const sourceRoot = path.join(repoRoot, 'src');
+    for (const file of listSourceFiles(sourceRoot)){
+        const accesses = analyzeAchievementAccesses(fs.readFileSync(file, 'utf8'));
+        if (accesses.length === 0) continue;
+        const relative = path.relative(repoRoot, file).split(path.sep).join('/');
+        inventory[relative] = {
+            reads: accesses.filter(access => !access.write).length,
+            writes: accesses.filter(access => access.write).length
+        };
+    }
+    return inventory;
 }
 
 test('legacy universe affixes are a closed compact representation with standard as l', () => {
@@ -99,6 +244,18 @@ test('derived achievement levels clamp each stored rank to five without mutating
     assert.deepEqual(state.stats.achieve, {
         trade: { l: 7, e: 8 },
         explorer: { l: 3, e: 2 }
+    });
+});
+
+test('derived levels use the known achievement catalog and ignore unknown ledger keys', () => {
+    const state = install('evil');
+    state.stats.achieve.trade = { l: 2, e: 1 };
+    state.stats.achieve.legacy_unknown_achievement = { l: 5, e: 5 };
+
+    assert.equal(legacy.achievementIds().includes('legacy_unknown_achievement'), false);
+    assert.deepEqual(legacy.achievementUniverseLevel(), {
+        aLvl: 2,
+        uLvl: 1
     });
 });
 
@@ -198,4 +355,62 @@ test('rank zero preserves achievement-record presence even though no positive ra
     assert.equal(legacy.unlockAchievement('trade', false, 0), false);
     assert.equal(Object.prototype.hasOwnProperty.call(state.stats.achieve, 'trade'), true);
     assert.deepEqual(state.stats.achieve.trade, { l: 0 });
+});
+
+test('aggregate base achievement progress removes the automatic non-standard universe rank', () => {
+    const state = install('evil');
+    seedAggregateChildren(state, 'extinct_', 25);
+
+    legacy.checkAchievementProgress();
+
+    assert.equal(state.stats.achieve.mass_extinction.l, 1);
+    assert.equal(
+        Object.prototype.hasOwnProperty.call(state.stats.achieve.mass_extinction, 'e'),
+        true,
+        'legacy aggregate calculation explicitly leaves an undefined universe property in memory'
+    );
+    assert.equal(state.stats.achieve.mass_extinction.e, undefined);
+});
+
+test('aggregate universe progress restores the universe rank only when enough children qualify there', () => {
+    const state = install('evil');
+    seedAggregateChildren(state, 'extinct_', 25, 'e');
+
+    legacy.checkAchievementProgress();
+
+    assert.deepEqual(state.stats.achieve.mass_extinction, { l: 1, e: 1 });
+});
+
+test('historical vars.js achievement migrations remain ahead of the future GameState hydration seam', () => {
+    const source = fs.readFileSync(path.join(repoRoot, 'src', 'vars.js'), 'utf8');
+    const requiredMarkers = [
+        "global.stats.achieve[key] = 1;",
+        "global.stats.achieve['biome_hellscape'] = global.stats.achieve['genus_demonic'];",
+        "global.stats.achieve[key] = { l: global.stats.achieve[key] };",
+        "global.stats.achieve['cross'] = { l: a_level, a: a_level };",
+        "global.stats.achieve['blood_war'].e = undefined;",
+        "global.stats.achieve['extinct_ogre'] = global.stats.achieve['extinct_orge'];",
+        "delete global.stats.achieve['extinct_orge'];",
+        "global.stats.achieve['genus_carnivore'] = global.stats.achieve.genus_animal;",
+        "delete global.stats.achieve.genus_animal;",
+        "delete global.stats.achieve['extinct_sludge'];"
+    ];
+
+    requiredMarkers.forEach(marker => {
+        assert.ok(source.includes(marker), `missing reviewed achievement migration marker: ${marker}`);
+    });
+});
+
+test('M2D1 source inventory confines direct achievement writes to migration and achievement modules', () => {
+    const inventory = achievementAccessInventory();
+    const writerFiles = Object.entries(inventory)
+        .filter(([, counts]) => counts.writes > 0)
+        .map(([file]) => file)
+        .sort();
+
+    assert.ok(inventory['src/main.js'] && inventory['src/main.js'].reads > 0, 'expected ordinary gameplay readers');
+    assert.ok(inventory['src/resets.js'] && inventory['src/resets.js'].reads > 0, 'expected reset gameplay readers');
+    assert.deepEqual(writerFiles, ['src/achieve.js', 'src/vars.js']);
+    assert.ok(inventory['src/achieve.js'].writes >= 3, 'expected unlock plus aggregate achievement writes');
+    assert.ok(inventory['src/vars.js'].writes >= 5, 'expected historical migration writes');
 });
