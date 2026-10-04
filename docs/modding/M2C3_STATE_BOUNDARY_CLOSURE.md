@@ -10,12 +10,20 @@ M2C3 remains behavior-neutral. It does not create production settings/UI/transie
 
 A post-implementation M2C review hardened this gate further after M2C3 first closed. The review found that top-level settings counts alone were insufficient for M2C2 containers whose nested fields have different target owners. M2C3 now also freezes those ownership-significant nested access paths.
 
-## Architecture gate
+A final adversarial syntax pass then challenged whether equivalent JavaScript spelling could bypass those debt maps. M2C3 therefore also has a fail-closed syntax companion gate around module references, settings access and the inspectable GameState root declaration.
 
-The gate lives in:
+## Architecture gates
+
+The primary debt ratchet lives in:
 
 ```text
 tests/architecture/m2c-boundary-fitness.cjs
+```
+
+The syntax fail-closed perimeter lives in:
+
+```text
+tests/architecture/m2c-syntax-hardening.cjs
 ```
 
 The checked debt is deliberately split across two reviewed baseline files:
@@ -27,9 +35,9 @@ tests/architecture/m2c-nested-boundary-baseline.json
 
 The first file preserves the original M2C3 top-level settings/runtime snapshot. The second file, added by the integrated M2C review, freezes ownership-significant nested settings debt. The scanner validates both component versions and composes them into the current M2C boundary snapshot. A missing, malformed, or version-drifted component fails closed.
 
-The gate is part of `npm run test:architecture` alongside the existing M0E5, platform and legacy-bridge gates.
+Both M2C gates are part of `npm run test:architecture` alongside the existing M0E5, platform and legacy-bridge gates. Their adversarial unit tests also run under the normal `npm test` suite.
 
-The architecture report also exposes the M2C boundary summary and violations, including nested settings module/reference/path counts.
+The architecture report exposes the checked M2C debt summary and violations, including nested settings module/reference/path counts.
 
 ## Top-level settings-access debt ratchet
 
@@ -124,7 +132,7 @@ The important invariant is therefore:
 
 - direct/static debt is key/path specific;
 - dynamic debt is explicit;
-- whole-object capability debt is explicit and cannot grow;
+- whole-settings-object capability debt is explicit and cannot grow;
 - later application/UI migration must remove `$root` capabilities rather than treating them as clean dependencies.
 
 M8 is the natural owner for eliminating the remaining application/UI whole-object exposures as the presentation layer moves to explicit state/commands.
@@ -143,11 +151,70 @@ The legacy `global` object is already covered by the broader M0E5 global-depende
 
 For each managed binding, the baseline records the exact set of legacy root modules that import it from `./vars.js`.
 
-Named imports preserve binding-specific visibility. Whole-module escape hatches are separately recorded as `$namespace`, including reviewed namespace/default imports, CommonJS `require('./vars')`, and dynamic `import('./vars.js')` forms. Those forms cannot be introduced silently to bypass named-binding visibility.
+Named imports preserve binding-specific visibility. The primary scanner also represents whole-module escape hatches as `$namespace`, including reviewed namespace/default imports, CommonJS `require('./vars')`, and dynamic `import('./vars.js')` forms, so those dependencies remain visible to the boundary model.
+
+The final syntax companion gate makes current policy stricter: production consumers must use the canonical reviewed named-import syntax. A whole-module form, re-export, side-effect import, equivalent alternate relative path, combined import, or parser-ambiguous named import therefore fails before it can silently weaken binding-level visibility. `$namespace` remains defense-in-depth should that policy ever be deliberately relaxed.
 
 A new consumer fails. If a consumer disappears, CI requires the checked baseline to be ratcheted downward.
 
 The baseline binding keyset is also fail-closed against M2C2. A newly classified runtime binding cannot silently skip M2C3 consumer review.
+
+## Syntax fail-closed perimeter
+
+M2C3's debt scanners intentionally stay small and inspectable. The companion gate prevents legal JavaScript syntax from becoming a loophole around that simplicity.
+
+### `vars.js` module references
+
+The companion gate resolves module references using the existing parser-backed architecture tooling. It removes only a narrow canonical named-import grammar, then rejects any remaining module reference that resolves to `src/vars.js`.
+
+This catches forms such as:
+
+```js
+import legacyVars, { p_on } from './vars.js';
+import * as legacyVars from './vars.js';
+export { p_on } from './vars.js';
+export * from './vars.js';
+const legacyVars = require('./vars');
+const legacyVars = import('./vars.js');
+import { p_on } from './../src/vars.js';
+```
+
+It also rejects named-import syntax whose comments/structure would make the lightweight binding parser ambiguous.
+
+### Settings syntax
+
+The companion gate rejects syntax that can hide settings ownership paths from the reviewed scanner, including:
+
+```js
+global?.settings.pause
+global.settings?.msgFilters[tag].vis
+global.settings.msgFilters?.[tag].unlocked
+const { settings } = global;
+global[`settings`].pause
+const legacyRoot = global;
+```
+
+The whole-`global` alias case matters because all later settings accesses through that alias would otherwise be invisible to the direct `global.settings` ratchet.
+
+The rule is deliberately scoped. Unrelated optional access such as `global?.tech` or `global.eden?.mech_station` is not rejected by the M2C settings companion gate.
+
+Existing direct whole-settings exposures remain represented as reviewed `$root` debt; the syntax perimeter prevents different untracked escape mechanisms from being introduced around that debt model.
+
+### GameState root declaration
+
+The companion gate also independently verifies that `GAME_STATE_ROOT_FIELDS` remains an inspectable `Object.freeze([...])` array of plain quoted string literals. Whitespace, comments, commas and a trailing comma are allowed. Expressions, spreads, template literals and escaped/ambiguous string forms fail closed.
+
+This prevents a declaration such as:
+
+```js
+const EXTRA_ROOT = 'settings';
+const GAME_STATE_ROOT_FIELDS = Object.freeze([
+    'schemaVersion',
+    EXTRA_ROOT,
+]);
+```
+
+from being partially inspected as though the non-literal entry did not exist.
 
 ## Baseline integrity
 
@@ -186,6 +253,8 @@ temporary state
 migration state
 debug state
 ```
+
+The strict declaration check described above complements this semantic list: the boundary refuses an uninspectable root declaration rather than assuming only the literals it happened to extract exist.
 
 This is not a complete future GameState ownership gate. M2E owns detailed authoritative-domain ownership, selector and mutation-boundary enforcement after M2D introduces the first real gameplay domain.
 
@@ -256,7 +325,7 @@ M2C3 and its review hardening must not change:
 - UI behavior;
 - oracle snapshots.
 
-The hardening changes only architecture scanners, checked baselines, tests, reports and documentation.
+The hardening changes only architecture scanners, syntax guards, checked baselines, tests, reports, command wiring and documentation. The integrated review diff from the pre-review M2C3 head contains no production `src/` change.
 
 ## Definition of done
 
@@ -267,16 +336,19 @@ M2C3 is complete and review-hardened when:
 3. M2C2 mixed/nested containers have a separate ownership-significant path ratchet;
 4. changing a nested dependency across target-layer semantics fails even when top-level counts remain unchanged;
 5. current consumers of M2C-managed `vars.js` runtime bindings are frozen;
-6. named and whole-module runtime import escape hatches are covered;
-7. new runtime binding classifications cannot bypass the consumer baseline;
-8. all debt families are downward-ratcheting;
-9. component and composite baselines fail closed on malformed/version-drifted data;
-10. normalized generic non-authoritative application/UI/derived/working/runtime/platform/migration/debug buckets are permanently forbidden as GameState roots;
-11. the M2C3 gate runs in `npm run test:architecture`;
-12. the architecture report exposes top-level, nested and runtime M2C debt and violations;
-13. adversarial negative controls prove increases, decreases, nested ownership swaps, dynamic bracket parsing, new runtime consumers, whole-module imports, baseline drift and forbidden GameState roots fail;
-14. whole-settings `$root` exposure is explicitly recorded as unresolved capability debt rather than falsely described as per-key coverage;
-15. no production state store or migration is introduced;
-16. GameState remains `{ schemaVersion: 1 }` with zero writable roots;
-17. gameplay/persistence/UI/oracle behavior remains unchanged;
-18. the complete existing CI safety net remains green.
+6. named and whole-module runtime import escape hatches are visible to the boundary model;
+7. current production consumers are additionally constrained to canonical named `vars.js` imports by the syntax companion gate;
+8. new runtime binding classifications cannot bypass the consumer baseline;
+9. all debt families are downward-ratcheting;
+10. component and composite baselines fail closed on malformed/version-drifted data;
+11. normalized generic non-authoritative application/UI/derived/working/runtime/platform/migration/debug buckets are permanently forbidden as GameState roots;
+12. `GAME_STATE_ROOT_FIELDS` fails closed if non-literal/uninspectable entries are introduced;
+13. optional/destructured/template/whole-global syntax cannot silently bypass settings debt tracking;
+14. both M2C gates run in `npm run test:architecture`;
+15. the architecture report exposes top-level, nested and runtime M2C debt and violations;
+16. adversarial negative controls prove increases, decreases, nested ownership swaps, dynamic bracket parsing, new runtime consumers, module-reference syntax escapes, baseline drift, settings syntax escapes and forbidden/uninspectable GameState roots fail;
+17. whole-settings `$root` exposure is explicitly recorded as unresolved capability debt rather than falsely described as per-key coverage;
+18. no production state store or migration is introduced;
+19. GameState remains `{ schemaVersion: 1 }` with zero writable roots;
+20. gameplay/persistence/UI/oracle behavior remains unchanged;
+21. the complete existing CI safety net remains green on the exact final hardening head.
