@@ -25,7 +25,7 @@ test('M2C syntax hardening leaves the reviewed named vars import form intact', (
     assert.deepEqual(unreviewedVarsReferenceViolations(source, fakeMain, fakeRoot), []);
 });
 
-test('M2C syntax hardening catches alternate vars access and re-export forms', () => {
+test('M2C syntax hardening catches alternate or parser-ambiguous vars access forms', () => {
     const cases = [
         "import legacyVars, { p_on } from './vars.js';",
         "import * as legacyVars from './vars.js';",
@@ -36,6 +36,8 @@ test('M2C syntax hardening catches alternate vars access and re-export forms', (
         "export * from './vars.js';",
         "import './vars.js';",
         "import { p_on } from './../src/vars.js';",
+        "import { p_on /* hide binding from simple consumer parser */ } from './vars.js';",
+        "import { p_on as /* hide alias */ powerMap } from './vars.js';",
     ];
     for (const source of cases){
         const violations = unreviewedVarsReferenceViolations(source, fakeMain, fakeRoot);
@@ -57,21 +59,25 @@ test('M2C syntax hardening catches settings syntax that bypasses path-specific d
         'const c = global.settings.msgFilters?.[tag].unlocked;',
         "const d = global?.['settings'].space.moon;",
         'const { settings } = global;',
+        'const legacyRoot = global;',
+        'legacyRoot2 = global;',
         'const e = global[`settings`].pause;',
         '// const ignored = global?.settings.fake;',
-        'const text = "global.settings?.msgFilters[tag].vis";',
+        'const text = "const fakeRoot = global";',
     ].join('\n');
     const violations = settingsSyntaxViolations(source, fakeMain).join('\n');
     assert.match(violations, /optional chaining inside direct global\.settings access/);
     assert.match(violations, /destructuring settings from legacy global/);
+    assert.match(violations, /aliasing the whole legacy global object/);
     assert.match(violations, /template-literal access to global settings/);
 });
 
-test('M2C syntax hardening does not confuse unrelated optional legacy-global access with settings debt', () => {
+test('M2C syntax hardening does not confuse unrelated direct or optional legacy-global access with whole-global aliasing', () => {
     const source = [
         'const a = global?.tech?.primitive;',
         'const b = global.eden?.mech_station?.count;',
-        'const c = wiki?.count ?? 0;',
+        'const c = global.tech.primitive;',
+        'const d = wiki?.count ?? 0;',
     ].join('\n');
     assert.deepEqual(settingsSyntaxViolations(source, fakeMain), []);
 });
