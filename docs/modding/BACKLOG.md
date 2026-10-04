@@ -99,7 +99,7 @@ Established:
 
 M1D deliberately does not create `GameState` or switch authoritative state. Those begin in M2.
 
-## M2: Explicit state architecture
+## M2: Explicit state architecture - complete
 
 ### M2A - GameState schema - complete
 
@@ -130,7 +130,7 @@ Established:
 - transaction-level hardening against hostile/invalid M2A state shapes;
 - a thin `GameStateStore` integration with zero premature gameplay mutation roots and no authority factory exposed.
 
-M2B does not migrate gameplay authority, modify persistence, or synchronize with legacy `global`. `GAME_STATE_SCHEMA_VERSION` remains 1.
+M2B does not migrate gameplay authority, modify persistence, or synchronize with legacy `global`. `GAME_STATE_SCHEMA_VERSION` remains 1 at the M2B slice boundary.
 
 See [M2B_STATE_STORE_SELECTORS.md](M2B_STATE_STORE_SELECTORS.md) for the design authority.
 
@@ -189,61 +189,58 @@ Closed the M2C boundary without migrating production authority:
 - generic settings/UI/cache/transient/runtime/migration/debug catch-all roots are permanently prohibited from becoming authoritative `GameState` domains;
 - the M2C gate is a first-class `npm run test:architecture` gate and appears in the architecture report;
 - adversarial tests prove debt increases, unratcheted improvements, new runtime consumers, binding-key drift, scanner edge cases and forbidden GameState roots fail closed;
-- no production settings/UI/transient store was created, no gameplay state was migrated, and `GameState` remains `{ schemaVersion: 1 }` with zero writable roots.
+- no production settings/UI/transient store was created, no gameplay state was migrated, and `GameState` remained `{ schemaVersion: 1 }` with zero writable roots at M2C closure.
 
 See [M2C3_STATE_BOUNDARY_CLOSURE.md](M2C3_STATE_BOUNDARY_CLOSURE.md).
 
-M2D4 completes the ordinary achievement reader cutover for the first authoritative GameState domain. M2E follows with broader GameState ownership, mutation-boundary, selector and state-layer dependency enforcement.
+### M2D - First authoritative state-domain migration - complete
+
+Achievements now prove the migration pattern end to end:
+
+- legacy rank/universe semantics were characterized before migration;
+- `GameState.achievements` became schema-version-2 authoritative state;
+- persistent writes use the achievement mutation service;
+- ordinary reads use the semantic read facade backed by `store.select()`;
+- `global.stats.achieve` remains only as a synchronous compatibility/save projection and for historical pre-hydration migrations;
+- architecture gates prevent ordinary readers or writers from reclaiming the legacy ledger as authority.
+
+See [M2D3_ACHIEVEMENT_AUTHORITY_CUTOVER.md](M2D3_ACHIEVEMENT_AUTHORITY_CUTOVER.md) and [M2D4_ACHIEVEMENT_READER_CUTOVER.md](M2D4_ACHIEVEMENT_READER_CUTOVER.md).
+
+### M2E - State architecture guard expansion - complete
+
+The M2 state laws are now machine-enforced cumulatively:
+
+- M2E1 classifies every GameState root and pins one explicit owner/schema/selector/mutation-service set per authoritative domain;
+- M2E2 confines writable roots, raw mutation authority and domain scopes to reviewed composition and closed semantic mutation surfaces;
+- M2E3 closes semantic selector surfaces and enforces the state-layer dependency DAG;
+- M2E4 integrates M2C/M2D/M2E into a versioned architecture report, cross-checks their contracts and provides the whole-M2 closure gate.
+
+See [M2_CLOSURE_REVIEW.md](M2_CLOSURE_REVIEW.md) for the M2 exit authority.
 
 ## Immediate sequence
 
 ```text
-M0A complete
+M0A-M0E safety foundation - complete
    |
-M0B harness - complete
-   |
-M0C fixtures - complete
-   |
-M0D deterministic differential simulation - complete
-   |
-M0E refactor safety-net completion - complete
-   |
-M0E1 authoritative state/canonical safety - complete
-   |
-M0E2 inspectable frozen oracle snapshots - complete
-   |
-M0E3 fixture hydration/oracle matrix - complete
-   |
-M0E4 real-browser smoke - complete
-   |
-M0E5 architecture/CI guardrails - complete
-   |
-M1A identity/registry - complete
-   |
-M1B definition contracts - complete
-   |
-M1C environment ports - complete
-   |
-M1D bridge/inspector - complete
+M1A-M1D engine kernel and seams - complete
    |
 M2A GameState schema - complete
    |
 M2B state store/selectors - complete
    |
-M2C1 legacy state classification - complete
+M2C settings/transient separation - complete
    |
-M2C2 state-layer contract - complete
+M2D first authoritative state-domain migration - complete
    |
-M2C3 settings/transient boundary closure - complete
+M2E state architecture guard expansion/closure - complete
    |
-M2D first authoritative state-domain migration - next
+M3 commands/conditions/effects/costs - next
 ```
 
 Do not jump directly to mod loading, total conversions, or bulk content conversion. Those would lock in legacy assumptions before the engine is ready.
 
 ## Later milestones
 
-- M2 explicit state architecture;
 - M3 commands/conditions/effects/costs;
 - M4 calculation/modifier engine;
 - M5 deterministic simulation;
