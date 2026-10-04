@@ -6,7 +6,10 @@ const test = require('node:test');
 
 const { buildArchitectureReport } = require('./architecture-report.cjs');
 const {
+    EXPECTED_ARCHITECTURE_SCRIPT,
+    EXPECTED_INSPECT_SCRIPT,
     closureViolations,
+    architectureScriptContractViolations,
     architectureScriptViolations,
     scanM2StateArchitectureClosure,
 } = require('./m2e4-state-architecture-closure.cjs');
@@ -38,10 +41,25 @@ test('M2E4 closure fails if writable roots drift from authoritative ownership', 
     assert.match(closureViolations(report).join('\n'), /writable roots must exactly equal ownership domains/);
 });
 
+test('M2E4 closure fails if reviewed mutation surfaces drift from authoritative ownership', async () => {
+    const report = clone(await buildArchitectureReport(root));
+    report.stateArchitecture.mutationReview.reviewedSurfaces = [];
+    assert.match(closureViolations(report).join('\n'), /reviewed mutation surfaces must exactly equal ownership domains/);
+});
+
 test('M2E4 closure fails if selector domains drift from authoritative ownership', async () => {
     const report = clone(await buildArchitectureReport(root));
     report.stateArchitecture.selectors.domains = [];
     assert.match(closureViolations(report).join('\n'), /selector domains must exactly equal ownership domains/);
+});
+
+test('M2E4 closure requires non-empty reviewed read and mutation surfaces', async () => {
+    const report = clone(await buildArchitectureReport(root));
+    report.stateArchitecture.selectors.domains[0].selectorCount = 0;
+    report.stateArchitecture.mutationReview.reviewedSurfaces[0].publicMethods = [];
+    const violations = closureViolations(report).join('\n');
+    assert.match(violations, /must expose at least one reviewed semantic selector/);
+    assert.match(violations, /must expose at least one reviewed semantic mutation method/);
 });
 
 test('M2E4 closure fails if mutation scope ownership no longer matches domain ownership', async () => {
@@ -68,6 +86,20 @@ test('M2E4 closure fails if the legacy mapping inspector shape becomes opaque or
     assert.match(closureViolations(report).join('\n'), /legacyMappings must preserve the reviewed JSON-safe/);
 });
 
-test('M2E4 package architecture chain contains every cumulative M2 closure gate', () => {
+test('M2E4 package architecture chain contains the exact cumulative gate chain', () => {
     assert.deepEqual(architectureScriptViolations(root), []);
+    assert.deepEqual(architectureScriptContractViolations(EXPECTED_ARCHITECTURE_SCRIPT, EXPECTED_INSPECT_SCRIPT), []);
+
+    assert.match(
+        architectureScriptContractViolations(`${EXPECTED_ARCHITECTURE_SCRIPT} && node surprise.cjs`, EXPECTED_INSPECT_SCRIPT).join('\n'),
+        /exact reviewed cumulative gate chain/
+    );
+    assert.match(
+        architectureScriptContractViolations(EXPECTED_ARCHITECTURE_SCRIPT.replace('architecture-fitness.cjs', 'platform-fitness.cjs'), EXPECTED_INSPECT_SCRIPT).join('\n'),
+        /exact reviewed cumulative gate chain/
+    );
+    assert.match(
+        architectureScriptContractViolations(EXPECTED_ARCHITECTURE_SCRIPT, 'node other-report.cjs').join('\n'),
+        /integrated architecture report exactly/
+    );
 });
