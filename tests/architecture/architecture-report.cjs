@@ -36,16 +36,18 @@ function normalizeViolationOnlyGate(violations, summary = {}){
     };
 }
 
-function assertJsonData(value, label = '$', ancestors = new Set()){
+function assertJsonData(value, label = '$', ancestors = new Set(), seenObjects = new Set()){
     if (value === null || typeof value === 'string' || typeof value === 'boolean') return;
     if (typeof value === 'number'){
         if (!Number.isFinite(value)) throw new Error(`${label} contains a non-finite number`);
+        if (Object.is(value, -0)) throw new Error(`${label} contains negative zero, which JSON cannot preserve`);
         return;
     }
     if (typeof value !== 'object'){
         throw new Error(`${label} contains unsupported JSON value type ${typeof value}`);
     }
     if (ancestors.has(value)) throw new Error(`${label} contains a cycle`);
+    if (seenObjects.has(value)) throw new Error(`${label} contains a shared object reference that JSON would duplicate`);
 
     const prototype = Object.getPrototypeOf(value);
     if (Array.isArray(value)){
@@ -69,6 +71,7 @@ function assertJsonData(value, label = '$', ancestors = new Set()){
     }
 
     ancestors.add(value);
+    seenObjects.add(value);
     for (const key of ownStringKeys){
         if (Array.isArray(value) && key === 'length') continue;
         const descriptor = Object.getOwnPropertyDescriptor(value, key);
@@ -78,7 +81,7 @@ function assertJsonData(value, label = '$', ancestors = new Set()){
         if (!descriptor.enumerable && !Array.isArray(value)){
             throw new Error(`${label}.${key} must be enumerable`);
         }
-        assertJsonData(descriptor.value, `${label}.${key}`, ancestors);
+        assertJsonData(descriptor.value, `${label}.${key}`, ancestors, seenObjects);
     }
     ancestors.delete(value);
 }
