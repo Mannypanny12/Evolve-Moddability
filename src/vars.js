@@ -100,8 +100,10 @@ export function seededRandom(min, max, alt, useSeed) {
 }
 
 export function setGlobal(gameState) {
+    // Rebinding must succeed before the live legacy root changes. Otherwise a
+    // malformed replacement could leave global and GameState authority split.
+    bindLegacyAchievementState(gameState);
     global = gameState;
-    bindLegacyAchievementState(global);
 }
 
 if (!global['version']){

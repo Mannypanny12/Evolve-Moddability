@@ -173,7 +173,7 @@ function analyzeAchievementAccesses(source){
 
         const prefix = masked.slice(Math.max(0, match.index - 24), match.index);
         const write = /\bdelete\s*$/.test(prefix) || isAssignmentAt(masked, cursor);
-        accesses.push({ write });
+        accesses.push({ write, index: match.index });
     }
 
     return accesses;
@@ -500,6 +500,18 @@ test('historical vars.js achievement migrations remain ahead of the future GameS
     requiredMarkers.forEach(marker => {
         assert.ok(source.includes(marker), `missing reviewed achievement migration marker: ${marker}`);
     });
+
+    const hydrationMarker = '// M2D3 authority cutover: historical vars.js migrations and shape repair above';
+    const hydrationIndex = source.indexOf(hydrationMarker);
+    assert.ok(hydrationIndex >= 0, 'missing M2D3 achievement hydration marker');
+
+    const writesAfterHydration = analyzeAchievementAccesses(source)
+        .filter(access => access.write && access.index > hydrationIndex);
+    assert.deepEqual(
+        writesAfterHydration,
+        [],
+        'vars.js must not directly mutate global.stats.achieve after GameState hydration'
+    );
 });
 
 test('M2D3 authority ratchet leaves historical migrations as the only direct global achievement writer', () => {
