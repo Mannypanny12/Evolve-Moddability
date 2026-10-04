@@ -288,6 +288,16 @@ test('non-micro unlock writes both base and current-universe progress', () => {
     assert.deepEqual(state.stats.achieve.trade, { l: 2, e: 2 });
 });
 
+test('universe-only advancement changes state while the legacy boolean remains false', () => {
+    const state = install('evil');
+    state.race.no_plasmid = 1;
+    state.stats.achieve.trade = { l: 3, e: 1 };
+
+    assert.equal(legacy.achievementRankCap(), 2);
+    assert.equal(legacy.unlockAchievement('trade', false, 2), false);
+    assert.deepEqual(state.stats.achieve.trade, { l: 3, e: 2 });
+});
+
 test('achievement ranks are monotonic and an attempted lower rank does not downgrade either track', () => {
     const state = install('heavy');
     state.race.no_plasmid = 1;
@@ -355,6 +365,19 @@ test('rank zero preserves achievement-record presence even though no positive ra
     assert.equal(legacy.unlockAchievement('trade', false, 0), false);
     assert.equal(Object.prototype.hasOwnProperty.call(state.stats.achieve, 'trade'), true);
     assert.deepEqual(state.stats.achieve.trade, { l: 0 });
+});
+
+test('achievement functions imported before fixture installation follow the current replaced global state', () => {
+    const first = install('standard');
+    assert.equal(legacy.unlockAchievement('trade', false, 1), true);
+    assert.deepEqual(first.stats.achieve.trade, { l: 1 });
+
+    const second = install('evil');
+    assert.notStrictEqual(second, first);
+    assert.equal(legacy.unlockAchievement('explorer', false, 1), true);
+    assert.deepEqual(second.stats.achieve.explorer, { l: 1, e: 1 });
+    assert.equal(Object.prototype.hasOwnProperty.call(first.stats.achieve, 'explorer'), false);
+    assert.deepEqual(first.stats.achieve.trade, { l: 1 });
 });
 
 test('aggregate base achievement progress removes the automatic non-standard universe rank', () => {
