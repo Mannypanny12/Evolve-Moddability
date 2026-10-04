@@ -68,6 +68,10 @@ function validateSelectorContractShape(selectorContract, ownershipContract){
         violations.push('M2E3 selector contract domains must be an object');
         return violations;
     }
+    if (!isRecord(ownershipContract) || !isRecord(ownershipContract.domains)){
+        violations.push('M2E3 requires a valid M2E ownership contract with domains');
+        return violations;
+    }
 
     const expectedDomains = Object.keys(ownershipContract.domains).sort();
     const actualDomains = Object.keys(selectorContract.domains).sort();
@@ -153,9 +157,15 @@ function inspectStateModule(root, relativePath, label, violations){
     return { file, realFile };
 }
 
+function stripSpecifierSuffix(specifier){
+    const suffixIndex = specifier.search(/[?#]/);
+    return suffixIndex < 0 ? specifier : specifier.slice(0, suffixIndex);
+}
+
 function normalizeLocalTarget(fromRelativePath, specifier){
     if (typeof specifier !== 'string' || !specifier.startsWith('.')) return null;
-    let target = path.posix.normalize(path.posix.join(path.posix.dirname(fromRelativePath), specifier));
+    const cleanSpecifier = stripSpecifierSuffix(specifier);
+    let target = path.posix.normalize(path.posix.join(path.posix.dirname(fromRelativePath), cleanSpecifier));
     if (!path.posix.extname(target)) target += '.mjs';
     return target;
 }
@@ -168,6 +178,35 @@ function moduleReferences(source, relativePath, violations){
         violations.push(`M2E3 cannot inspect module references for ${relativePath}: ${error.message}`);
         return [];
     }
+}
+
+function staticNamedImportsFromTarget(source, sourceRelativePath, targetRelativePath){
+    const masked = maskNonCode(source);
+    const imports = [];
+    const pattern = /\bimport\s*\{([^}]*)\}\s*from\s*(['"])([^'"\r\n]+)\2\s*;?/g;
+    let match;
+    while ((match = pattern.exec(source)) !== null){
+        if (masked.slice(match.index, match.index + 6) !== 'import') continue;
+        if (normalizeLocalTarget(sourceRelativePath, match[3]) !== targetRelativePath) continue;
+
+        const bindings = [];
+        let valid = true;
+        for (const rawBinding of match[1].split(',')){
+            const binding = rawBinding.trim();
+            if (!binding) continue;
+            const parsed = binding.match(/^([$A-Z_a-z][$\w]*)(?:\s+as\s+([$A-Z_a-z][$\w]*))?$/);
+            if (!parsed){
+                valid = false;
+                break;
+            }
+            bindings.push({ imported: parsed[1], local: parsed[2] || parsed[1] });
+        }
+        imports.push({
+            specifier: match[3],
+            bindings: valid ? bindings : null,
+        });
+    }
+    return imports;
 }
 
 function exportedFunctions(source){
@@ -253,25 +292,41 @@ function selectorRootViolations(source, ownRoot, allGameStateRoots){
     }
 
     const masked = maskNonCode(source);
-    if (/\b(?:const|let|var)\s+[$A-Z_a-z][$\w]*\s*=\s*gameState\b/.test(masked)){
+    const bareAlias = /\b(?:const|let|var)\s+[$A-Z_a-z][$\w]*\s*=\s*\(*\s*gameState\s*\)*\s*(?=;|,|\n|\r|$)/;
+    if (bareAlias.test(masked)){
         violations.push(`selector domain ${ownRoot} may not alias gameState before property access`);
     }
-    if (/\b(?:const|let|var)\s*\{[^}]*\}\s*=\s*gameState\b/.test(masked)){
+    const destructure = /\b(?:const|let|var)\s*\{[^}]*\}\s*=\s*\(*\s*gameState\s*\)*\s*(?=;|,|\n|\r|$)/;
+    if (destructure.test(masked)){
         violations.push(`selector domain ${ownRoot} may not destructure gameState`);
     }
     return violations;
 }
 
-function roleMap(ownershipContract){
+function buildRoleMap(ownershipContract, violations = []){
     const roles = new Map([
         [STATE_COMMON_FILE, { role: 'common' }],
         [STATE_STORE_FILE, { role: 'store' }],
         [GAME_STATE_FILE, { role: 'composition' }],
     ]);
-    for (const [rootName, domain] of Object.entries(ownershipContract.domains)){
-        roles.set(domain.schema.module, { role: 'schema', rootName });
-        roles.set(domain.selectors.module, { role: 'selectors', rootName });
-        roles.set(domain.mutationService.module, { role: 'mutationService', rootName });
+
+    function addRole(modulePath, info){
+        if (roles.has(modulePath)){
+            const existing = roles.get(modulePath);
+            violations.push(
+                `M2E3 state module ${modulePath} cannot serve multiple architecture roles: ` +
+                `${existing.role}${existing.rootName ? `(${existing.rootName})` : ''} and ` +
+                `${info.role}${info.rootName ? `(${info.rootName})` : ''}`
+            );
+            return;
+        }
+        roles.set(modulePath, info);
+    }
+
+    for (const [rootName, domain] of Object.entries(ownershipContract.domains || {})){
+        addRole(domain.schema.module, { role: 'schema', rootName });
+        addRole(domain.selectors.module, { role: 'selectors', rootName });
+        addRole(domain.mutationService.module, { role: 'mutationService', rootName });
     }
     return roles;
 }
@@ -299,7 +354,7 @@ function allowedStateDependency(sourceRole, targetRole, sourceInfo, targetInfo){
 
 function stateLayerDependencyViolations(root, ownershipContract){
     const violations = [];
-    const roles = roleMap(ownershipContract);
+    const roles = buildRoleMap(ownershipContract, violations);
 
     for (const [sourceRelativePath, sourceInfo] of roles){
         const file = repoPath(root, sourceRelativePath);
@@ -358,15 +413,21 @@ function rawReadBoundaryViolations(root){
         if (references.length !== 1 || references[0].kind !== 'import-statement'){
             violations.push('M2E3 legacy achievement adapter may have exactly one static GameState module reference');
         }
-        const code = maskNonCode(source);
-        const importMatch = source.match(
-            /\bimport\s*\{([\s\S]*?)\}\s*from\s*(['"])\.\.\/\.\.\/engine\/state\/game-state\.mjs\2\s*;?/
-        );
-        if (!importMatch){
+        if (references.some(reference => /[?#]/.test(reference.specifier))){
+            violations.push('M2E3 legacy achievement adapter must use the canonical GameState module specifier without query/fragment aliases');
+        }
+
+        const imports = staticNamedImportsFromTarget(source, relative, GAME_STATE_FILE);
+        if (imports.length !== 1 || !imports[0].bindings){
             violations.push('M2E3 legacy achievement adapter must use one inspectable static named GameState import');
             continue;
         }
-        const names = importMatch[1].split(',').map(value => value.trim()).filter(Boolean).sort();
+        const bindings = imports[0].bindings;
+        const aliases = bindings.filter(binding => binding.imported !== binding.local);
+        if (aliases.length){
+            violations.push('M2E3 legacy achievement adapter may not alias GameState imports');
+        }
+        const names = bindings.map(binding => binding.imported).sort();
         const expected = ['GAME_STATE_SCHEMA_VERSION', 'createGameStateRuntime'].sort();
         if (!isDeepStrictEqual(names, expected)){
             violations.push(
@@ -374,7 +435,8 @@ function rawReadBoundaryViolations(root){
                 `got ${JSON.stringify(names)}`
             );
         }
-        if ((code.match(/\bcreateGameStateStore\b/g) || []).length){
+        const code = maskNonCode(source);
+        if (/\bcreateGameStateStore\b/.test(code)){
             violations.push('M2E3 compatibility adapter may not construct the generic read-only GameState store');
         }
     }
@@ -385,11 +447,11 @@ function rawReadBoundaryViolations(root){
 function inspectSelectorModules(root, ownershipContract, selectorContract){
     const violations = [];
     const allRoots = [
-        ...Object.keys(ownershipContract.metadataRoots),
-        ...Object.keys(ownershipContract.domains),
+        ...Object.keys(ownershipContract.metadataRoots || {}),
+        ...Object.keys(ownershipContract.domains || {}),
     ];
 
-    for (const [rootName, domain] of Object.entries(ownershipContract.domains)){
+    for (const [rootName, domain] of Object.entries(ownershipContract.domains || {})){
         const inspected = inspectStateModule(
             root,
             domain.selectors.module,
@@ -403,9 +465,7 @@ function inspectSelectorModules(root, ownershipContract, selectorContract){
         const actualSelectors = exportedFunctions(source);
 
         if (exportDeclarationCount(source) !== actualSelectors.length){
-            violations.push(
-                `M2E3 selector module ${domain.selectors.module} may export only reviewed named functions`
-            );
+            violations.push(`M2E3 selector module ${domain.selectors.module} may export only reviewed named functions`);
         }
         if (!sameStrings(actualSelectors, expectedSelectors)){
             violations.push(
@@ -417,9 +477,7 @@ function inspectSelectorModules(root, ownershipContract, selectorContract){
         for (const selectorName of expectedSelectors){
             const parameter = selectorFunctionFirstParameter(source, selectorName);
             if (parameter !== 'gameState'){
-                violations.push(
-                    `M2E3 selector ${selectorName} for ${rootName} must take gameState as its first parameter`
-                );
+                violations.push(`M2E3 selector ${selectorName} for ${rootName} must take gameState as its first parameter`);
             }
         }
 
@@ -443,6 +501,11 @@ function inspectSelectorModules(root, ownershipContract, selectorContract){
                     `found ${reference.kind} for ${JSON.stringify(reference.specifier)}`
                 );
             }
+            if (/[?#]/.test(reference.specifier)){
+                violations.push(
+                    `M2E3 selector module ${domain.selectors.module} must use canonical dependency specifiers without query/fragment suffixes`
+                );
+            }
         }
 
         violations.push(...selectorRootViolations(source, rootName, allRoots).map(
@@ -456,19 +519,23 @@ function inspectSelectorModules(root, ownershipContract, selectorContract){
 function scanSelectorStateDependencies(root){
     const violations = [];
     const ownershipContract = readOwnershipContract(root);
-    violations.push(...validateOwnershipContractShape(ownershipContract));
+    const ownershipViolations = validateOwnershipContractShape(ownershipContract);
+    violations.push(...ownershipViolations);
+
     const selectorContract = readSelectorContract(root);
     violations.push(...validateSelectorContractShape(selectorContract, ownershipContract));
 
-    violations.push(...inspectSelectorModules(root, ownershipContract, selectorContract));
-    violations.push(...stateLayerDependencyViolations(root, ownershipContract));
-    violations.push(...rawReadBoundaryViolations(root));
+    if (ownershipViolations.length === 0){
+        violations.push(...inspectSelectorModules(root, ownershipContract, selectorContract));
+        violations.push(...stateLayerDependencyViolations(root, ownershipContract));
+        violations.push(...rawReadBoundaryViolations(root));
+    }
 
     return {
         summary: {
             selectorContractVersion: selectorContract.contractVersion,
-            domainCount: Object.keys(ownershipContract.domains).length,
-            domains: Object.entries(ownershipContract.domains)
+            domainCount: Object.keys(ownershipContract.domains || {}).length,
+            domains: Object.entries(ownershipContract.domains || {})
                 .map(([rootName, domain]) => ({
                     root: rootName,
                     selectorModule: domain.selectors.module,
@@ -501,8 +568,11 @@ function main(){
 module.exports = {
     SELECTOR_CONTRACT_VERSION,
     validateSelectorContractShape,
+    normalizeLocalTarget,
+    staticNamedImportsFromTarget,
     exportedFunctions,
     selectorRootViolations,
+    buildRoleMap,
     stateLayerDependencyViolations,
     rawReadBoundaryViolations,
     inspectSelectorModules,
