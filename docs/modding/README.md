@@ -42,6 +42,9 @@ engine
 
 ## Documents
 
+Start with [CURRENT_ARCHITECTURE.md](CURRENT_ARCHITECTURE.md) when you need to know which document or machine-enforced contract is authoritative **now**. Slice documents remain migration history; milestone closure documents win when later work supersedes an earlier slice description.
+
+- [CURRENT_ARCHITECTURE.md](CURRENT_ARCHITECTURE.md): compact authority index, current dependency direction, and M0-M2 contract map.
 - [FULL_REFACTOR_AUDIT.md](FULL_REFACTOR_AUDIT.md): code-driven architectural audit and migration implications.
 - [ARCHITECTURE.md](ARCHITECTURE.md): target engine architecture and dependency rules.
 - [ROADMAP.md](ROADMAP.md): staged full-refactor roadmap.
