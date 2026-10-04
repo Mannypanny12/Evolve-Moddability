@@ -49,8 +49,12 @@ const READ_STORE_KEYS = [
     'select',
     'snapshot',
 ];
+const ACHIEVEMENT_SERVICE_KEYS = [
+    'advance',
+    'removeUniverseRank',
+];
 
-test('M2D2b1 keeps createGameStateStore as the same read-only capability surface', async () => {
+test('M2D2b2 keeps createGameStateStore as the same read-only capability surface', async () => {
     const { createGameStateStore, achievementRank } = await modules();
     const store = createGameStateStore(populatedState());
 
@@ -65,7 +69,7 @@ test('M2D2b1 keeps createGameStateStore as the same read-only capability surface
     assert.equal(Object.isFrozen(store.read().achievements), true);
 });
 
-test('M2D2b1 composes a frozen runtime with read-only store and opaque achievement service', async () => {
+test('M2D2b2 runtime exposes only read store plus the two achievement-domain mutations', async () => {
     const { createGameStateRuntime, achievementRank } = await modules();
     const runtime = createGameStateRuntime(populatedState());
 
@@ -80,13 +84,13 @@ test('M2D2b1 composes a frozen runtime with read-only store and opaque achieveme
     assert.equal(runtime.store.getRevision(), 0);
 
     assert.equal(Object.isFrozen(runtime.achievements), true);
-    assert.deepEqual(Object.keys(runtime.achievements), []);
+    assert.deepEqual(Object.keys(runtime.achievements).sort(), ACHIEVEMENT_SERVICE_KEYS);
     assert.equal(runtime.achievements.transaction, undefined);
     assert.equal(runtime.achievements.createMutationScope, undefined);
     assert.equal(runtime.achievements.mutationAuthority, undefined);
 });
 
-test('M2D2b1 achievement service accepts only the dedicated achievements mutation capability shape', async () => {
+test('M2D2b2 achievement service accepts only the dedicated achievements mutation capability shape', async () => {
     const { createAchievementStateService } = await modules();
     const transaction = () => undefined;
 
@@ -98,7 +102,7 @@ test('M2D2b1 achievement service accepts only the dedicated achievements mutatio
         }),
     });
     assert.equal(Object.isFrozen(service), true);
-    assert.deepEqual(Object.keys(service), []);
+    assert.deepEqual(Object.keys(service).sort(), ACHIEVEMENT_SERVICE_KEYS);
 
     await expectCode(
         () => createAchievementStateService({
@@ -120,7 +124,7 @@ test('M2D2b1 achievement service accepts only the dedicated achievements mutatio
     );
 });
 
-test('M2D2b1 runtime instances own isolated stores and expose no cross-runtime write capability', async () => {
+test('M2D2b2 runtime instances own isolated stores and expose no cross-runtime generic authority', async () => {
     const { createGameStateRuntime } = await modules();
     const first = createGameStateRuntime(populatedState());
     const second = createGameStateRuntime();
