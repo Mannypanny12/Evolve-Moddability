@@ -3,19 +3,24 @@ import {
     canonicalizeStateValue,
     readClosedStateObject,
 } from './common.mjs';
+import { validateAchievementState } from './achievement-state.mjs';
 import { createStateStore } from './state-store.mjs';
 
-export const GAME_STATE_SCHEMA_VERSION = 1;
+export const GAME_STATE_SCHEMA_VERSION = 2;
 
 const GAME_STATE_ROOT_FIELDS = Object.freeze([
+    'achievements',
     'schemaVersion',
 ]);
 
+// M2D2a adds the first real gameplay domain shape, but authority remains
+// deliberately unavailable until M2D2b composes its dedicated mutation service.
 const GAME_STATE_WRITABLE_ROOT_FIELDS = Object.freeze([]);
 
 export function createEmptyGameState(){
     return {
         schemaVersion: GAME_STATE_SCHEMA_VERSION,
+        achievements: {},
     };
 }
 
@@ -29,8 +34,9 @@ export function validateGameState(gameState){
         root.get('schemaVersion'),
         GAME_STATE_SCHEMA_VERSION
     );
+    const achievements = validateAchievementState(root.get('achievements'));
 
-    return canonicalizeStateValue({ schemaVersion }, 'gameState');
+    return canonicalizeStateValue({ schemaVersion, achievements }, 'gameState');
 }
 
 export function createGameStateStore(initialState = createEmptyGameState()){
