@@ -50,18 +50,30 @@ test('M2C syntax hardening resolves equivalent local vars module paths', () => {
     assert.equal(referenceTargetsVars('./actions.js', fakeMain, fakeRoot), false);
 });
 
-test('M2C syntax hardening catches settings syntax that bypasses the reviewed scanner', () => {
+test('M2C syntax hardening catches settings syntax that bypasses path-specific debt tracking', () => {
     const source = [
         'const a = global?.settings.pause;',
+        'const b = global.settings?.msgFilters[tag].vis;',
+        'const c = global.settings.msgFilters?.[tag].unlocked;',
+        "const d = global?.['settings'].space.moon;",
         'const { settings } = global;',
-        'const b = global[`settings`].pause;',
-        '// const c = global?.settings.fake;',
-        'const text = "const { settings } = global";',
+        'const e = global[`settings`].pause;',
+        '// const ignored = global?.settings.fake;',
+        'const text = "global.settings?.msgFilters[tag].vis";',
     ].join('\n');
     const violations = settingsSyntaxViolations(source, fakeMain).join('\n');
-    assert.match(violations, /optional-chained legacy global access/);
+    assert.match(violations, /optional chaining inside direct global\.settings access/);
     assert.match(violations, /destructuring settings from legacy global/);
     assert.match(violations, /template-literal access to global settings/);
+});
+
+test('M2C syntax hardening does not confuse unrelated optional legacy-global access with settings debt', () => {
+    const source = [
+        'const a = global?.tech?.primitive;',
+        'const b = global.eden?.mech_station?.count;',
+        'const c = wiki?.count ?? 0;',
+    ].join('\n');
+    assert.deepEqual(settingsSyntaxViolations(source, fakeMain), []);
 });
 
 test('M2C strict GameState root parser accepts only plain string-literal arrays', () => {
