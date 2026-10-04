@@ -14,6 +14,7 @@ import { renderEdenic } from './edenic.js';
 import { events, eventList } from './events.js';
 import { swissKnife } from './tech.js';
 import { warhead, big_bang } from './resets.js';
+import { hasLegacyAchievement, legacyAchievementRank } from './legacy/bridge/achievement-state-reader.mjs';
 
 const date = new Date();
 const easter = getEaster();
@@ -7664,7 +7665,7 @@ export function shapeShift(genus,setup,forceClean){
         const imitation =  global.race['imitation'] ? (races[global.race['srace']].type === 'hybrid' ? races[global.race['srace']].hybrid : [races[global.race['srace']].type]) : [];
         const base = races[global.race.species].type === 'hybrid' ? races[global.race.species].hybrid : [races[global.race.species].type];
         Object.keys(genus_def).forEach(function (gen) {
-            if(!['synthetic', 'eldritch', 'hybrid', ...base, ...imitation].includes(gen) && global.stats.achieve[`genus_${gen}`] && global.stats.achieve[`genus_${gen}`].l > 0){
+            if(!['synthetic', 'eldritch', 'hybrid', ...base, ...imitation].includes(gen) && hasLegacyAchievement(`genus_${gen}`) && legacyAchievementRank(`genus_${gen}`) > 0){
                 drop += `<b-dropdown-item v-on:click="setShape('${gen}')">{{ '${gen}' | genus }}</b-dropdown-item>`;
             }
         });
@@ -7799,7 +7800,7 @@ export function fathomCheck(race){
             let unsupervised = active - global.civic.torturer.workers;
             active -= Math.ceil(unsupervised / 3);
         }
-        let rank = (global.stats.achieve['nightmare'] && global.stats.achieve.nightmare['mg'] ? global.stats.achieve.nightmare.mg : 0) / 5;
+        let rank = (hasLegacyAchievement('nightmare') && legacyAchievementRank('nightmare', 'mg') ? legacyAchievementRank('nightmare', 'mg') : 0) / 5;
         return active / 100 * rank;
     }
     return 0;
@@ -9177,7 +9178,7 @@ function psychicBoost(parent){
     }
     
     let cost = global.tech.psychic >= 5 ? 60 : 75;
-    let rank = global.stats.achieve['nightmare'] && global.stats.achieve.nightmare['mg'] ? global.stats.achieve.nightmare.mg : 0;
+    let rank = hasLegacyAchievement('nightmare') && legacyAchievementRank('nightmare', 'mg') ? legacyAchievementRank('nightmare', 'mg') : 0;
     vBind({
         el: `#psychicBoost`,
         data: {
@@ -9301,7 +9302,7 @@ function psychicAssault(parent){
     }
 
     let cost = global.tech.psychic >= 5 ? 36 : 45;
-    let rank = global.stats.achieve['nightmare'] && global.stats.achieve.nightmare['mg'] ? global.stats.achieve.nightmare.mg : 0;
+    let rank = hasLegacyAchievement('nightmare') && legacyAchievementRank('nightmare', 'mg') ? legacyAchievementRank('nightmare', 'mg') : 0;
     vBind({
         el: `#psychicAssault`,
         data: global.tech.psychic >= 4 ? global.race.psychicPowers.channel : {},
@@ -9373,7 +9374,7 @@ function psychicFinance(parent){
     }
 
     let cost = global.tech.psychic >= 5 ? 52 : 65;
-    let rank = global.stats.achieve['nightmare'] && global.stats.achieve.nightmare['mg'] ? global.stats.achieve.nightmare.mg : 0;
+    let rank = hasLegacyAchievement('nightmare') && legacyAchievementRank('nightmare', 'mg') ? legacyAchievementRank('nightmare', 'mg') : 0;
     vBind({
         el: `#psychicFinance`,
         data: global.tech.psychic >= 4 ? global.race.psychicPowers.channel : {},

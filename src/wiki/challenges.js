@@ -5,6 +5,7 @@ import { vBind } from './../functions.js';
 import { neg_roll_traits } from './../races.js';
 import { tradeRatio } from './../resources.js';
 import { sideMenu, subSideMenu, infoBoxBuilder, getSolarName, createCalcSection } from './functions.js';
+import { hasLegacyAchievement, legacyAchievementRank } from './../legacy/bridge/achievement-state-reader.mjs';
 
 export function challengesPage(content){
     let mainContent = sideMenu('create',content);
@@ -214,7 +215,7 @@ export function challengesPage(content){
                     subreqs: [
                         {
                             text: loc(`wiki_resets_blackhole`),
-                            color: global.stats.achieve['whitehole'] ? true : false,
+                            color: hasLegacyAchievement('whitehole') ? true : false,
                             link: 'wiki.html#resets-prestige-blackhole'
                         }
                     ]
@@ -247,7 +248,7 @@ export function challengesPage(content){
                     subreqs: [
                         {
                             text: loc(`wiki_resets_ascension`),
-                            color: global.stats.achieve['ascended'] ? true : false,
+                            color: hasLegacyAchievement('ascended') ? true : false,
                             link: 'wiki.html#resets-prestige-ascension'
                         }
                     ]
@@ -286,7 +287,7 @@ export function challengesPage(content){
                     subreqs: [
                         {
                             text: loc(`achieve_scrooge_name`),
-                            color: global.stats.achieve['scrooge'] ? true : false
+                            color: hasLegacyAchievement('scrooge') ? true : false
                         }
                     ]
                     
@@ -321,7 +322,7 @@ export function challengesPage(content){
                     subreqs: [
                         {
                             text: loc(`achieve_extinct_junker_name`),
-                            color: global.stats.achieve['extinct_junker'] ? true : false
+                            color: hasLegacyAchievement('extinct_junker') ? true : false
                         }
                     ]
                     
@@ -331,12 +332,12 @@ export function challengesPage(content){
                     subreqs: [
                         {
                             text: loc(`wiki_resets_ascension`),
-                            color: global.stats.achieve['ascended'] ? true : false,
+                            color: hasLegacyAchievement('ascended') ? true : false,
                             link: 'wiki.html#resets-prestige-ascension'
                         },
                         {
                             text: loc(`wiki_resets_infusion`),
-                            color: global.stats.achieve['corrupted'] ? true : false,
+                            color: hasLegacyAchievement('corrupted') ? true : false,
                             link: 'wiki.html#resets-prestige-infusion'
                         }
                     ]
@@ -369,7 +370,7 @@ export function challengesPage(content){
                     subreqs: [
                         {
                             text: loc(`achieve_extinct_sludge_name`),
-                            color: global.stats.achieve['extinct_sludge'] ? true : false
+                            color: hasLegacyAchievement('extinct_sludge') ? true : false
                         }
                     ]
                 },
@@ -378,7 +379,7 @@ export function challengesPage(content){
                     subreqs: [
                         {
                             text: loc(`wiki_resets_apotheosis`),
-                            color: global.stats.achieve['godslayer'] ? true : false,
+                            color: hasLegacyAchievement('godslayer') ? true : false,
                             link: 'wiki.html#resets-prestige-apotheosis'
                         }
                     ]
@@ -407,12 +408,12 @@ export function challengesPage(content){
                     subreqs: [
                         {
                             text: loc(`wiki_resets_blackhole`),
-                            color: global.stats.achieve['whitehole'] ? true : false,
+                            color: hasLegacyAchievement('whitehole') ? true : false,
                             link: 'wiki.html#resets-prestige-blackhole'
                         },
                         {
                             text: loc(`wiki_resets_ascension`),
-                            color: global.stats.achieve['ascended'] ? true : false,
+                            color: hasLegacyAchievement('ascended') ? true : false,
                             link: 'wiki.html#resets-prestige-ascension'
                         }
                     ]
@@ -436,7 +437,7 @@ export function challengesPage(content){
                     subreqs: [
                         {
                             text: `${loc(`wiki_universe_magic`)} ${loc(`wiki_resets_ascension`)}`,
-                            color: global.stats.achieve['ascended'] && global.stats.achieve.ascended['mg'] ? true : false,
+                            color: hasLegacyAchievement('ascended') && legacyAchievementRank('ascended', 'mg') ? true : false,
                             link: 'wiki.html#resets-prestige-ascension'
                         }
                     ]
@@ -458,7 +459,7 @@ export function challengesPage(content){
                     subreqs: [
                         {
                             text: `${loc(`wiki_universe_heavy`)} ${loc(`wiki_resets_bioseed`)}`,
-                            color: global.stats.achieve['seeder'] && global.stats.achieve.seeder['h'] ? true : false,
+                            color: hasLegacyAchievement('seeder') && legacyAchievementRank('seeder', 'h') ? true : false,
                             link: 'wiki.html#resets-prestige-bioseed'
                         }
                     ]
@@ -526,7 +527,7 @@ export function challengesPage(content){
                     subreqs: [
                         {
                             text: loc(`wiki_resets_cataclysm`),
-                            color: global.stats.achieve['shaken'] ? true : false,
+                            color: hasLegacyAchievement('shaken') ? true : false,
                             link: 'wiki.html#resets-prestige-cataclysm'
                         }
                     ]
@@ -582,12 +583,12 @@ export function challengesPage(content){
                     subreqs: [
                         {
                             text: loc(`wiki_resets_blackhole`),
-                            color: global.stats.achieve['whitehole'] ? true : false,
+                            color: hasLegacyAchievement('whitehole') ? true : false,
                             link: 'wiki.html#resets-prestige-blackhole'
                         },
                         {
                             text: loc(`wiki_resets_ascension`),
-                            color: global.stats.achieve['ascended'] ? true : false,
+                            color: hasLegacyAchievement('ascended') ? true : false,
                             link: 'wiki.html#resets-prestige-ascension'
                         }
                     ]
@@ -621,7 +622,7 @@ export function challengesPage(content){
                     subreqs: [
                         {
                             text: loc(`wiki_resets_infusion`),
-                            color: global.stats.achieve['corrupted'] ? true : false,
+                            color: hasLegacyAchievement('corrupted') ? true : false,
                             link: 'wiki.html#resets-prestige-infusion'
                         }
                     ]
@@ -708,12 +709,12 @@ export function challengesPage(content){
                     subreqs: [
                         {
                             text: loc(`wiki_resets_ascension`),
-                            color: global.stats.achieve['ascended'] ? true : false,
+                            color: hasLegacyAchievement('ascended') ? true : false,
                             link: 'wiki.html#resets-prestige-ascension'
                         },
                         {
                             text: loc(`wiki_resets_infusion`),
-                            color: global.stats.achieve['corrupted'] ? true : false,
+                            color: hasLegacyAchievement('corrupted') ? true : false,
                             link: 'wiki.html#resets-prestige-infusion'
                         }
                     ]
@@ -740,7 +741,7 @@ export function challengesPage(content){
                     subreqs: [
                         {
                             text: loc(`wiki_resets_retired`),
-                            color: global.stats.achieve['retired'] ? true : false,
+                            color: hasLegacyAchievement('retired') ? true : false,
                             link: 'wiki.html#resets-prestige-retired'
                         }
                     ]
@@ -768,7 +769,7 @@ export function challengesPage(content){
                     subreqs: [
                         {
                             text: `${loc(`wiki_universe_evil`)} ${loc(`wiki_resets_apotheosis`)}`,
-                            color: global.stats?.achieve?.godslayer?.e > 0 ? true : false,
+                            color: legacyAchievementRank('godslayer', 'e') > 0 ? true : false,
                             link: 'wiki.html#resets-prestige-apotheosis'
                         }
                     ]

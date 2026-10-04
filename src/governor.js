@@ -10,6 +10,7 @@ import { jobScale } from './jobs.js';
 import { isStargateOn } from './space.js';
 import { stabilize_blackhole } from './tech.js';
 import { shipCosts } from './truepath.js';
+import { hasLegacyAchievement, legacyAchievementRank } from './legacy/bridge/achievement-state-reader.mjs';
 
 export const gmen = {
     soldier: {
@@ -1301,7 +1302,7 @@ export const gov_tasks = {
     mech: { // Mech Builder
         name: loc(`gov_task_mech`),
         req(){
-            return global.stats.achieve.hasOwnProperty('corrupted') && global.stats.achieve.corrupted.l > 0 && checkHellRequirements('prtl_spire','mechbay') && global.portal.hasOwnProperty('mechbay') ? true : false;
+            return hasLegacyAchievement('corrupted') && legacyAchievementRank('corrupted') > 0 && checkHellRequirements('prtl_spire','mechbay') && global.portal.hasOwnProperty('mechbay') ? true : false;
         },
         task(){
             if ( $(this)[0].req() ){

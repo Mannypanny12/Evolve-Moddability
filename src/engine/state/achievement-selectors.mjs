@@ -62,6 +62,27 @@ export function achievementUniverseRank(gameState, achievementId, universe){
     return record.universeRanks[normalizedUniverse] ?? 0;
 }
 
+export function hasAchievementUniverseRank(gameState, achievementId, universe){
+    const normalizedUniverse = assertAchievementUniverse(universe);
+    const record = achievementRecord(gameState, achievementId);
+    if (!record) return false;
+    if (normalizedUniverse === ACHIEVEMENT_STANDARD_UNIVERSE){
+        return true;
+    }
+    return Object.prototype.hasOwnProperty.call(record.universeRanks, normalizedUniverse);
+}
+
+export function achievementTotalRank(gameState, achievementId){
+    const record = achievementRecord(gameState, achievementId);
+    if (!record) return 0;
+    let total = record.rank;
+    for (const rank of Object.values(record.universeRanks)){
+        total += rank;
+    }
+    return total;
+}
+
+
 export function achievementLevel(gameState, recognizedAchievementIds){
     let total = 0;
     for (const id of recognizedIds(recognizedAchievementIds)){

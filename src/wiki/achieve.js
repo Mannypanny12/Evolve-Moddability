@@ -5,6 +5,7 @@ import { achievements, feats, universeAffix } from './../achieve.js';
 import { races, biomes, genus_def } from './../races.js';
 import { monsters } from './../portal.js';
 import { vBind, popover } from './../functions.js';
+import { hasLegacyAchievement, hasLegacyAchievementTrack, legacyAchievementRank, legacyAchievementTotalRank } from './../legacy/bridge/achievement-state-reader.mjs';
 
 export function renderAchievePage(zone){
     let content = $(`#content`);
@@ -94,15 +95,15 @@ export function achievePage(universe, filter){
     let types = {};
     Object.keys(achievements).forEach(function (achievement){
         if (!universe || !universeExclusives[achievement] || universeExclusives[achievement].indexOf(universe) > -1){
-            if (filter === 'missing' && global.stats.achieve[achievement] && global.stats.achieve[achievement][uAffix] && global.stats.achieve[achievement][uAffix] > 0) return;
-            if (filter === 'obtained' && !(global.stats.achieve[achievement] && global.stats.achieve[achievement][uAffix] && global.stats.achieve[achievement][uAffix] > 0)) return;
-            if (filter === 'incomplete' && universe && global.stats.achieve[achievement] && global.stats.achieve[achievement][uAffix] && global.stats.achieve[achievement][uAffix] > 4) return;
-            if (filter === 'completed' && universe && !(global.stats.achieve[achievement] && global.stats.achieve[achievement][uAffix] && global.stats.achieve[achievement][uAffix] > 4)) return;
+            if (filter === 'missing' && hasLegacyAchievement(achievement) && legacyAchievementRank(achievement, uAffix) && legacyAchievementRank(achievement, uAffix) > 0) return;
+            if (filter === 'obtained' && !(hasLegacyAchievement(achievement) && legacyAchievementRank(achievement, uAffix) && legacyAchievementRank(achievement, uAffix) > 0)) return;
+            if (filter === 'incomplete' && universe && hasLegacyAchievement(achievement) && legacyAchievementRank(achievement, uAffix) && legacyAchievementRank(achievement, uAffix) > 4) return;
+            if (filter === 'completed' && universe && !(hasLegacyAchievement(achievement) && legacyAchievementRank(achievement, uAffix) && legacyAchievementRank(achievement, uAffix) > 4)) return;
             if ((filter === 'incomplete' || filter === 'completed') && !universe) {
                 let max = achievements[achievement].type === 'universe' ? 10 : 30;
                 if (achievement === 'whitehole') max = 5;
-                if (global.stats.achieve[achievement])
-                    Object.keys(global.stats.achieve[achievement]).forEach(uni => max -= global.stats.achieve[achievement][uni]);
+                if (hasLegacyAchievement(achievement))
+                    max -= legacyAchievementTotalRank(achievement);
                 if (filter === 'incomplete' && max <= 0) return;
                 if (filter === 'completed' && max > 0) return;
             }
@@ -125,7 +126,7 @@ export function achievePage(universe, filter){
             let achieve = $(`<div class="achievement"></div>`);
             list.append(achieve);
 
-            let color = global.stats.achieve[achievement] && global.stats.achieve[achievement][uAffix] && global.stats.achieve[achievement][uAffix] > 0 ? 'warning' : 'fade';
+            let color = hasLegacyAchievement(achievement) && legacyAchievementRank(achievement, uAffix) && legacyAchievementRank(achievement, uAffix) > 0 ? 'warning' : 'fade';
             achieve.append(`<span id="a-${achievement}" class="achieve has-text-${color}">${achievements[achievement].name}</span>`);
 
             let emblems = format_emblem(achievement,16,false,false,universe);
@@ -171,17 +172,17 @@ function achieveDesc(achievement,showFlair,universe){
             }            
         }).forEach(function (key){
             if (key !== 'protoplasm' 
-                && (key !== 'custom' || (key === 'custom' && global.stats.achieve['ascended']))
-                && (key !== 'hybrid' || (key === 'hybrid' && global.stats.achieve['what_is_best']))
+                && (key !== 'custom' || (key === 'custom' && hasLegacyAchievement('ascended')))
+                && (key !== 'hybrid' || (key === 'hybrid' && hasLegacyAchievement('what_is_best')))
             ){
-                if (global.stats.achieve[`extinct_${key}`] 
+                if (hasLegacyAchievement(`extinct_${key}`) 
                     && (
                         achievement === 'mass_extinction'
-                        ? global.stats.achieve[`extinct_${key}`][uAffix] >= 0
-                        : global.stats.achieve[`extinct_${key}`].hasOwnProperty('e') && global.stats.achieve[`extinct_${key}`].e >= 0
+                        ? legacyAchievementRank(`extinct_${key}`, uAffix) >= 0
+                        : hasLegacyAchievementTrack(`extinct_${key}`, 'e') && legacyAchievementRank(`extinct_${key}`, 'e') >= 0
                         )
                     ){
-                    killed = killed + `<span class="wide iclr${global.stats.achieve[`extinct_${key}`][achievement === 'mass_extinction' ? [uAffix] : 'e']}">${races[key].name}</span>`;
+                    killed = killed + `<span class="wide iclr${legacyAchievementRank(`extinct_${key}`, achievement === 'mass_extinction' ? [uAffix] : 'e')}">${races[key].name}</span>`;
                 }
                 else {
                     killed = killed + `<span class="wide has-text-danger">${races[key].name}</span>`;
@@ -197,8 +198,8 @@ function achieveDesc(achievement,showFlair,universe){
         let biome_list = `<div class="flexed">`;
         Object.keys(biomes).sort((a,b) => biomes[a].label.localeCompare(biomes[b].label)).forEach(function (key){
             if (!universe || (key !== 'hellscape' && key !== 'eden') || (key === 'hellscape' && universe !== 'evil') || (key === 'eden' && universe === 'evil')){
-                if (global.stats.achieve[`biome_${key}`] && global.stats.achieve[`biome_${key}`][uAffix] >= 0){
-                    biome_list = biome_list + `<span class="wide iclr${global.stats.achieve[`biome_${key}`][uAffix]}">${biomes[key].label}</span>`;
+                if (hasLegacyAchievement(`biome_${key}`) && legacyAchievementRank(`biome_${key}`, uAffix) >= 0){
+                    biome_list = biome_list + `<span class="wide iclr${legacyAchievementRank(`biome_${key}`, uAffix)}">${biomes[key].label}</span>`;
                 }
                 else {
                     biome_list = biome_list + `<span class="wide has-text-danger">${biomes[key].label}</span>`;
@@ -213,8 +214,8 @@ function achieveDesc(achievement,showFlair,universe){
         Object.keys(genus_def).sort().forEach(function (key){
             if (key !== 'hybrid' && key !== 'omnivore'){
                 let label = ['carnivore','herbivore','omnivore'].includes(key) ? loc(`evo_${key}_title`) : loc(`genelab_genus_${key}`);
-                if (achievement === 'creator' ? global.stats.achieve[`genus_${key}`] && global.stats.achieve[`genus_${key}`][uAffix] >= 0 : global.stats.achieve[`genus_${key}`] && global.stats.achieve[`genus_${key}`].h >= 0){
-                    genus = genus + `<span class="wide iclr${achievement === 'creator' ? global.stats.achieve[`genus_${key}`][uAffix] : global.stats.achieve[`genus_${key}`].h}">${label}</span>`;
+                if (achievement === 'creator' ? hasLegacyAchievement(`genus_${key}`) && legacyAchievementRank(`genus_${key}`, uAffix) >= 0 : hasLegacyAchievement(`genus_${key}`) && legacyAchievementRank(`genus_${key}`, 'h') >= 0){
+                    genus = genus + `<span class="wide iclr${achievement === 'creator' ? legacyAchievementRank(`genus_${key}`, uAffix) : legacyAchievementRank(`genus_${key}`, 'h')}">${label}</span>`;
                 }
                 else {
                     genus = genus + `<span class="wide has-text-danger">${label}</span>`;
@@ -303,8 +304,8 @@ function achieveDesc(achievement,showFlair,universe){
         let path = `<div class="flexed">`;
         ['ashanddust','exodus','obsolete','bluepill','retired'].forEach(function (key){
             let label = loc(`achieve_${key}_name`);
-            if (global.stats.achieve[key] && global.stats.achieve[key][uAffix] >= 5){
-                path = path + `<span class="wide iclr${global.stats.achieve[key][uAffix]}">${label}</span>`;
+            if (hasLegacyAchievement(key) && legacyAchievementRank(key, uAffix) >= 5){
+                path = path + `<span class="wide iclr${legacyAchievementRank(key, uAffix)}">${label}</span>`;
             }
             else {
                 path = path + `<span class="wide has-text-danger">${label}</span>`;
@@ -408,7 +409,7 @@ function featDesc(feat,showFlair){
                 return 0;
             }
         }).forEach(function (key){
-            if (key !== 'protoplasm' && (key !== 'custom' || (key === 'custom' && global.stats.achieve['ascended'])) && (key !== 'hybrid' || (key === 'hybrid' && global.stats.achieve['what_is_best'] && global.stats.achieve.what_is_best.e >= 5))){
+            if (key !== 'protoplasm' && (key !== 'custom' || (key === 'custom' && hasLegacyAchievement('ascended'))) && (key !== 'hybrid' || (key === 'hybrid' && hasLegacyAchievement('what_is_best') && legacyAchievementRank('what_is_best', 'e') >= 5))){
                 if (species[key] && species[key] >= 1){
                     checked = checked + `<span class="wide iclr${species[key]}">${races[key].name}</span>`;
                 }
@@ -461,7 +462,7 @@ function featDesc(feat,showFlair){
                 return 0;
             }
         }).forEach(function (key){
-            if (key !== 'protoplasm' && (key !== 'custom' || (key === 'custom' && global.stats.achieve['ascended'])) && (key !== 'hybrid' || (key === 'hybrid' && global.stats.achieve['what_is_best']))){
+            if (key !== 'protoplasm' && (key !== 'custom' || (key === 'custom' && hasLegacyAchievement('ascended'))) && (key !== 'hybrid' || (key === 'hybrid' && hasLegacyAchievement('what_is_best')))){
                 if (global.stats['synth'] && global.stats.synth[key]){
                     checked = checked + `<span class="wide iclr5">${races[key].name}</span>`;
                 }

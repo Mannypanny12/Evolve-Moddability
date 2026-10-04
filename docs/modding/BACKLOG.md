@@ -193,7 +193,7 @@ Closed the M2C boundary without migrating production authority:
 
 See [M2C3_STATE_BOUNDARY_CLOSURE.md](M2C3_STATE_BOUNDARY_CLOSURE.md).
 
-M2D is next and remains the first real authoritative state-domain migration. M2E follows it with broader GameState ownership, mutation-boundary, selector and state-layer dependency enforcement once a real domain exists.
+M2D4 completes the ordinary achievement reader cutover for the first authoritative GameState domain. M2E follows with broader GameState ownership, mutation-boundary, selector and state-layer dependency enforcement.
 
 ## Immediate sequence
 

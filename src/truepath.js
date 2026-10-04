@@ -13,6 +13,7 @@ import { arpa } from './arpa.js';
 import { matrix, retirement, gardenOfEden } from './resets.js';
 import { traitCostMod } from './races.js';
 import { loc } from './locale.js';
+import { hasLegacyAchievement, legacyAchievementRank } from './legacy/bridge/achievement-state-reader.mjs';
 
 const outerTruth = {
     spc_titan: {
@@ -2902,13 +2903,13 @@ const tauCetiModules = {
             val(){
                 let val = 0;
                 if (global.race['womling_lord']){
-                    val = global.stats.achieve['overlord'] && global.stats.achieve.overlord.l >= 5 ? 12 : 10;
+                    val = hasLegacyAchievement('overlord') && legacyAchievementRank('overlord') >= 5 ? 12 : 10;
                 }
                 else if (global.race['womling_god']){
-                    val = global.stats.achieve['overlord'] && global.stats.achieve.overlord.l >= 5 ? 6 : 5;
+                    val = hasLegacyAchievement('overlord') && legacyAchievementRank('overlord') >= 5 ? 6 : 5;
                 }
                 else if (global.race['womling_friend']){
-                    val = global.stats.achieve['overlord'] && global.stats.achieve.overlord.l >= 5 ? 10 : 8;
+                    val = hasLegacyAchievement('overlord') && legacyAchievementRank('overlord') >= 5 ? 10 : 8;
                 }
                 if (global.race['lone_survivor']){
                     val *= 2;
@@ -3099,13 +3100,13 @@ const tauCetiModules = {
             val(){
                 let val = 0;
                 if (global.race['womling_lord']){
-                    val = global.stats.achieve['overlord'] && global.stats.achieve.overlord.l >= 5 ? 24 : 20;
+                    val = hasLegacyAchievement('overlord') && legacyAchievementRank('overlord') >= 5 ? 24 : 20;
                 }
                 else if (global.race['womling_god']){
-                    val = global.stats.achieve['overlord'] && global.stats.achieve.overlord.l >= 5 ? 12 : 10;
+                    val = hasLegacyAchievement('overlord') && legacyAchievementRank('overlord') >= 5 ? 12 : 10;
                 }
                 else if (global.race['womling_friend']){
-                    val = global.stats.achieve['overlord'] && global.stats.achieve.overlord.l >= 5 ? 18 : 15;
+                    val = hasLegacyAchievement('overlord') && legacyAchievementRank('overlord') >= 5 ? 18 : 15;
                 }
                 if (global.race['lone_survivor']){
                     val *= 2;
@@ -5498,8 +5499,8 @@ export function tpStorageMultiplier(type,heavy,wiki){
     if (global.race['pack_rat']){
         multiplier *= 1 + (traits.pack_rat.vars()[1] / 100);
     }
-    if (global.stats.achieve['blackhole']){
-        multiplier *= 1 + global.stats.achieve.blackhole.l * 0.05;
+    if (hasLegacyAchievement('blackhole')){
+        multiplier *= 1 + legacyAchievementRank('blackhole') * 0.05;
     }
     if (global.tech['world_control']){
         multiplier *= 3;

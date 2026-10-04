@@ -5,7 +5,7 @@ const path = require('node:path');
 
 const root = path.resolve(__dirname, '..', '..');
 const sourceRoot = path.join(root, 'src');
-const adapterImport = 'legacy/bridge/achievement-state-adapter.mjs';
+const adapterImports = ['legacy/bridge/achievement-state-adapter.mjs', './achievement-state-adapter.mjs'];
 
 function read(relativePath){
     return fs.readFileSync(path.join(root, relativePath), 'utf8');
@@ -106,11 +106,11 @@ forbidText(
 
 const adapterConsumers = listSourceFiles(sourceRoot)
     .filter(file => file !== path.join(sourceRoot, 'legacy', 'bridge', 'achievement-state-adapter.mjs'))
-    .filter(file => fs.readFileSync(file, 'utf8').includes(adapterImport))
+    .filter(file => adapterImports.some(adapterImport => fs.readFileSync(file, 'utf8').includes(adapterImport)))
     .map(file => path.relative(root, file).split(path.sep).join('/'))
     .sort();
 
-const expectedAdapterConsumers = ['src/achieve.js', 'src/vars.js'];
+const expectedAdapterConsumers = ['src/achieve.js', 'src/legacy/bridge/achievement-state-reader.mjs', 'src/vars.js'];
 if (JSON.stringify(adapterConsumers) !== JSON.stringify(expectedAdapterConsumers)){
     throw new Error(
         'M2D3 achievement authority bridge consumers changed: ' +
@@ -127,6 +127,7 @@ const expectedExports = [
     'advanceLegacyAchievement',
     'bindLegacyAchievementState',
     'removeLegacyAchievementUniverseRank',
+    'selectLegacyAchievementState',
 ].sort();
 if (JSON.stringify(exportedFunctions) !== JSON.stringify(expectedExports)){
     throw new Error(

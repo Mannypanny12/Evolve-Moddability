@@ -232,6 +232,7 @@ test('derived achievement levels clamp each stored rank to five without mutating
     const state = install('evil');
     state.stats.achieve.trade = { l: 7, e: 8 };
     state.stats.achieve.explorer = { l: 3, e: 2 };
+    legacy.rebindAchievementState();
 
     assert.deepEqual(legacy.achievementUniverseLevel('standard'), {
         aLvl: 8,
@@ -252,6 +253,7 @@ test('derived levels use the known achievement catalog and ignore unknown ledger
     const state = install('evil');
     state.stats.achieve.trade = { l: 2, e: 1 };
     state.stats.achieve.legacy_unknown_achievement = { l: 5, e: 5 };
+    legacy.rebindAchievementState();
 
     assert.equal(legacy.achievementIds().includes('legacy_unknown_achievement'), false);
     assert.deepEqual(legacy.achievementUniverseLevel(), {
@@ -264,6 +266,7 @@ test('missing and explicitly undefined universe ranks are equivalent to zero for
     const state = install('evil');
     state.stats.achieve.trade = { l: 2, e: undefined };
     state.stats.achieve.explorer = { l: 1 };
+    legacy.rebindAchievementState();
 
     assert.deepEqual(legacy.achievementUniverseLevel('evil'), {
         aLvl: 3,
@@ -514,17 +517,22 @@ test('historical vars.js achievement migrations remain ahead of the future GameS
     );
 });
 
-test('M2D3 authority ratchet leaves historical migrations as the only direct global achievement writer', () => {
+test('M2D4 reader ratchet leaves historical vars.js migrations as the only direct global achievement surface', () => {
     const inventory = achievementAccessInventory();
     const writerFiles = Object.entries(inventory)
         .filter(([, counts]) => counts.writes > 0)
         .map(([file]) => file)
         .sort();
+    const readerFiles = Object.entries(inventory)
+        .filter(([, counts]) => counts.reads > 0)
+        .map(([file]) => file)
+        .sort();
 
-    assert.ok(inventory['src/main.js'] && inventory['src/main.js'].reads > 0, 'expected ordinary gameplay readers');
-    assert.ok(inventory['src/resets.js'] && inventory['src/resets.js'].reads > 0, 'expected reset gameplay readers');
     assert.deepEqual(writerFiles, ['src/vars.js']);
-    assert.ok(inventory['src/achieve.js'] && inventory['src/achieve.js'].reads > 0, 'expected legacy compatibility readers to remain until M2D4');
-    assert.equal(inventory['src/achieve.js'].writes, 0, 'ordinary achievement progression must mutate through the M2D3 adapter');
+    assert.deepEqual(readerFiles, ['src/vars.js']);
+    assert.equal(inventory['src/main.js'], undefined, 'ordinary gameplay must read achievements through the M2D4 facade');
+    assert.equal(inventory['src/resets.js'], undefined, 'reset gameplay must read achievements through the M2D4 facade');
+    assert.equal(inventory['src/achieve.js'], undefined, 'achievement gameplay must read authoritative GameState through the M2D4 facade');
+    assert.ok(inventory['src/vars.js'].reads > 0, 'historical migrations still need to inspect the pre-hydration legacy ledger');
     assert.ok(inventory['src/vars.js'].writes >= 5, 'expected historical migration writes to remain ahead of hydration');
 });

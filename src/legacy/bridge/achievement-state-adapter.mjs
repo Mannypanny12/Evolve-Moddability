@@ -603,6 +603,11 @@ export function achievementStateSnapshot(){
     return requireBinding().runtime.store.snapshot();
 }
 
+export function selectLegacyAchievementState(selector, ...args){
+    return requireBinding().runtime.store.select(selector, ...args);
+}
+
+
 export function advanceLegacyAchievement(rawCommand){
     const current = requireBinding();
     const { legacyId, rank, advanceBase, targetAffix } = validateAdvanceCommand(rawCommand);

@@ -13,6 +13,7 @@ import { defineGovernor, govActive } from './governor.js';
 import { ascend, terraform, apotheosis } from './resets.js';
 import { loadTab } from './index.js';
 import { loc } from './locale.js';
+import { hasLegacyAchievement, hasLegacyAchievementTrack, legacyAchievementRank } from './legacy/bridge/achievement-state-reader.mjs';
 
 const spaceProjects = {
     spc_home: {
@@ -509,7 +510,7 @@ const spaceProjects = {
             },
             support(){
                 let support = global.race['cataclysm'] || global.race['orbit_decayed'] ? 4 : 3;
-                if (global.stats.achieve['iron_will'] && global.stats.achieve.iron_will.l >= 4){ support++; }
+                if (hasLegacyAchievement('iron_will') && legacyAchievementRank('iron_will') >= 4){ support++; }
                 return support;
             },
             support_fuel(){ return { r: 'Helium_3', a: 1.25 }; },
@@ -915,7 +916,7 @@ const spaceProjects = {
                 if (global.tech['shelving'] && global.tech.shelving >= 3){
                     multiplier *= 1.5;
                 }
-                multiplier *= global.stats.achieve['blackhole'] ? 1 + (global.stats.achieve.blackhole.l * 0.05) : 1;
+                multiplier *= hasLegacyAchievement('blackhole') ? 1 + (legacyAchievementRank('blackhole') * 0.05) : 1;
                 if (h){
                     return global.tech['shelving'] && global.tech.shelving >= 2 ? multiplier * 3 : multiplier;
                 }
@@ -1514,7 +1515,7 @@ const spaceProjects = {
                 if (global.race['forge']){
                     power -= traits.forge.vars()[0];
                 }
-                if (global.stats.achieve['failed_history'] && global.stats.achieve.failed_history.l >= 5){ power -= 2; }
+                if (hasLegacyAchievement('failed_history') && legacyAchievementRank('failed_history') >= 5){ power -= 2; }
                 return powerModifier(power);
             },
             smelting(){
@@ -1586,7 +1587,7 @@ const spaceProjects = {
             category: 'commercial',
             reqs: { hell: 1, gambling: 1 },
             condition(){
-                return global.race['cataclysm'] || (global.stats.achieve['iron_will'] && global.stats.achieve.iron_will.l >= 5) ? true : false;
+                return global.race['cataclysm'] || (hasLegacyAchievement('iron_will') && legacyAchievementRank('iron_will') >= 5) ? true : false;
             },
             cost: {
                 Money(offset){ return spaceCostMultiplier('spc_casino', offset, traitCostMod('untrustworthy',400000), 1.35); },
@@ -1599,7 +1600,7 @@ const spaceProjects = {
                 desc = desc + `<div class="has-text-caution">${loc('minus_power',[$(this)[0].powered()])}</div>`;
                 return desc;
             },
-            powered(){ return powerCostMod(global.stats.achieve['dissipated'] && global.stats.achieve['dissipated'].l >= 2 ? 2 : 3); },
+            powered(){ return powerCostMod(hasLegacyAchievement('dissipated') && legacyAchievementRank('dissipated') >= 2 ? 2 : 3); },
             action(args){
                 if (payCosts($(this)[0])){
                     global.space.spc_casino.count++;
@@ -1748,7 +1749,7 @@ const spaceProjects = {
                 if (global.tech.swarm >= 4){
                     solar += 0.15 * (global.tech.swarm - 3);
                 }
-                if (global.stats.achieve['iron_will'] && global.stats.achieve.iron_will.l >= 1){ solar += 0.15; }
+                if (hasLegacyAchievement('iron_will') && legacyAchievementRank('iron_will') >= 1){ solar += 0.15; }
                 if (global.blood['illuminate']){
                     solar += 0.01 * global.blood.illuminate;
                 }
@@ -2060,7 +2061,7 @@ const spaceProjects = {
                 Nano_Tube(offset){ return spaceCostMultiplier('drone', offset, 45000, 1.3); }
             },
             effect(){
-                let value = global.stats.achieve['iron_will'] && global.stats.achieve.iron_will.l >= 3 ? 12 : 6;
+                let value = hasLegacyAchievement('iron_will') && legacyAchievementRank('iron_will') >= 3 ? 12 : 6;
                 return `<div>${loc('space_gas_moon_drone_effect1',[value])}</div>`;
             },
             action(args){
@@ -4161,7 +4162,7 @@ const interstellarProjects = {
                 if (global.tech['roid_eject']){
                     r_mass += 0.225 * global.tech['roid_eject'] * (1 + (global.tech['roid_eject'] / 12));
                 }
-                let gWell = 1 + (global.stats.achieve['escape_velocity'] && global.stats.achieve.escape_velocity['h'] ? global.stats.achieve.escape_velocity['h'] * 0.02 : 0);
+                let gWell = 1 + (hasLegacyAchievement('escape_velocity') && legacyAchievementRank('escape_velocity', 'h') ? legacyAchievementRank('escape_velocity', 'h') * 0.02 : 0);
                 let output = powerModifier((20 + (r_mass - 8 + exotic * 10) * waves) * gWell);
                 if (output > 10000){
                     output = 10000 + (output - 10000) ** 0.975;
@@ -4653,10 +4654,10 @@ const interstellarProjects = {
             },
             heatSink(){
                 let heatsink = 100;
-                if (global.stats.achieve['technophobe'] && global.stats.achieve.technophobe.l >= 2){
-                    heatsink += global.stats.achieve.technophobe.l >= 4 ? 25 : 10;
+                if (hasLegacyAchievement('technophobe') && legacyAchievementRank('technophobe') >= 2){
+                    heatsink += legacyAchievementRank('technophobe') >= 4 ? 25 : 10;
                     for (let i=1; i<universe_affixes.length; i++){
-                        if (global.stats.achieve.technophobe[universe_affixes[i]] && global.stats.achieve.technophobe[universe_affixes[i]] >= 5){
+                        if (legacyAchievementRank('technophobe', universe_affixes[i]) && legacyAchievementRank('technophobe', universe_affixes[i]) >= 5){
                             heatsink += 5;
                         }
                     }
@@ -4757,10 +4758,10 @@ const interstellarProjects = {
             },
             effect(){
                 let heatsink = 100;
-                if (global.stats.achieve['technophobe'] && global.stats.achieve.technophobe.l >= 2){
-                    heatsink += global.stats.achieve.technophobe.l >= 4 ? 25 : 10;
+                if (hasLegacyAchievement('technophobe') && legacyAchievementRank('technophobe') >= 2){
+                    heatsink += legacyAchievementRank('technophobe') >= 4 ? 25 : 10;
                     for (let i=1; i<universe_affixes.length; i++){
-                        if (global.stats.achieve.technophobe[universe_affixes[i]] && global.stats.achieve.technophobe[universe_affixes[i]] >= 5){
+                        if (legacyAchievementRank('technophobe', universe_affixes[i]) && legacyAchievementRank('technophobe', universe_affixes[i]) >= 5){
                             heatsink += 5;
                         }
                     }
@@ -6595,8 +6596,8 @@ export function gatewayStorage(){
     if (global.race['pack_rat']){
         multiplier *= 1.05;
     }
-    if (global.stats.achieve['blackhole']){
-        multiplier *= 1 + global.stats.achieve.blackhole.l * 0.05;
+    if (hasLegacyAchievement('blackhole')){
+        multiplier *= 1 + legacyAchievementRank('blackhole') * 0.05;
     }
     multiplier *= global.tech['world_control'] ? 2 : 1;
     return multiplier;
@@ -7293,8 +7294,8 @@ export function fuel_adjust(fuel,drain,wiki){
         let factor = (wiki ? wiki.truepath : global.race['truepath']) ? 0.94 : 0.95;
         fuel *= factor ** num_driver_on;
     }
-    if (global.stats.achieve['heavyweight']){
-        fuel *= 0.96 ** global.stats.achieve['heavyweight'].l;
+    if (hasLegacyAchievement('heavyweight')){
+        fuel *= 0.96 ** legacyAchievementRank('heavyweight');
     }
     if (global.city.ptrait.includes('dense')){
         fuel *= planetTraits.dense.vars()[2];
@@ -7318,8 +7319,8 @@ export function int_fuel_adjust(fuel){
     if (global.race.universe === 'heavy'){
         fuel *= 1.2 + (0.3 * darkEffect('heavy'));
     }
-    if (global.stats.achieve['heavyweight']){
-        fuel *= 0.96 ** global.stats.achieve['heavyweight'].l;
+    if (hasLegacyAchievement('heavyweight')){
+        fuel *= 0.96 ** legacyAchievementRank('heavyweight');
     }
     if (global.race['heavy']){
         fuel *= 1 + (traits.heavy.vars()[0] / 100);
@@ -7422,7 +7423,7 @@ export const universe_types = {
 
 export function genPlanets(){
     let avail = [];
-    if (global.stats.achieve['lamentis'] && global.stats.achieve.lamentis.l >= 4 && global.custom.hasOwnProperty('planet')){
+    if (hasLegacyAchievement('lamentis') && legacyAchievementRank('lamentis') >= 4 && global.custom.hasOwnProperty('planet')){
         Object.keys(universe_types).forEach(function(u){
             let uafx = universeAffix(u);
             if (global.custom.planet.hasOwnProperty(uafx)){
@@ -7511,7 +7512,7 @@ export function ascendLab(hybrid,wiki){
             if (['unicorn','seraph'].includes(global.race.species)){
                 unlockAchieve(`traitor`);
             }
-            if (global.stats.achieve['what_is_best'] && global.stats.achieve.what_is_best.e >= 5){
+            if (hasLegacyAchievement('what_is_best') && legacyAchievementRank('what_is_best', 'e') >= 5){
                 global.race['noexport'] = `Hybrid`;
             }
             else {
@@ -7563,7 +7564,7 @@ export function ascendLab(hybrid,wiki){
 
     let wikiVars = {
         ascended: {},
-        technophobe: global.stats.achieve['technophobe'] && global.stats.achieve.technophobe.l ? global.stats.achieve.technophobe.l : 0
+        technophobe: hasLegacyAchievement('technophobe') && legacyAchievementRank('technophobe') ? legacyAchievementRank('technophobe') : 0
     };
 
     if (isWiki){
@@ -7583,7 +7584,7 @@ export function ascendLab(hybrid,wiki){
         let ascended_levels = $(`<div></div>`);
         lab.append(ascended_levels);
         Object.keys(universe_types).forEach(function (uni){
-            wikiVars.ascended[uni] = global.stats.achieve[`ascended`] && global.stats.achieve.ascended.hasOwnProperty(universeAffix(uni)) ? global.stats.achieve.ascended[universeAffix(uni)] : 0;
+            wikiVars.ascended[uni] = hasLegacyAchievement(`ascended`) && hasLegacyAchievementTrack('ascended', universeAffix(uni)) ? legacyAchievementRank('ascended', universeAffix(uni)) : 0;
             ascended_levels.append(`
                 <div class="calcInput"><span>${loc('universe_' + uni)}</span> <b-numberinput :input="val('${uni}')" min="0" max="5" v-model="w.ascended.${uni}" :controls="false"></b-numberinput></div>
             `);
@@ -7695,9 +7696,9 @@ export function ascendLab(hybrid,wiki){
         if (
             isWiki
                 ||
-            (global.stats.achieve[`extinct_${race}`] && global.stats.achieve[`extinct_${race}`].l > 0)
+            (hasLegacyAchievement(`extinct_${race}`) && legacyAchievementRank(`extinct_${race}`) > 0)
                 ||
-            (global.stats.achieve[`genus_${type}`] && global.stats.achieve[`genus_${type}`].l > 0)
+            (hasLegacyAchievement(`genus_${type}`) && legacyAchievementRank(`genus_${type}`) > 0)
             ){
             if (races[race].hasOwnProperty('traits') && !['custom','hybrid','junker','sludge','ultra_sludge'].includes(race)){
                 Object.keys(races[race].traits).forEach(function (trait){
@@ -7928,7 +7929,7 @@ export function ascendLab(hybrid,wiki){
                         let genus = `<div class="genus_selection"><template><section>`;
                         Object.keys(genus_def).forEach(function (type){
                             if (type !== 'hybrid'){
-                                if (isWiki || (global.stats.achieve[`genus_${type}`] && global.stats.achieve[`genus_${type}`].l > 0)){
+                                if (isWiki || (hasLegacyAchievement(`genus_${type}`) && legacyAchievementRank(`genus_${type}`) > 0)){
                                     if (genome.genus === 'hybrid' && ((slot === 0 && type !== genome.hybrid[1]) || (slot === 1 && type !== genome.hybrid[0]))){
                                         genus += `<div class="field ${type}"><b-radio v-model="hybrid[${slot}]" native-value="${type}">${loc(`genelab_genus_${type}`)}</b-radio></div>`;
                                     }
@@ -7947,7 +7948,7 @@ export function ascendLab(hybrid,wiki){
                         });
 
                         Object.keys(genus_def).forEach(function (type){
-                            if (isWiki || (global.stats.achieve[`genus_${type}`] && global.stats.achieve[`genus_${type}`].l > 0)){
+                            if (isWiki || (hasLegacyAchievement(`genus_${type}`) && legacyAchievementRank(`genus_${type}`) > 0)){
                                 if ((genome.genus !== 'hybrid') || (genome.genus === 'hybrid' && slot === 0 && type !== genome.hybrid[1]) || (genome.genus === 'hybrid' && slot === 1 && type !== genome.hybrid[0])){
                                     popover(`geneLabGenus${type}`, function(){
                                         let desc = $(`<div><div>${loc(`genelab_genus_${type}_desc`)}</div></div>`);
@@ -8026,7 +8027,7 @@ export function ascendLab(hybrid,wiki){
                         if (genome.desc.length > 255){
                             genome.desc = genome.desc.substring(0, 255);
                         }
-                        if (!isWiki && !(global.stats.achieve[`genus_${genome.genus}`] && global.stats.achieve[`genus_${genome.genus}`].l > 0)){
+                        if (!isWiki && !(hasLegacyAchievement(`genus_${genome.genus}`) && legacyAchievementRank(`genus_${genome.genus}`) > 0)){
                             genome.genus = dGenus;
                         }
                         if (importCustom.genus !== 'hybrid' && hybrid){
@@ -8092,7 +8093,7 @@ export function ascendLab(hybrid,wiki){
         }
     });
 
-    let genus_trank = (global.stats.achieve['pathfinder'] && global.stats.achieve.pathfinder.l >= 4) ? 2 : 1;
+    let genus_trank = (hasLegacyAchievement('pathfinder') && legacyAchievementRank('pathfinder') >= 4) ? 2 : 1;
     if (hybrid){
         ['A','B'].forEach(function(g){
             popover(`geneLabGenus${g}`, function(){
@@ -8207,7 +8208,7 @@ export function ascendLab(hybrid,wiki){
                         genome.genes = calcGenomeScore(genome,(isWiki ? wikiVars : false),tRanks);
                     },
                     reduce(t){
-                        let unlock = global.stats.achieve[`extinct_${traits[t].origin}`] && global.stats.achieve[`extinct_${traits[t].origin}`].l || 0;
+                        let unlock = hasLegacyAchievement(`extinct_${traits[t].origin}`) && legacyAchievementRank(`extinct_${traits[t].origin}`) || 0;
                         switch (tRanks[t]){
                             case 0.25:
                                 if (unlock >= 5){
@@ -8249,7 +8250,7 @@ export function ascendLab(hybrid,wiki){
                         getTraitDesc(desc, t, opts);
                     },
                     increase(t){
-                        let unlock = global.stats.achieve[`extinct_${traits[t].origin}`] && global.stats.achieve[`extinct_${traits[t].origin}`].l || 0;
+                        let unlock = hasLegacyAchievement(`extinct_${traits[t].origin}`) && legacyAchievementRank(`extinct_${traits[t].origin}`) || 0;
                         switch (tRanks[t]){
                             case 0.1:
                                 tRanks[t] = 0.25;
@@ -8456,7 +8457,7 @@ export function terraformLab(wiki){
 
     let wikiVars = {
         ascended: {},
-        lamentis: global.stats.achieve['lamentis'] && global.stats.achieve.lamentis.l ? global.stats.achieve.lamentis.l : 0
+        lamentis: hasLegacyAchievement('lamentis') && legacyAchievementRank('lamentis') ? legacyAchievementRank('lamentis') : 0
     };
 
     if (wiki){
@@ -8474,7 +8475,7 @@ export function terraformLab(wiki){
     let dBiome = false;
     let biome = `<div class="genus_selection"><div class="has-text-caution">${loc('wiki_planet_biome')}</div><template><section>`;
     Object.keys(biomes).forEach(function (type){
-        if (wiki || (global.stats.achieve[`biome_${type}`] && global.stats.achieve[`biome_${type}`].l > 0)){
+        if (wiki || (hasLegacyAchievement(`biome_${type}`) && legacyAchievementRank(`biome_${type}`) > 0)){
             if (!dBiome){ dBiome = type; }
             biome = biome + `<div class="field ${type}"><b-radio v-model="p.biome" native-value="${type}">${biomes[type].label}</b-radio></div>`;
         }
@@ -8487,7 +8488,7 @@ export function terraformLab(wiki){
         if (
             wiki
                 ||
-            (global.stats.achieve[`atmo_${trait}`] && global.stats.achieve[`atmo_${trait}`].l > 0)
+            (hasLegacyAchievement(`atmo_${trait}`) && legacyAchievementRank(`atmo_${trait}`) > 0)
             ){
             trait_list = trait_list + `<div class="field t${trait}"><b-checkbox :input="pEdit()" v-model="p.traitlist" native-value="${trait}"><span class="has-text-success">${planetTraits[trait].label}</span></b-checkbox></div>`;
         }
@@ -8497,7 +8498,7 @@ export function terraformLab(wiki){
 
     let geology = {};
     let geoList = ['Copper','Iron','Aluminium','Coal','Oil','Titanium','Uranium'];
-    if (global.stats.achieve['whitehole']){
+    if (hasLegacyAchievement('whitehole')){
         geoList.push('Iridium');
     }
 
@@ -8606,8 +8607,8 @@ export function terraformLab(wiki){
             more(r){
                 planet.geology[r] += keyMultiplier();
                 let max = 30;
-                if (global.stats.achieve['whitehole']){
-                    max += global.stats.achieve['whitehole'].l * 5;
+                if (hasLegacyAchievement('whitehole')){
+                    max += legacyAchievementRank('whitehole') * 5;
                 }
                 if (planet.biome === 'eden'){
                     max += 5;
@@ -8626,7 +8627,7 @@ export function terraformLab(wiki){
 }
 
 function terraformScore(planet,wiki){
-    let pts = (planet.biome === 'eden' ? 0 : 10) + (global.stats.achieve['lamentis'] ? global.stats.achieve.lamentis.l * 10 : 0);
+    let pts = (planet.biome === 'eden' ? 0 : 10) + (hasLegacyAchievement('lamentis') ? legacyAchievementRank('lamentis') * 10 : 0);
     if (global.race['truepath']){ pts *= 2; }
     pts -= planet.traitlist.length ** 3;
     let ts = 0;

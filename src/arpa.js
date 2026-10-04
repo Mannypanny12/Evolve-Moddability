@@ -8,6 +8,7 @@ import { govActive, defineGovernor } from './governor.js';
 import { highPopAdjust } from './prod.js';
 import { unlockFeat } from './achieve.js';
 import { loc } from './locale.js';
+import { hasLegacyAchievement, legacyAchievementRank } from './legacy/bridge/achievement-state-reader.mjs';
 
 export function arpa(type) {
     switch(type){
@@ -192,8 +193,8 @@ export const arpaProjects = {
             if (eventActive('fool',2022) && !nofool){
                 return arpaProjects.lhc.effect(true);
             }
-            let routes = global.stats.achieve['banana'] && global.stats.achieve.banana.l >= 2 ? 1 : 0;
-            let profit = global.stats.achieve['banana'] && global.stats.achieve.banana.l >= 1 ? 3 : 2;
+            let routes = hasLegacyAchievement('banana') && legacyAchievementRank('banana') >= 2 ? 1 : 0;
+            let profit = hasLegacyAchievement('banana') && legacyAchievementRank('banana') >= 1 ? 3 : 2;
             let desc = '';
             if (global.race['cataclysm'] || global.race['orbit_decayed']){
                 routes += global.space['gps'] ? Math.floor(global.space.gps.count / 3) : 0;
@@ -969,7 +970,7 @@ export const genePool = {
         desc: loc('arpa_genepool_haggler_desc'),
         reqs: {trader:1},
         condition(){
-            return global.stats.achieve['godslayer'] ? true : false;
+            return hasLegacyAchievement('godslayer') ? true : false;
         },
         grant: ['trader',2],
         cost: { Supercoiled(){ return 10; } },
@@ -1064,7 +1065,7 @@ export const genePool = {
         desc: loc('arpa_genepool_doctrine_desc'),
         reqs: { ancients: 5 },
         condition(){
-            return global.stats.achieve['godslayer'] ? true : false;
+            return hasLegacyAchievement('godslayer') ? true : false;
         },
         grant: ['ancients',6],
         cost: { Supercoiled(){ return 50; } },
@@ -2323,7 +2324,7 @@ function genetics(){
             }
 
             popover(`popGenetrait${t}`, function(){
-                if (global.stats.feat['novice'] && global.stats.achieve['apocalypse'] && global.stats.achieve.apocalypse.l > 0){
+                if (global.stats.feat['novice'] && hasLegacyAchievement('apocalypse') && legacyAchievementRank('apocalypse') > 0){
                     return `<div>${traitSkin('desc',t)}</div><div>${loc(`trait_${t}_effect`)}</div>`;
                 }
                 else {

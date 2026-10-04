@@ -13,6 +13,7 @@ import { universeLevel, universeAffix, alevel } from './achieve.js';
 import { astrologySign, astroVal } from './seasons.js';
 import { shipCosts, TPShipDesc } from './truepath.js';
 import { mechCost, mechDesc } from './portal.js';
+import { hasLegacyAchievement, hasLegacyAchievementTrack, legacyAchievementRank } from './legacy/bridge/achievement-state-reader.mjs';
 
 var popperRef = false;
 export function popover(id,content,opts){
@@ -413,8 +414,8 @@ export function removeFromRQueue(tech_trees){
 
 export function calcQueueMax(){
     let max_queue = global.tech['queue'] >= 2 ? (global.tech['queue'] >= 3 ? 8 : 5) : 3;
-    if (global.stats.feat['journeyman'] && global.stats.feat['journeyman'] >= 2 && global.stats.achieve['seeder'] && global.stats.achieve.seeder.l >= 2){
-        let rank = Math.min(global.stats.achieve.seeder.l,global.stats.feat['journeyman']);
+    if (global.stats.feat['journeyman'] && global.stats.feat['journeyman'] >= 2 && hasLegacyAchievement('seeder') && legacyAchievementRank('seeder') >= 2){
+        let rank = Math.min(legacyAchievementRank('seeder'),global.stats.feat['journeyman']);
         max_queue += rank >= 4 ? 2 : 1;
     }
     if (global.genes['queue'] && global.genes['queue'] >= 2){
@@ -430,8 +431,8 @@ export function calcQueueMax(){
 
 export function calcRQueueMax(){
     let max_queue = 3;
-    if (global.stats.feat['journeyman'] && global.stats.achieve['seeder'] && global.stats.achieve.seeder.l > 0){
-        let rank = Math.min(global.stats.achieve.seeder.l,global.stats.feat['journeyman']);
+    if (global.stats.feat['journeyman'] && hasLegacyAchievement('seeder') && legacyAchievementRank('seeder') > 0){
+        let rank = Math.min(legacyAchievementRank('seeder'),global.stats.feat['journeyman']);
         max_queue += rank >= 3 ? (rank >= 5 ? 3 : 2) : 1;
     }
     if (global.genes['queue'] && global.genes['queue'] >= 2){
@@ -848,7 +849,7 @@ export function spaceCostMultiplier(action,offset,base,multiplier,sector,c_min){
     }
     if (global.race['small']){ multiplier -= traits.small.vars()[1]; }
     if (global.race['compact']){ multiplier -= traits.compact.vars()[1]; }
-    if (global.prestige.Harmony.count > 0 && global.stats.achieve[`ascended`]){
+    if (global.prestige.Harmony.count > 0 && hasLegacyAchievement(`ascended`)){
         multiplier -= harmonyEffect();
     }
     let nqVal = govActive('noquestions',0);
@@ -866,37 +867,37 @@ export function spaceCostMultiplier(action,offset,base,multiplier,sector,c_min){
 }
 
 export function harmonyEffect(){
-    if (global.prestige.Harmony.count > 0 && global.stats.achieve[`ascended`]){
+    if (global.prestige.Harmony.count > 0 && hasLegacyAchievement(`ascended`)){
         let boost = 0;
         switch (global.race.universe){
             case 'heavy':
-                if (global.stats.achieve.ascended.hasOwnProperty('h')){
-                    boost = global.stats.achieve.ascended.h * global.prestige.Harmony.count;
+                if (hasLegacyAchievementTrack('ascended', 'h')){
+                    boost = legacyAchievementRank('ascended', 'h') * global.prestige.Harmony.count;
                 }
                 break;
             case 'antimatter':
-                if (global.stats.achieve.ascended.hasOwnProperty('a')){
-                    boost = global.stats.achieve.ascended.a * global.prestige.Harmony.count;
+                if (hasLegacyAchievementTrack('ascended', 'a')){
+                    boost = legacyAchievementRank('ascended', 'a') * global.prestige.Harmony.count;
                 }
                 break;
             case 'evil':
-                if (global.stats.achieve.ascended.hasOwnProperty('e')){
-                    boost = global.stats.achieve.ascended.e * global.prestige.Harmony.count;
+                if (hasLegacyAchievementTrack('ascended', 'e')){
+                    boost = legacyAchievementRank('ascended', 'e') * global.prestige.Harmony.count;
                 }
                 break;
             case 'micro':
-                if (global.stats.achieve.ascended.hasOwnProperty('m')){
-                    boost = global.stats.achieve.ascended.m * global.prestige.Harmony.count;
+                if (hasLegacyAchievementTrack('ascended', 'm')){
+                    boost = legacyAchievementRank('ascended', 'm') * global.prestige.Harmony.count;
                 }
                 break;
             case 'magic':
-                if (global.stats.achieve.ascended.hasOwnProperty('mg')){
-                    boost = global.stats.achieve.ascended.mg * global.prestige.Harmony.count;
+                if (hasLegacyAchievementTrack('ascended', 'mg')){
+                    boost = legacyAchievementRank('ascended', 'mg') * global.prestige.Harmony.count;
                 }
                 break;
             default:
-                if (global.stats.achieve.ascended.hasOwnProperty('l')){
-                    boost = global.stats.achieve.ascended.l * global.prestige.Harmony.count;
+                if (hasLegacyAchievementTrack('ascended', 'l')){
+                    boost = legacyAchievementRank('ascended') * global.prestige.Harmony.count;
                 }
                 break;
         }
@@ -1235,7 +1236,7 @@ export function calcQuantumLevel(load){
                 qbits *= 1.25;
             }
         }
-        if (global.stats.achieve['obsolete'] && global.stats.achieve[`obsolete`].l >= 5 && global.prestige.AICore.count > 0){
+        if (hasLegacyAchievement('obsolete') && legacyAchievementRank(`obsolete`) >= 5 && global.prestige.AICore.count > 0){
             qbits *= 2 - (0.99 ** global.prestige.AICore.count);
         }
         if (global.race['linked']){
@@ -1260,7 +1261,7 @@ export function darkEffect(universe, flag, info, inputs){
     if (!inputs) { inputs = {}; }
     let dark = inputs.dark !== undefined ? inputs.dark : global.prestige.Dark.count;
     let harmony = inputs.harmony !== undefined ? inputs.harmony : global.prestige.Harmony.count;
-    let sludge = inputs.sludge !== undefined ? inputs.sludge : (global.stats.achieve['extinct_sludge'] && global.stats.achieve.extinct_sludge[universeAffix(universe)]) ? global.stats.achieve.extinct_sludge[universeAffix(universe)] : 0;
+    let sludge = inputs.sludge !== undefined ? inputs.sludge : (hasLegacyAchievement('extinct_sludge') && legacyAchievementRank('extinct_sludge', universeAffix(universe))) ? legacyAchievementRank('extinct_sludge', universeAffix(universe)) : 0;
 
     switch (universe){
         case 'standard':
@@ -1383,7 +1384,7 @@ export function masteryType(universe,detailed,unmodified){
             u_rate -= 0.05;
         }
 
-        let perk_rank = global.stats.feat['grandmaster'] && global.stats.achieve['corrupted'] && global.stats.achieve.corrupted.l > 0 ? Math.min(global.stats.achieve.corrupted.l,global.stats.feat['grandmaster']) : 0;
+        let perk_rank = global.stats.feat['grandmaster'] && hasLegacyAchievement('corrupted') && legacyAchievementRank('corrupted') > 0 ? Math.min(legacyAchievementRank('corrupted'),global.stats.feat['grandmaster']) : 0;
         if (perk_rank > 0){
             m_rate *= 1 + (perk_rank / 100);
             u_rate *= 1 + (perk_rank / 100);
@@ -2576,7 +2577,7 @@ export function trickOrTreatBind(id,trick){
 }
 
 function single_emblem(achieve,size,icon,iconName,fool,uAffix){
-    return global.stats.achieve[achieve] && (fool ? global.stats.achieve[achieve][uAffix] - 1 : global.stats.achieve[achieve][uAffix]) > 0 ? `<p class="flair" title="${sLevel(global.stats.achieve[achieve][uAffix])} ${iconName}"><svg class="star${fool ? global.stats.achieve[achieve][uAffix] - 1 : global.stats.achieve[achieve][uAffix]}" version="1.1" x="0px" y="0px" width="${size}px" height="${size}px" viewBox="${svgViewBox(icon)}" xml:space="preserve">${svgIcons(icon)}</svg><span class="is-sr-only">${sLevel(global.stats.achieve[achieve][uAffix])} ${iconName}</span></p>` : '';
+    return hasLegacyAchievement(achieve) && (fool ? legacyAchievementRank(achieve, uAffix) - 1 : legacyAchievementRank(achieve, uAffix)) > 0 ? `<p class="flair" title="${sLevel(legacyAchievementRank(achieve, uAffix))} ${iconName}"><svg class="star${fool ? legacyAchievementRank(achieve, uAffix) - 1 : legacyAchievementRank(achieve, uAffix)}" version="1.1" x="0px" y="0px" width="${size}px" height="${size}px" viewBox="${svgViewBox(icon)}" xml:space="preserve">${svgIcons(icon)}</svg><span class="is-sr-only">${sLevel(legacyAchievementRank(achieve, uAffix))} ${iconName}</span></p>` : '';
 }
 
 export function format_emblem(achieve,size,baseIcon,fool,universe){
@@ -2683,10 +2684,10 @@ export function calcGenomeScore(genome,wiki,tRanks){
             genes += wiki.ascended[uni];
         });
     }
-    else if (global.stats.achieve[`ascended`]){
+    else if (hasLegacyAchievement(`ascended`)){
         for (let i=0; i<universe_affixes.length; i++){
-            if (global.stats.achieve.ascended.hasOwnProperty(universe_affixes[i])){
-                genes += global.stats.achieve.ascended[universe_affixes[i]];
+            if (hasLegacyAchievementTrack('ascended', universe_affixes[i])){
+                genes += legacyAchievementRank('ascended', universe_affixes[i]);
             }
         }
     }
@@ -2704,8 +2705,8 @@ export function calcGenomeScore(genome,wiki,tRanks){
     if (wiki){
         genes += wiki.technophobe * 4;
     }
-    else if (global.stats.achieve['technophobe'] && global.stats.achieve.technophobe.l >= 1){
-        genes += global.stats.achieve.technophobe.l * 4;
+    else if (hasLegacyAchievement('technophobe') && legacyAchievementRank('technophobe') >= 1){
+        genes += legacyAchievementRank('technophobe') * 4;
     }
 
     let max_complexity = 1;
@@ -3413,7 +3414,7 @@ export function getTraitDesc(info, trait, opts){
         info.append(`<div class="has-text-${color} effect" v-html="getTraitDesc(rank)"></div>`);
     }
     else {
-        if (wiki || (global.stats.feat['journeyman'] && global.stats.achieve['seeder'] && global.stats.achieve.seeder.l > 0)){
+        if (wiki || (global.stats.feat['journeyman'] && hasLegacyAchievement('seeder') && legacyAchievementRank('seeder') > 0)){
             let trait_desc = '';
             if (trait === 'elemental'){
                 trait_desc = loc(`wiki_trait_effect_${trait}_${traits.elemental.vars()[0]}`, getTraitVals(trait, trank, species));

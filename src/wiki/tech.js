@@ -7,6 +7,7 @@ import { checkControlling } from './../civics.js';
 import { races, traits } from './../races.js';
 import { getHalloween, svgIcons, svgViewBox } from './../functions.js';
 import { actionDesc, sideMenu, getSolarName } from './functions.js';
+import { hasLegacyAchievement, legacyAchievementRank } from './../legacy/bridge/achievement-state-reader.mjs';
 
 const isHalloween = getHalloween();
 const standard_tech = techList('standard');
@@ -73,7 +74,7 @@ const extraInformation = {
     psychic_energy : [
         loc("wiki_tech_psychic_energy",
             [traits.psychic.vars()[3],
-            72 * (global.stats.achieve['nightmare'] && global.stats.achieve.nightmare['mg'] ? global.stats.achieve.nightmare.mg : 0)])
+            72 * (hasLegacyAchievement('nightmare') && legacyAchievementRank('nightmare', 'mg') ? legacyAchievementRank('nightmare', 'mg') : 0)])
     ],
     apartment: [
         loc(`wiki_tech_building_unlock`,[housingLabel('large')])
@@ -4500,7 +4501,7 @@ function addRequirements(parent,key,keyName,path){
                     case 'achieve':
                         subText = subreq.val + ` <span class="flair" aria-label="star"><svg class="star${subreq.val}" version="1.1" x="0px" y="0px" width="16px" height="16px" viewBox="${svgViewBox('star')}" xml:space="preserve">${svgIcons('star')}</svg></span> ` + loc(`achieve_${subreq.name}_name`);
                         link = `wiki.html#perks-prestige-${subreq.name}`;
-                        color = global.stats.achieve[subreq.name] && global.stats.achieve[subreq.name].l >= subreq.val;
+                        color = hasLegacyAchievement(subreq.name) && legacyAchievementRank(subreq.name) >= subreq.val;
                         break;
                     case 'government':
                         subText = loc(`govern_${subreq.name}`);

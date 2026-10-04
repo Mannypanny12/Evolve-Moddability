@@ -11,6 +11,7 @@ import { actions, structName } from './../actions.js';
 import { astroVal, astrologySign } from './../seasons.js';
 import { shipAttackPower, sensorRange, shipCrewSize, shipPower } from './../truepath.js';
 import { sideMenu, infoBoxBuilder, createRevealSection, createCalcSection, getSolarName } from './functions.js';
+import { legacyAchievementRank } from './../legacy/bridge/achievement-state-reader.mjs';
 
 export function mechanicsPage(content){
     let mainContent = sideMenu('create',content);
@@ -2309,7 +2310,7 @@ export function massCalc(info){
                 inputs.solar_tot.val = +(inputs.solar_tot.val).toFixed(5);
                 inputs.exotic_tot.val = global.interstellar['stellar_engine'] ? global.interstellar.stellar_engine.exotic : 0;
                 inputs.exotic_tot.val = +(inputs.exotic_tot.val).toFixed(5);
-                inputs.gWell.val = global.stats.achieve?.escape_velocity?.h ?? 0;
+                inputs.gWell.val = legacyAchievementRank('escape_velocity', 'h') ?? 0;
                 inputs.grav.val = global.tech['gravity'] && global.tech.gravity >= 2;
             }
         },

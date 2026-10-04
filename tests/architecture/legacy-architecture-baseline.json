@@ -34,28 +34,28 @@
   ],
   "legacyModules": {
     "achieve.js": {
-      "global": 627,
+      "global": 351,
       "browser": 33,
       "storage": 0,
       "clock": 1,
       "random": 0
     },
     "actions.js": {
-      "global": 2822,
+      "global": 2667,
       "browser": 338,
       "storage": 2,
       "clock": 4,
       "random": 9
     },
     "arpa.js": {
-      "global": 384,
+      "global": 376,
       "browser": 75,
       "storage": 0,
       "clock": 0,
       "random": 1
     },
     "civics.js": {
-      "global": 667,
+      "global": 662,
       "browser": 114,
       "storage": 0,
       "clock": 0,
@@ -83,14 +83,14 @@
       "random": 49
     },
     "functions.js": {
-      "global": 509,
+      "global": 466,
       "browser": 64,
       "storage": 1,
       "clock": 17,
       "random": 6
     },
     "governor.js": {
-      "global": 505,
+      "global": 503,
       "browser": 103,
       "storage": 0,
       "clock": 0,
@@ -104,7 +104,7 @@
       "random": 0
     },
     "industry.js": {
-      "global": 640,
+      "global": 636,
       "browser": 164,
       "storage": 0,
       "clock": 0,
@@ -125,42 +125,42 @@
       "random": 0
     },
     "main.js": {
-      "global": 4880,
+      "global": 4815,
       "browser": 171,
       "storage": 3,
       "clock": 2,
       "random": 72
     },
     "portal.js": {
-      "global": 2014,
+      "global": 1982,
       "browser": 282,
       "storage": 0,
       "clock": 0,
       "random": 42
     },
     "prod.js": {
-      "global": 125,
+      "global": 113,
       "browser": 0,
       "storage": 0,
       "clock": 0,
       "random": 0
     },
     "races.js": {
-      "global": 1023,
+      "global": 1009,
       "browser": 51,
       "storage": 4,
       "clock": 1,
       "random": 2
     },
     "resets.js": {
-      "global": 534,
+      "global": 532,
       "browser": 13,
       "storage": 23,
       "clock": 1,
       "random": 1
     },
     "resources.js": {
-      "global": 833,
+      "global": 807,
       "browser": 171,
       "storage": 0,
       "clock": 0,
@@ -174,21 +174,21 @@
       "random": 0
     },
     "space.js": {
-      "global": 1643,
+      "global": 1572,
       "browser": 428,
       "storage": 2,
       "clock": 0,
       "random": 0
     },
     "tech.js": {
-      "global": 878,
+      "global": 870,
       "browser": 719,
       "storage": 4,
       "clock": 0,
       "random": 0
     },
     "truepath.js": {
-      "global": 1407,
+      "global": 1393,
       "browser": 291,
       "storage": 0,
       "clock": 0,
