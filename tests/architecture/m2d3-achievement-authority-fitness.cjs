@@ -4,6 +4,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..', '..');
+const sourceRoot = path.join(root, 'src');
+const adapterImport = 'legacy/bridge/achievement-state-adapter.mjs';
 
 function read(relativePath){
     return fs.readFileSync(path.join(root, relativePath), 'utf8');
@@ -21,6 +23,20 @@ function forbidText(source, text, message){
     }
 }
 
+function listSourceFiles(directory){
+    const files = [];
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })){
+        const target = path.join(directory, entry.name);
+        if (entry.isDirectory()){
+            files.push(...listSourceFiles(target));
+        }
+        else if (entry.isFile() && /\.(?:js|mjs|cjs)$/.test(entry.name)){
+            files.push(target);
+        }
+    }
+    return files.sort();
+}
+
 const vars = read('src/vars.js');
 const achieve = read('src/achieve.js');
 const adapter = read('src/legacy/bridge/achievement-state-adapter.mjs');
@@ -32,8 +48,8 @@ requireText(
 );
 requireText(
     vars,
-    'export function setGlobal(gameState) {\n    global = gameState;\n    bindLegacyAchievementState(global);\n}',
-    'setGlobal() must rebind achievement authority when the legacy root is replaced.'
+    'export function setGlobal(gameState) {\n    bindLegacyAchievementState(gameState);\n    global = gameState;\n}',
+    'setGlobal() must bind achievement authority successfully before publishing a replacement legacy root.'
 );
 
 const migrationMarker = "global.stats.achieve[key] = { l: global.stats.achieve[key] };";
@@ -81,10 +97,52 @@ forbidText(
     'M2D3 forbids aggregate universe clears directly in global.stats.achieve.'
 );
 
+const adapterConsumers = listSourceFiles(sourceRoot)
+    .filter(file => file !== path.join(sourceRoot, 'legacy', 'bridge', 'achievement-state-adapter.mjs'))
+    .filter(file => fs.readFileSync(file, 'utf8').includes(adapterImport))
+    .map(file => path.relative(root, file).split(path.sep).join('/'))
+    .sort();
+
+const expectedAdapterConsumers = ['src/achieve.js', 'src/vars.js'];
+if (JSON.stringify(adapterConsumers) !== JSON.stringify(expectedAdapterConsumers)){
+    throw new Error(
+        'M2D3 achievement authority bridge consumers changed: ' +
+        JSON.stringify(adapterConsumers) +
+        '; expected only ' + JSON.stringify(expectedAdapterConsumers)
+    );
+}
+
+const exportedFunctions = [...adapter.matchAll(/\bexport\s+function\s+([A-Za-z_$][\w$]*)\s*\(/g)]
+    .map(match => match[1])
+    .sort();
+const expectedExports = [
+    'achievementStateSnapshot',
+    'advanceLegacyAchievement',
+    'bindLegacyAchievementState',
+    'removeLegacyAchievementUniverseRank',
+].sort();
+if (JSON.stringify(exportedFunctions) !== JSON.stringify(expectedExports)){
+    throw new Error(
+        'M2D3 achievement adapter authority surface changed: ' +
+        JSON.stringify(exportedFunctions) +
+        '; expected ' + JSON.stringify(expectedExports)
+    );
+}
+
 requireText(
     adapter,
-    'const runtime = createGameStateRuntime(hydrateLegacyState(root));',
-    'The legacy achievement adapter must hydrate a real GameState runtime.'
+    'const runtime = createGameStateRuntime(hydrateLegacyState(ledger));',
+    'The legacy achievement adapter must hydrate a real GameState runtime from the reviewed legacy ledger.'
+);
+requireText(
+    adapter,
+    'const projectionTarget = inspectProjectionTarget(current);',
+    'The adapter must preflight compatibility projection before authoritative mutation.'
+);
+requireText(
+    adapter,
+    'const beforeSnapshot = current.runtime.store.snapshot();',
+    'The adapter must retain rollback state before authoritative mutation.'
 );
 requireText(
     adapter,
@@ -98,7 +156,12 @@ requireText(
 );
 requireText(
     adapter,
-    'projectBinding(preserveUndefined ? { legacyId, affix } : null);',
+    'restoreRuntimeAfterProjectionFailure(current, snapshot);',
+    'Projection failure must restore authoritative achievement state rather than leave split authority.'
+);
+requireText(
+    adapter,
+    'preserveUndefined ? { legacyId, affix } : null',
     'Legacy undefined compatibility state must remain a projection concern, not GameState data.'
 );
 
