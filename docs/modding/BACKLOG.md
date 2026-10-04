@@ -134,7 +134,7 @@ M2B does not migrate gameplay authority, modify persistence, or synchronize with
 
 See [M2B_STATE_STORE_SELECTORS.md](M2B_STATE_STORE_SELECTORS.md) for the design authority.
 
-### M2C - Settings and transient-state separation - complete
+### M2C - Settings and transient-state separation - complete after integrated review hardening
 
 #### M2C1 - Legacy state classification - complete after hardening
 
@@ -177,21 +177,27 @@ Established the permanent target contract without migrating production authority
 
 See [M2C2_STATE_LAYER_CONTRACT.md](M2C2_STATE_LAYER_CONTRACT.md).
 
-#### M2C3 - State-boundary closure - complete
+#### M2C3 - State-boundary closure - complete and review-hardened
 
-Closed the M2C boundary without migrating production authority:
+Closed the M2C boundary without migrating production authority, then hardened it in an integrated M2C1-M2C3 review:
 
 - direct legacy `global.settings` access is frozen by module and statically visible top-level key in a checked downward-only baseline;
 - dynamic settings access and whole-settings-object exposure are explicit debt classes rather than invisible escape hatches;
 - statically visible `hasOwnProperty()` existence checks are attributed to the setting they inspect;
+- ownership-significant nested paths for `arpa`, world-region containers, `msgFilters`, `keyMap`, and `resBar` are independently frozen so different M2C2 target owners cannot be swapped behind an unchanged parent count;
+- nested computed brackets preserve statically visible suffixes such as `.unlocked`, `.vis`, `.max`, and `.save`;
+- the original top-level/runtime baseline is preserved while a separate nested baseline is version-checked and composed fail-closed;
 - consumer edges for every M2C-managed `vars.js` runtime binding are frozen and can only shrink;
-- the runtime-consumer baseline keyset is fail-closed against the M2C2 contract, including explicit namespace-import debt;
-- generic settings/UI/cache/transient/runtime/migration/debug catch-all roots are permanently prohibited from becoming authoritative `GameState` domains;
-- the M2C gate is a first-class `npm run test:architecture` gate and appears in the architecture report;
-- adversarial tests prove debt increases, unratcheted improvements, new runtime consumers, binding-key drift, scanner edge cases and forbidden GameState roots fail closed;
+- runtime whole-module escape hatches are explicit `$namespace` debt, including namespace/default imports, `require()` and dynamic `import()` forms;
+- the runtime-consumer baseline keyset remains fail-closed against the M2C2 contract;
+- generic application/UI/derived/working/runtime/platform/migration/debug catch-all GameState roots are prohibited using normalized names rather than a small exact-spelling list;
+- checked baseline structure/counts/consumer lists are validated before debt is accepted;
+- the architecture report exposes top-level, nested and runtime M2C debt;
+- adversarial tests prove nested ownership swaps, bracket parsing, baseline-version drift, runtime escape hatches and normalized GameState catch-all variants fail closed;
+- existing `$root` whole-settings exposures are explicitly documented as unresolved capability debt rather than falsely claimed as per-key visibility;
 - no production settings/UI/transient store was created, no gameplay state was migrated, and `GameState` remains `{ schemaVersion: 1 }` with zero writable roots.
 
-See [M2C3_STATE_BOUNDARY_CLOSURE.md](M2C3_STATE_BOUNDARY_CLOSURE.md).
+See [M2C3_STATE_BOUNDARY_CLOSURE.md](M2C3_STATE_BOUNDARY_CLOSURE.md) and [M2C_REVIEW_HARDENING.md](M2C_REVIEW_HARDENING.md).
 
 M2D is next and remains the first real authoritative state-domain migration. M2E follows it with broader GameState ownership, mutation-boundary, selector and state-layer dependency enforcement once a real domain exists.
 
@@ -234,7 +240,7 @@ M2C1 legacy state classification - complete
    |
 M2C2 state-layer contract - complete
    |
-M2C3 settings/transient boundary closure - complete
+M2C3 settings/transient boundary closure + integrated review hardening - complete
    |
 M2D first authoritative state-domain migration - next
 ```
