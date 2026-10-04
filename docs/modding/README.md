@@ -57,6 +57,17 @@ engine
 - [M0E3_FIXTURE_HYDRATION.md](M0E3_FIXTURE_HYDRATION.md): persisted-fixture lifecycle, hydration ownership, and runtime-isolation rules.
 - [BROWSER_SMOKE.md](BROWSER_SMOKE.md): M0E4 real-browser bootstrap, fresh-game interaction, and startup-failure tripwire.
 - [M0E5_ARCHITECTURE_GUARDRAILS.md](M0E5_ARCHITECTURE_GUARDRAILS.md): protected engine boundary, legacy ratchets, dependency-cycle baseline, and future milestone CI.
+- [M1_CLOSURE_REVIEW.md](M1_CLOSURE_REVIEW.md): final M1 kernel/seam audit before state architecture began.
+- [M2A_GAME_STATE_SCHEMA.md](M2A_GAME_STATE_SCHEMA.md): GameState value, schema-version, ownership, and layer laws.
+- [M2B_STATE_STORE_SELECTORS.md](M2B_STATE_STORE_SELECTORS.md): read store, selectors, mutation authority, scopes, transactions, snapshots, and change diagnostics.
+- [M2C3_STATE_BOUNDARY_CLOSURE.md](M2C3_STATE_BOUNDARY_CLOSURE.md): final settings/transient-state boundary and legacy debt ratchets.
+- [M2D4_ACHIEVEMENT_READER_CUTOVER.md](M2D4_ACHIEVEMENT_READER_CUTOVER.md): completed read-side cutover for the first authoritative domain.
+- [M2E1_STATE_DOMAIN_OWNERSHIP.md](M2E1_STATE_DOMAIN_OWNERSHIP.md): machine-readable GameState domain ownership.
+- [M2E2_MUTATION_BOUNDARY.md](M2E2_MUTATION_BOUNDARY.md): write-capability confinement and semantic mutation surfaces.
+- [M2E3_SELECTOR_STATE_DEPENDENCIES.md](M2E3_SELECTOR_STATE_DEPENDENCIES.md): semantic read surfaces and state-layer dependency DAG.
+- [M2_CLOSURE_REVIEW.md](M2_CLOSURE_REVIEW.md): final integrated M2 exit architecture and closure gate.
+
+Older slice-specific M2 design and review-hardening notes remain useful migration history. `M2_CLOSURE_REVIEW.md` is the authority for the combined state of M2 at milestone exit.
 
 ## Non-goals for early milestones
 
