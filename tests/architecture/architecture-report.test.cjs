@@ -25,6 +25,26 @@ test('M2E4 architecture report is complete, JSON-safe, and reflects the guarded 
     assert.equal(report.protectedLayers.platformFileCount > 0, true);
     assert.equal(report.protectedLayers.bridgeFileCount > 0, true);
 
+    assert.equal(report.engineKernel.identity.exports.includes('formatContentId'), true);
+    assert.equal(report.engineKernel.registry.registryClass, 'Registry');
+    assert.deepEqual(
+        report.engineKernel.definitions.families.map(value => value.family),
+        ['achievement', 'resource', 'technology']
+    );
+    assert.deepEqual(
+        report.engineKernel.definitions.families.map(value => value.schemaVersion),
+        [1, 1, 1]
+    );
+    assert.deepEqual(
+        report.engineKernel.runtime.ports.map(value => value.port),
+        ['clock', 'logger', 'rng', 'storage']
+    );
+    assert.equal(report.engineKernel.runtime.environment.factory, 'createRuntimeEnvironment');
+    assert.deepEqual(
+        report.engineKernel.inspection.modules.map(value => value.module),
+        ['src/engine/inspection/registry-inspector.mjs']
+    );
+
     assert.equal(report.stateArchitecture.boundary.settingsReferenceCount > 0, true);
     assert.equal(report.stateArchitecture.boundary.nestedSettingsModuleCount > 0, true);
     assert.equal(report.stateArchitecture.boundary.nestedSettingsReferenceCount > 0, true);
@@ -38,7 +58,9 @@ test('M2E4 architecture report is complete, JSON-safe, and reflects the guarded 
     assert.deepEqual(report.stateArchitecture.mutation.writableRoots, ['achievements']);
     assert.deepEqual(report.stateArchitecture.mutationReview.reviewedSurfaces.map(value => value.root), ['achievements']);
     assert.equal(report.stateArchitecture.migration.gates.achievementAuthority.passed, true);
+    assert.equal(report.stateArchitecture.migration.gates.achievementAuthority.details.consumerCount, 3);
     assert.equal(report.stateArchitecture.migration.gates.achievementReaders.passed, true);
+    assert.equal(report.stateArchitecture.migration.gates.achievementReaders.details.readerExportCount, 6);
     assert.equal(report.stateArchitecture.selectors.domainCount, 1);
 
     assert.equal(report.legacyMappings.size, 2);
