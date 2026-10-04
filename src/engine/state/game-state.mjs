@@ -4,6 +4,7 @@ import {
     readClosedStateObject,
 } from './common.mjs';
 import { validateAchievementState } from './achievement-state.mjs';
+import { createAchievementStateService } from './achievement-state-service.mjs';
 import { createStateStore } from './state-store.mjs';
 
 export const GAME_STATE_SCHEMA_VERSION = 2;
@@ -13,9 +14,12 @@ const GAME_STATE_ROOT_FIELDS = Object.freeze([
     'schemaVersion',
 ]);
 
-// M2D2a adds the first real gameplay domain shape, but authority remains
-// deliberately unavailable until M2D2b composes its dedicated mutation service.
-const GAME_STATE_WRITABLE_ROOT_FIELDS = Object.freeze([]);
+// M2D2b1 enables the first real writable GameState domain internally. The
+// normal GameState store remains a read-only facade; only the composition
+// runtime below retains authority long enough to mint the dedicated scope.
+const GAME_STATE_WRITABLE_ROOT_FIELDS = Object.freeze([
+    'achievements',
+]);
 
 export function createEmptyGameState(){
     return {
@@ -39,11 +43,29 @@ export function validateGameState(gameState){
     return canonicalizeStateValue({ schemaVersion, achievements }, 'gameState');
 }
 
-export function createGameStateStore(initialState = createEmptyGameState()){
-    const { store } = createStateStore({
+function createGameStateInfrastructure(initialState){
+    return createStateStore({
         initialState,
         validateState: validateGameState,
         writableFields: GAME_STATE_WRITABLE_ROOT_FIELDS,
     });
+}
+
+export function createGameStateStore(initialState = createEmptyGameState()){
+    const { store } = createGameStateInfrastructure(initialState);
     return store;
+}
+
+export function createGameStateRuntime(initialState = createEmptyGameState()){
+    const { store, mutationAuthority } = createGameStateInfrastructure(initialState);
+    const mutationScope = mutationAuthority.createMutationScope({
+        id: 'achievement-state',
+        fields: ['achievements'],
+    });
+    const achievements = createAchievementStateService({ mutationScope });
+
+    return Object.freeze({
+        store,
+        achievements,
+    });
 }
