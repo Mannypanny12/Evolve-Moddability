@@ -49,6 +49,99 @@ function skipWhitespace(source, index){
     return index;
 }
 
+function readIdentifier(source, index){
+    const match = source.slice(index).match(/^[$A-Z_a-z][$\w]*/);
+    return match ? { value: match[0], end: index + match[0].length } : null;
+}
+
+function readQuotedString(source, index){
+    const quote = source[index];
+    if (quote !== "'" && quote !== '"') return null;
+    let cursor = index + 1;
+    let value = '';
+    while (cursor < source.length){
+        const ch = source[cursor];
+        if (ch === '\\'){
+            if (cursor + 1 >= source.length) return null;
+            value += source[cursor + 1];
+            cursor += 2;
+            continue;
+        }
+        if (ch === quote) return { value, end: cursor + 1 };
+        value += ch;
+        cursor++;
+    }
+    return null;
+}
+
+function findClosingBracket(masked, index){
+    let depth = 0;
+    for (let cursor = index; cursor < masked.length; cursor++){
+        if (masked[cursor] === '[') depth++;
+        else if (masked[cursor] === ']'){
+            depth--;
+            if (depth === 0) return cursor;
+        }
+    }
+    return -1;
+}
+
+function readBracketProperty(source, masked, index){
+    let cursor = skipWhitespace(source, index + 1);
+    const stringValue = readQuotedString(source, cursor);
+    if (stringValue){
+        cursor = skipWhitespace(source, stringValue.end);
+        if (source[cursor] === ']'){
+            return { dynamic: false, value: stringValue.value, end: cursor + 1 };
+        }
+    }
+    const closing = findClosingBracket(masked, index);
+    return { dynamic: true, end: closing === -1 ? index + 1 : closing + 1 };
+}
+
+function readAccessProperty(source, masked, index){
+    let cursor = skipWhitespace(masked, index);
+    let optional = false;
+
+    if (masked[cursor] === '?' && masked[cursor + 1] === '.'){
+        optional = true;
+        cursor = skipWhitespace(masked, cursor + 2);
+        if (masked[cursor] === '['){
+            return { ...readBracketProperty(source, masked, cursor), optional };
+        }
+        const identifier = readIdentifier(masked, cursor);
+        return identifier ? { dynamic: false, value: identifier.value, end: identifier.end, optional } : null;
+    }
+
+    if (masked[cursor] === '.'){
+        cursor = skipWhitespace(masked, cursor + 1);
+        const identifier = readIdentifier(masked, cursor);
+        return identifier ? { dynamic: false, value: identifier.value, end: identifier.end, optional } : null;
+    }
+    if (masked[cursor] === '['){
+        return { ...readBracketProperty(source, masked, cursor), optional };
+    }
+    return null;
+}
+
+function hasOptionalSettingsAccess(source, masked){
+    const globalPattern = /\bglobal\b/g;
+    let match;
+    while ((match = globalPattern.exec(masked)) !== null){
+        const settings = readAccessProperty(source, masked, match.index + match[0].length);
+        if (!settings || settings.dynamic || settings.value !== 'settings') continue;
+        if (settings.optional) return true;
+
+        let cursor = settings.end;
+        let next;
+        while ((next = readAccessProperty(source, masked, cursor)) !== null){
+            if (next.optional) return true;
+            cursor = next.end;
+        }
+    }
+    return false;
+}
+
 function readSimpleTemplate(source, index){
     if (source[index] !== '`') return null;
     let cursor = index + 1;
@@ -83,8 +176,8 @@ function settingsSyntaxViolations(source, sourcefile){
     const moduleName = path.basename(sourcefile);
     const violations = [];
 
-    if (/\bglobal\s*\?\./.test(masked)){
-        violations.push(`${moduleName}: M2C settings boundary forbids optional-chained legacy global access because it bypasses the reviewed global/settings scanners`);
+    if (hasOptionalSettingsAccess(source, masked)){
+        violations.push(`${moduleName}: M2C settings boundary forbids optional chaining inside direct global.settings access because it bypasses path-specific debt tracking`);
     }
     if (/\{[^}]*\bsettings\b[^}]*\}\s*=\s*global\b/.test(masked)){
         violations.push(`${moduleName}: M2C settings boundary forbids destructuring settings from legacy global; expose global.settings explicitly so $root capability debt is visible`);
@@ -207,6 +300,7 @@ module.exports = {
     stripReviewedNamedVarsImports,
     referenceTargetsVars,
     unreviewedVarsReferenceViolations,
+    hasOptionalSettingsAccess,
     settingsSyntaxViolations,
     parseStrictStringArrayBody,
     parseStrictGameStateRootFields,
