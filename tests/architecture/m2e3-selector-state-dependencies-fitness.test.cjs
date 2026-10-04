@@ -8,9 +8,11 @@ const test = require('node:test');
 
 const {
     exportedFunctions,
+    normalizeLocalTarget,
     scanSelectorStateDependencies,
     selectorRootViolations,
     stateLayerDependencyViolations,
+    staticNamedImportsFromTarget,
     validateSelectorContractShape,
 } = require('./m2e3-selector-state-dependencies-fitness.cjs');
 
@@ -51,11 +53,12 @@ test('M2E3 selector contract is closed and exactly covers authoritative domains'
     }, ownership).join('\n'), /deterministic sorted order/);
 });
 
-test('M2E3 selector root checks allow the owned root and reject metadata, cross-domain, dynamic, and aliased reach-through', () => {
+test('M2E3 selector root checks allow owned property reads and reject metadata, cross-domain, dynamic, and whole-state aliases', () => {
     const roots = ['achievements', 'resources', 'schemaVersion'];
     const clean = `
         export function rank(gameState, id){
-            return gameState.achievements[id]?.rank ?? 0;
+            const record = gameState.achievements[id];
+            return record?.rank ?? 0;
         }
         function helper(gameState, id){
             return gameState?.['achievements']?.[id];
@@ -68,6 +71,7 @@ test('M2E3 selector root checks allow the owned root and reject metadata, cross-
         `export function bad(gameState){ return gameState?.['schemaVersion']; }`,
         `export function bad(gameState, root){ return gameState[root]; }`,
         `export function bad(gameState){ const state = gameState; return state.achievements; }`,
+        `export function bad(gameState){ const state = (gameState); return state.achievements; }`,
         `export function bad(gameState){ const { achievements } = gameState; return achievements; }`,
     ]){
         assert.notDeepEqual(selectorRootViolations(source, 'achievements', roots), [], source);
@@ -77,6 +81,37 @@ test('M2E3 selector root checks allow the owned root and reject metadata, cross-
         // gameState.resources
         export function rank(gameState){ return 'gameState.resources'; }
     `, 'achievements', roots), []);
+});
+
+test('M2E3 named-import parser cannot swallow an earlier unrelated import', () => {
+    const source = `
+        import { EngineContractError, formatContentId } from '../../engine/identity.mjs';
+        import {
+            createGameStateRuntime,
+            GAME_STATE_SCHEMA_VERSION,
+        } from '../../engine/state/game-state.mjs';
+    `;
+    const imports = staticNamedImportsFromTarget(
+        source,
+        'src/legacy/bridge/achievement-state-adapter.mjs',
+        'src/engine/state/game-state.mjs'
+    );
+    assert.equal(imports.length, 1);
+    assert.deepEqual(imports[0].bindings, [
+        { imported: 'createGameStateRuntime', local: 'createGameStateRuntime' },
+        { imported: 'GAME_STATE_SCHEMA_VERSION', local: 'GAME_STATE_SCHEMA_VERSION' },
+    ]);
+});
+
+test('M2E3 canonical target normalization recognizes query and fragment disguises', () => {
+    assert.equal(
+        normalizeLocalTarget('src/engine/state/achievement-selectors.mjs', './achievement-state.mjs?raw'),
+        'src/engine/state/achievement-state.mjs'
+    );
+    assert.equal(
+        normalizeLocalTarget('src/legacy/bridge/example.mjs', '../../engine/state/game-state.mjs#alias'),
+        'src/engine/state/game-state.mjs'
+    );
 });
 
 test('M2E3 selector export inspection sees only named function exports as reviewed selectors', () => {
