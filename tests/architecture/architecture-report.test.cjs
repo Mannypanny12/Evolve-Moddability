@@ -38,12 +38,14 @@ test('M2E4 architecture report is complete, JSON-safe, and reflects the guarded 
     assert.equal(report.stateArchitecture.migration.gates.achievementReaders.passed, true);
     assert.equal(report.stateArchitecture.selectors.domainCount, 1);
 
-    assert.equal(Array.isArray(report.legacyMappings), true);
-    assert.equal(report.legacyMappings.length, 2);
+    assert.equal(report.legacyMappings.size, 2);
+    assert.equal(report.legacyMappings.mappings.length, 2);
+    assert.equal(typeof report.legacyMappings.byDomain, 'object');
     assert.deepEqual(reportViolations(report), []);
 
     const serialized = JSON.stringify(report);
     const roundTrip = JSON.parse(serialized);
     assert.deepEqual(roundTrip, report);
-    assert.equal(roundTrip.legacyMappings.length, 2, 'legacy mappings must survive report serialization');
+    assert.equal(roundTrip.legacyMappings.size, 2, 'legacy mappings must survive report serialization');
+    assert.equal(roundTrip.legacyMappings.mappings.length, 2, 'legacy mapping records must survive report serialization');
 });
