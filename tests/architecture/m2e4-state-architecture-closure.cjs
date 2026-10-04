@@ -51,6 +51,16 @@ function domainRoots(summary){
     return (summary?.domains || []).map(entry => entry.root).sort();
 }
 
+function hasJsonMappingShape(value){
+    return value
+        && typeof value === 'object'
+        && Number.isInteger(value.size)
+        && Array.isArray(value.mappings)
+        && value.byDomain
+        && typeof value.byDomain === 'object'
+        && value.size === value.mappings.length;
+}
+
 function closureViolations(report){
     const violations = [];
     if (!report || typeof report !== 'object') return ['M2E4 architecture report must be an object'];
@@ -104,8 +114,8 @@ function closureViolations(report){
         }
     }
 
-    if (!Array.isArray(report.legacyMappings)){
-        violations.push('M2E4 legacyMappings must be JSON-safe array data, not a Map or opaque object');
+    if (!hasJsonMappingShape(report.legacyMappings)){
+        violations.push('M2E4 legacyMappings must preserve the reviewed JSON-safe { size, mappings, byDomain } inspector shape');
     }
 
     try {
@@ -152,7 +162,7 @@ async function scanM2StateArchitectureClosure(root){
             authoritativeDomains: domainRoots(report.stateArchitecture?.ownership),
             metadataRoots: sortedStrings(report.stateArchitecture?.ownership?.metadataRoots || []),
             cumulativeGateCount: Object.keys(report.gateViolations || {}).length,
-            legacyMappingCount: Array.isArray(report.legacyMappings) ? report.legacyMappings.length : 0,
+            legacyMappingCount: hasJsonMappingShape(report.legacyMappings) ? report.legacyMappings.size : 0,
             violationCount: violations.length,
         },
         violations: [...new Set(violations)].sort(),
@@ -182,6 +192,7 @@ module.exports = {
     REQUIRED_REPORT_GATES,
     REQUIRED_ARCHITECTURE_SCRIPTS,
     domainRoots,
+    hasJsonMappingShape,
     closureViolations,
     architectureScriptViolations,
     scanM2StateArchitectureClosure,
