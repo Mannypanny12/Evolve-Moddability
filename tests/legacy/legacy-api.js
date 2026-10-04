@@ -19,7 +19,9 @@ import {
 } from '../../src/vars.js';
 import '../../src/locale.js';
 import {
+    achievements,
     unlockAchieve,
+    checkAchievements,
     universeLevel,
     universeAffix,
     alevel
@@ -203,6 +205,14 @@ function unlockAchievement(id, small, rank, universe){
     return unlockAchieve(id, small, rank, universe);
 }
 
+function checkAchievementProgress(){
+    return checkAchievements();
+}
+
+function achievementIds(){
+    return Object.keys(achievements).sort();
+}
+
 function achievementUniverseLevel(universe){
     return universeLevel(universe);
 }
@@ -313,6 +323,8 @@ globalThis.__EVOLVE_LEGACY_TEST_API__ = {
     actionCondition,
     eventEffect,
     unlockAchievement,
+    checkAchievementProgress,
+    achievementIds,
     achievementUniverseLevel,
     achievementUniverseAffix,
     achievementRankCap,
