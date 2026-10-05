@@ -7,6 +7,7 @@ const { extractModuleReferences, maskNonCode } = require('./architecture-fitness
 const SOURCE_EXTENSIONS = new Set(['.js', '.mjs', '.cjs']);
 const CONDITION_ROOT = 'src/engine/conditions';
 const IDENTITY_FILE = 'src/engine/identity.mjs';
+const INERT_DATA_CONTRACT_FILE = 'src/engine/contracts/inert-data.mjs';
 
 const FORBIDDEN_RUNTIME_PATTERNS = [
     ['legacy globals or UI/platform objects (legacy/global object)', /\b(?:global|globalThis|self)\b/],
@@ -70,7 +71,7 @@ function analyzeConditionModule(source, relativePath){
             continue;
         }
         const target = resolveRelative(relativePath, specifier);
-        if (target === IDENTITY_FILE) continue;
+        if (target === IDENTITY_FILE || target === INERT_DATA_CONTRACT_FILE) continue;
         if (target === 'src/engine/registry.mjs'){
             violations.push(`${relativePath}: condition evaluation may not depend on the inert definition Registry`);
             continue;
@@ -88,7 +89,7 @@ function analyzeConditionModule(source, relativePath){
             continue;
         }
         if (!target.startsWith(`${CONDITION_ROOT}/`)){
-            violations.push(`${relativePath}: condition modules may import only identity.mjs or sibling condition modules: ${target}`);
+            violations.push(`${relativePath}: condition modules may import only identity.mjs, the inert-data contract, or sibling condition modules: ${target}`);
             continue;
         }
         if (!SOURCE_EXTENSIONS.has(path.posix.extname(target))){
