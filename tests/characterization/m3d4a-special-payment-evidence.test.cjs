@@ -55,6 +55,36 @@ test('outside antimatter Plasmid remains bound to Plasmid holdings and payment s
     assert.equal(state.prestige.AntiPlasmid.count, 100);
 });
 
+test('legacy payment-family classification can fall through from absent prestige to a same-named ordinary resource', () => {
+    const state = installState(state => {
+        delete state.prestige.Plasmid;
+        state.race.universe = 'standard';
+        state.resource.Plasmid = {
+            amount: 5,
+            max: 10,
+            delta: 0,
+            display: true,
+        };
+    });
+
+    assert.equal(legacy.canAfford({ Plasmid: 3 }), true);
+    assert.equal(legacy.canAffordMax({ Plasmid: 3 }), true);
+    assert.equal(legacy.pay({ Plasmid: 3 }), true);
+    assert.equal(state.resource.Plasmid.amount, 2);
+});
+
+test('present but malformed prestige holdings can pass legacy checks and poison the count with NaN', () => {
+    const state = installState(state => {
+        state.race.universe = 'standard';
+        state.prestige.Plasmid = {};
+    });
+
+    assert.equal(legacy.canAfford({ Plasmid: 1 }), true);
+    assert.equal(legacy.canAffordMax({ Plasmid: 1 }), true);
+    assert.equal(legacy.pay({ Plasmid: 1 }), true);
+    assert.equal(Number.isNaN(state.prestige.Plasmid.count), true);
+});
+
 test('legacy antimatter Plasmid checks crash when the resolved AntiPlasmid source is missing', () => {
     installState(state => {
         state.prestige.Plasmid = { count: 100 };
