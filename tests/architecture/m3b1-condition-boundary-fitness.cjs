@@ -9,8 +9,8 @@ const CONDITION_ROOT = 'src/engine/conditions';
 const IDENTITY_FILE = 'src/engine/identity.mjs';
 
 const FORBIDDEN_RUNTIME_PATTERNS = [
-    ['legacy/global object', /\b(?:global|globalThis|self)\b/],
-    ['browser/UI object', /\b(?:document|window|navigator|jQuery|Vue)\b|\$\s*\(/],
+    ['legacy globals or UI/platform objects (legacy/global object)', /\b(?:global|globalThis|self)\b/],
+    ['legacy globals or UI/platform objects (browser/UI object)', /\b(?:document|window|navigator|jQuery|Vue)\b|\$\s*\(/],
     ['browser storage', /\b(?:localStorage|sessionStorage|indexedDB)\b/],
     ['browser/network API', /\b(?:fetch|XMLHttpRequest|WebSocket)\b/],
     ['Node/platform global', /\b(?:process|Buffer)\b/],
