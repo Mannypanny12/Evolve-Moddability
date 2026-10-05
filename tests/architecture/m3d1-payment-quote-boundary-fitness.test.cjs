@@ -12,7 +12,7 @@ const {
 
 const root = path.resolve(__dirname, '../..');
 
-test('M3D1/M3D2 cumulative cost boundary is clean in the repository', () => {
+test('M3D cumulative cost boundary is clean in the repository', () => {
     assert.deepEqual(findViolations(root), []);
 });
 
@@ -93,7 +93,7 @@ test('M3D generic cost source rejects first-party namespace knowledge even in st
     );
 });
 
-test('M3D production consumers may use only reviewed static quote or assessor entries', () => {
+test('M3D production consumers may use only reviewed static quote, assessor, or plan entries', () => {
     assert.deepEqual(
         analyzeProductionConsumer(
             "import { createPaymentQuote } from './engine/costs/payment-quote.mjs';",
@@ -104,6 +104,20 @@ test('M3D production consumers may use only reviewed static quote or assessor en
     assert.deepEqual(
         analyzeProductionConsumer(
             "import { createPaymentAssessor } from './engine/costs/payment-assessor.mjs';",
+            'src/example.mjs'
+        ),
+        []
+    );
+    assert.deepEqual(
+        analyzeProductionConsumer(
+            "import { createPaymentPlan } from './engine/costs/payment-plan.mjs';",
+            'src/example.mjs'
+        ),
+        []
+    );
+    assert.notDeepEqual(
+        analyzeProductionConsumer(
+            "import { normalizePaymentQuoteInput } from './engine/costs/payment-quote-input.mjs';",
             'src/example.mjs'
         ),
         []
