@@ -17,6 +17,7 @@ const FORBIDDEN_RUNTIME_PATTERNS = [
     ['Node/platform global', /\b(?:process|Buffer)\b/],
     ['runtime clock/random source', /\b(?:Date|performance|crypto)\b|\bMath\s*\.\s*(?:random|rand)\s*\(/],
     ['timer or microtask scheduling', /\b(?:setTimeout|setInterval|setImmediate|queueMicrotask|requestAnimationFrame|cancelAnimationFrame)\s*\(/],
+    ['dynamic module loading', /\bimport\s*\(|\brequire\b/],
     ['dynamic code capability', /\b(?:eval|Function|WebAssembly)\b/],
 ];
 
@@ -141,8 +142,13 @@ function findViolations(root){
     if (!fs.existsSync(effectDir)){
         return ['M3C1 effect source directory is missing'];
     }
-    if (fs.lstatSync(effectDir).isSymbolicLink()){
+
+    const effectStat = fs.lstatSync(effectDir);
+    if (effectStat.isSymbolicLink()){
         violations.push('M3C1 effect source directory may not be a symbolic link');
+    }
+    else if (!effectStat.isDirectory()){
+        violations.push('M3C1 effect source path must be a directory');
     }
     else {
         for (const filename of listSourceFiles(effectDir, root, violations)){
@@ -155,11 +161,17 @@ function findViolations(root){
     if (!fs.existsSync(contractPath)){
         violations.push('M3C1 inert-data contract is missing');
     }
-    else if (fs.lstatSync(contractPath).isSymbolicLink()){
-        violations.push('M3C1 inert-data contract may not be a symbolic link');
-    }
     else {
-        violations.push(...analyzeInertDataContract(fs.readFileSync(contractPath, 'utf8')));
+        const contractStat = fs.lstatSync(contractPath);
+        if (contractStat.isSymbolicLink()){
+            violations.push('M3C1 inert-data contract may not be a symbolic link');
+        }
+        else if (!contractStat.isFile()){
+            violations.push('M3C1 inert-data contract path must be a regular file');
+        }
+        else {
+            violations.push(...analyzeInertDataContract(fs.readFileSync(contractPath, 'utf8')));
+        }
     }
     return violations;
 }
