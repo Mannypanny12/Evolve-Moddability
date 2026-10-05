@@ -8,9 +8,9 @@ const { findViolations: findM3C2Violations } = require('./m3c2-effect-surface-fi
 
 const EFFECT_ROOT = 'src/engine/effects';
 const SOURCE_EXTENSIONS = new Set(['.js', '.mjs', '.cjs']);
-const FIRST_PARTY_CONTENT_ID = /\bevolve:[a-z0-9._-]+\/[a-z0-9._/-]+\b/i;
-const FORBIDDEN_PAYMENT_IDENTIFIERS = /\b(?:cost|costs|price|payment|paymentPlan|quote|affordability|payCosts|checkCosts|checkAffordable)\b/;
-const FORBIDDEN_CONDITION_IDENTIFIERS = /\b(?:condition|conditions|conditionEvaluator)\b/;
+const FIRST_PARTY_NAMESPACE_KNOWLEDGE = /\bevolve\b/i;
+const FORBIDDEN_PAYMENT_IDENTIFIERS = /\b(?:cost|costs|costPlan|costPlans|price|prices|pricing|payment|payments|paymentPlan|paymentPlans|quote|quotes|quotePlan|quotePlans|affordable|affordability|payCosts|checkCosts|checkAffordable)\b/;
+const FORBIDDEN_CONDITION_IDENTIFIERS = /\b(?:condition|conditions|conditionEvaluator|requirement|requirements|predicate|predicates|eligibility|canExecute)\b/;
 
 function normalize(relativePath){
     return relativePath.split(path.sep).join('/');
@@ -35,8 +35,8 @@ function analyzeEffectClosureSource(source, relativePath){
     if (!relativePath.startsWith(`${EFFECT_ROOT}/`)) return [];
 
     const violations = [];
-    if (FIRST_PARTY_CONTENT_ID.test(source)){
-        violations.push(`${relativePath}: M3C3 generic effect source may not embed first-party evolve content IDs`);
+    if (FIRST_PARTY_NAMESPACE_KNOWLEDGE.test(source)){
+        violations.push(`${relativePath}: M3C3 generic effect source may not contain first-party Evolve namespace knowledge`);
     }
 
     const code = maskNonCode(source);
@@ -44,7 +44,7 @@ function analyzeEffectClosureSource(source, relativePath){
         violations.push(`${relativePath}: M3C3 effect planning may not own cost, quote, affordability, or payment semantics`);
     }
     if (FORBIDDEN_CONDITION_IDENTIFIERS.test(code)){
-        violations.push(`${relativePath}: M3C3 effect planning may not embed condition evaluation semantics`);
+        violations.push(`${relativePath}: M3C3 effect planning may not embed condition, requirement, predicate, or execution-eligibility semantics`);
     }
 
     return violations;

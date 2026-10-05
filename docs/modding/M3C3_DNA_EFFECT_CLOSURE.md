@@ -8,6 +8,8 @@ The selected evidence remains `evolution.dna`, the first M3 vertical established
 
 M3C3 deliberately adds no new production effect operation kind and does not cut over vanilla gameplay. The existing M3C1/M3C2 production effect code is sufficient.
 
+The post-implementation review and hardening pass is recorded in `M3C3_REVIEW_HARDENING.md`.
+
 ## Legacy DNA decomposition
 
 The legacy DNA action combines multiple concerns in one callback:
@@ -87,6 +89,8 @@ M3C therefore still does not read:
 - affordability;
 - any other gameplay state.
 
+The closure evidence also proves the inverse presentation case: DNA display/final-menu qualification can reject presentation availability while the direct legacy callback still performs the same RNA/DNA mutation. M3C therefore does not silently absorb presentation qualification into effect planning.
+
 ## Differential evidence
 
 `tests/characterization/m3c3-dna-effect-closure.test.cjs` uses the real legacy action harness.
@@ -95,9 +99,13 @@ For a successful DNA action it proves:
 
 ```text
 legacy declared cost: RNA 2
-legacy observed mutation: RNA -2, DNA +1
+legacy complete synchronous state mutation:
+  RNA.amount -2
+  DNA.amount +1
 legacy callback return: false
 ```
+
+The test compares the full installed legacy state before and after execution against an expected state containing exactly those two amount changes. This prevents a future third side effect from slipping through while the M3C closure test still claims that `+1 DNA` is the complete gameplay-effect evidence.
 
 It then proves that the M3C plan projects only:
 
@@ -107,7 +115,9 @@ evolve:resource/dna +1
 
 and contains neither an RNA subject nor a `resource.consume` operation.
 
-The same plan remains unchanged in representative states where the legacy callback cannot mutate because of insufficient RNA or full DNA capacity.
+For insufficient RNA and full DNA capacity, the direct legacy callback leaves the complete state unchanged while the semantic effect definition remains `+1 DNA`.
+
+For hidden DNA presentation and active final-evolution menu, legacy presentation qualification is false but direct execution still performs exactly the expected RNA/DNA mutation. The same M3C plan remains unchanged.
 
 This is test-only semantic evidence. M3C3 does not add an EffectExecutor, net-delta calculator, simulator, or legacy effect adapter to production code.
 
@@ -117,11 +127,13 @@ M3C3 deliberately does not add an engine-level `createDnaEffectPlan()`.
 
 `src/engine/effects/**` is generic infrastructure. First-party vanilla identities such as `evolve:resource/dna` belong in first-party content/command composition, not in reusable engine internals.
 
-The closure architecture gate therefore adds a new permanent rule:
+The closure architecture gate therefore adds a permanent rule:
 
 ```text
-src/engine/effects/** may not embed first-party evolve:* content IDs
+src/engine/effects/** may not contain first-party Evolve namespace knowledge
 ```
+
+The hardening pass deliberately checks for the `evolve` namespace token itself rather than only a fully assembled content ID. This catches ordinary split construction such as storing `evolve` separately and appending `:resource/dna` later.
 
 Third-party/generic canonical IDs are not inherently prohibited by that scanner, but production M3C currently contains no concrete content identity at all.
 
@@ -129,15 +141,17 @@ Third-party/generic canonical IDs are not inherently prohibited by that scanner,
 
 `tests/architecture/m3c3-effect-closure.cjs` is cumulative over the M3C1 and M3C2 fitness gates.
 
-In addition to all existing dependency, runtime, authority, and entry-surface restrictions, it rejects effect-engine source that begins to own identifiers associated with:
+In addition to all existing dependency, runtime, authority, and entry-surface restrictions, it rejects effect-engine source that begins to own ordinary identifiers associated with:
 
-- costs/prices;
-- quotes;
+- costs/prices/pricing;
+- quotes/quote plans;
 - affordability;
-- payment plans/payment helpers;
-- condition evaluation.
+- payment/payment plans/payment helpers;
+- conditions/requirements/predicates/execution eligibility.
 
-Strings/comments used only for diagnostics are not treated as executable payment/condition identifiers, while first-party content IDs are forbidden even in effect-source comments so the generic layer does not accumulate vanilla-specific knowledge.
+Strings/comments used only for diagnostics are not treated as executable payment/condition identifiers, while first-party Evolve namespace knowledge is forbidden even in effect-source comments so the generic layer does not accumulate vanilla-specific assumptions.
+
+The scanner is an architectural regression guard, not a general malicious-code detector. Obfuscated vocabulary remains a code-review concern; the stronger M3C1 dependency/runtime/authority gates remain the primary capability boundary.
 
 ## No legacy effect bridge
 
@@ -176,12 +190,13 @@ M3C is complete when M3C1, M3C2 and M3C3 collectively prove:
 5. operation order and duplicates are preserved exactly;
 6. M3C performs no GameState/legacy-state reads or writes;
 7. M3C owns no capacity, affordability, quote, payment, queue or presentation semantics;
-8. the generic effect layer contains no first-party Evolve content identities;
+8. the generic effect layer contains no first-party Evolve namespace knowledge;
 9. real legacy DNA behavior is decomposed into payment evidence (`RNA -2`) and effect evidence (`DNA +1`);
-10. the DNA M3C representation contains exactly one `resource.grant(evolve:resource/dna, 1)` operation and no RNA payment operation;
-11. planning validity remains distinct from current executability;
-12. no legacy effect adapter, EffectExecutor or vanilla cutover is introduced;
-13. the M3C1, M3C2 and M3C3 architecture gates are cumulative in CI;
-14. the full unit, architecture, build and browser safety net remains green.
+10. successful DNA differential evidence proves that no additional synchronous legacy state field changes beyond the two expected resource amounts;
+11. the DNA M3C representation contains exactly one `resource.grant(evolve:resource/dna, 1)` operation and no RNA payment operation;
+12. planning validity remains distinct from current executability and presentation qualification;
+13. no legacy effect adapter, EffectExecutor or vanilla cutover is introduced;
+14. the M3C1, M3C2 and M3C3 architecture gates are cumulative in CI;
+15. the full unit, architecture, build and browser safety net remains green.
 
 After M3C closure, M3D owns quote, affordability and semantic payment planning. DNA's `2 RNA` price becomes the first simple payment evidence while special legacy payment families remain separately modeled rather than being forced into ordinary resource effects.

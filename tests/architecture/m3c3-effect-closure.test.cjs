@@ -14,15 +14,18 @@ function messages(source, relativePath = 'src/engine/effects/example.mjs'){
     return analyzeEffectClosureSource(source, relativePath).join('\n');
 }
 
-test('M3C3 closure keeps first-party Evolve content IDs out of generic effect source', () => {
-    assert.match(
-        messages("const dna = 'evolve:resource/dna';"),
-        /may not embed first-party evolve content IDs/
-    );
-    assert.match(
-        messages('// evolve:resource/dna'),
-        /may not embed first-party evolve content IDs/
-    );
+test('M3C3 closure keeps all first-party Evolve namespace knowledge out of generic effect source', () => {
+    for (const source of [
+        "const dna = 'evolve:resource/dna';",
+        '// evolve:resource/dna',
+        "const namespace = 'evolve'; const id = namespace + ':resource/dna';",
+        'const EVOLVE = `namespace`;'
+    ]){
+        assert.match(
+            messages(source),
+            /may not contain first-party Evolve namespace knowledge/
+        );
+    }
 
     assert.deepEqual(
         analyzeEffectClosureSource(
@@ -33,12 +36,16 @@ test('M3C3 closure keeps first-party Evolve content IDs out of generic effect so
     );
 });
 
-test('M3C3 closure rejects payment and quote ownership inside effect planning', () => {
+test('M3C3 closure rejects ordinary payment, pricing, quote and affordability vocabulary inside effect planning', () => {
     for (const source of [
         'const cost = 2;',
+        'const costPlans = [];',
+        'const pricing = {};',
         'const payment = {};',
-        'const paymentPlan = {};',
+        'const paymentPlans = [];',
         'function quote(){}',
+        'function quotePlan(){}',
+        'const affordable = true;',
         'function checkAffordable(){}',
         'function payCosts(){}',
     ]){
@@ -50,26 +57,31 @@ test('M3C3 closure rejects payment and quote ownership inside effect planning', 
 
     assert.deepEqual(
         analyzeEffectClosureSource(
-            "const message = 'payment plan belongs to M3D';",
+            "const message = 'payment plans and pricing belong to M3D';",
             'src/engine/effects/example.mjs'
         ),
         []
     );
 });
 
-test('M3C3 closure rejects condition ownership inside effect planning', () => {
-    assert.match(
-        messages('const condition = {};'),
-        /may not embed condition evaluation semantics/
-    );
-    assert.match(
-        messages('function conditionEvaluator(){}'),
-        /may not embed condition evaluation semantics/
-    );
+test('M3C3 closure rejects condition, requirement and execution-eligibility ownership inside effect planning', () => {
+    for (const source of [
+        'const condition = {};',
+        'function conditionEvaluator(){}',
+        'const requirements = [];',
+        'const predicate = () => true;',
+        'const eligibility = true;',
+        'function canExecute(){}',
+    ]){
+        assert.match(
+            messages(source),
+            /may not embed condition, requirement, predicate, or execution-eligibility semantics/
+        );
+    }
 
     assert.deepEqual(
         analyzeEffectClosureSource(
-            "const message = 'conditions belong to M3B';",
+            "const message = 'conditions and requirements belong outside M3C';",
             'src/engine/effects/example.mjs'
         ),
         []
@@ -79,7 +91,7 @@ test('M3C3 closure rejects condition ownership inside effect planning', () => {
 test('M3C3 closure analysis ignores non-effect production files', () => {
     assert.deepEqual(
         analyzeEffectClosureSource(
-            "const dna = 'evolve:resource/dna'; const paymentPlan = {};",
+            "const namespace = 'evolve'; const paymentPlan = {}; const requirements = [];",
             'src/first-party/evolution/dna.mjs'
         ),
         []

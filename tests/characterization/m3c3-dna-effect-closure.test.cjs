@@ -14,23 +14,30 @@ if (!legacy){
 const root = path.resolve(__dirname, '../..');
 const effectPlanPromise = import(pathToFileURL(path.join(root, 'src/engine/effects/effect-plan.mjs')).href);
 
-function installDnaState({ rna = 10, dna = 0, dnaMax = 10 } = {}){
+function installDnaState({
+    rna = 10,
+    dna = 0,
+    dnaMax = 10,
+    rnaDisplay = true,
+    dnaDisplay = true,
+    evoFinalMenu = false,
+} = {}){
     const state = legacy.pristineLegacyState();
     state.resource.RNA = {
         ...(state.resource.RNA || {}),
         amount: rna,
         max: 100,
         delta: 0,
-        display: true,
+        display: rnaDisplay,
     };
     state.resource.DNA = {
         ...(state.resource.DNA || {}),
         amount: dna,
         max: dnaMax,
         delta: 0,
-        display: true,
+        display: dnaDisplay,
     };
-    state.race.evoFinalMenu = false;
+    state.race.evoFinalMenu = evoFinalMenu;
     legacy.installLegacyState(state);
     return legacy.legacyState();
 }
@@ -62,26 +69,22 @@ function resourceDeltas(plan){
     return deltas;
 }
 
-function observedLegacyDeltas(state, before){
-    return {
-        RNA: state.resource.RNA.amount - before.RNA,
-        DNA: state.resource.DNA.amount - before.DNA,
-    };
+function expectedSuccessfulLegacyState(before){
+    const expected = structuredClone(before);
+    expected.resource.RNA.amount -= 2;
+    expected.resource.DNA.amount += 1;
+    return expected;
 }
 
-test('M3C3 decomposes successful legacy DNA execution into payment evidence plus one DNA effect', async () => {
+test('M3C3 decomposes the complete successful legacy DNA mutation into payment evidence plus one DNA effect', async () => {
     const state = installDnaState({ rna: 2, dna: 9, dnaMax: 10 });
-    const before = {
-        RNA: state.resource.RNA.amount,
-        DNA: state.resource.DNA.amount,
-    };
+    const before = structuredClone(state);
 
     assert.deepEqual(legacy.rawActionCosts('evolution', 'dna'), { RNA: 2 });
     const legacyResult = legacy.executeAction('evolution', 'dna', { isQueue: false });
-    const observed = observedLegacyDeltas(state, before);
 
     assert.equal(legacyResult, false);
-    assert.deepEqual(observed, { RNA: -2, DNA: 1 });
+    assert.deepEqual(state, expectedSuccessfulLegacyState(before));
 
     const plan = await createDnaEffectPlan();
     assert.deepEqual(plan, {
@@ -102,7 +105,7 @@ test('M3C3 decomposes successful legacy DNA execution into payment evidence plus
     assert.equal(plan.operations.some(operation => operation.resourceId === 'evolve:resource/rna'), false);
 });
 
-test('M3C3 effect definition remains +1 DNA when current legacy state cannot execute it', async () => {
+test('M3C3 effect definition remains +1 DNA while failed legacy execution leaves the complete state unchanged', async () => {
     const plan = await createDnaEffectPlan();
 
     for (const scenario of [
@@ -110,14 +113,35 @@ test('M3C3 effect definition remains +1 DNA when current legacy state cannot exe
         { rna: 10, dna: 10, dnaMax: 10 },
     ]){
         const state = installDnaState(scenario);
-        const before = {
-            RNA: state.resource.RNA.amount,
-            DNA: state.resource.DNA.amount,
-        };
+        const before = structuredClone(state);
 
         const legacyResult = legacy.executeAction('evolution', 'dna', { isQueue: false });
         assert.equal(legacyResult, false);
-        assert.deepEqual(observedLegacyDeltas(state, before), { RNA: 0, DNA: 0 });
+        assert.deepEqual(state, before);
+        assert.deepEqual(resourceDeltas(plan), { 'evolve:resource/dna': 1 });
+    }
+});
+
+test('M3C3 keeps presentation qualification out of the effect definition', async () => {
+    const plan = await createDnaEffectPlan();
+
+    for (const scenario of [
+        { dnaDisplay: false, evoFinalMenu: false },
+        { dnaDisplay: true, evoFinalMenu: true },
+    ]){
+        const state = installDnaState({
+            rna: 2,
+            dna: 0,
+            dnaMax: 10,
+            ...scenario,
+        });
+        const before = structuredClone(state);
+
+        assert.equal(legacy.actionCondition('evolution', 'dna'), false);
+        const legacyResult = legacy.executeAction('evolution', 'dna', { isQueue: false });
+
+        assert.equal(legacyResult, false);
+        assert.deepEqual(state, expectedSuccessfulLegacyState(before));
         assert.deepEqual(resourceDeltas(plan), { 'evolve:resource/dna': 1 });
     }
 });
