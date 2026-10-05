@@ -73,7 +73,7 @@ test('M3D2 keeps current affordability separate from queue payment feasibility',
             lineIndex: 0,
             resourceId,
             requiredAmount: 2,
-            availableAmount: 1,
+            currentAmount: 1,
         },
     }]);
 
@@ -129,7 +129,7 @@ test('M3D2 duplicate lines are cumulative and fail at the first threshold-crossi
     assert.deepEqual(current.reasons, [
         {
             code: 'payment.current.resource.amount_insufficient',
-            details: { lineIndex: 2, resourceId, requiredAmount: 6, availableAmount: 5 },
+            details: { lineIndex: 2, resourceId, requiredAmount: 6, currentAmount: 5 },
         },
         {
             code: 'payment.current.resource.capacity_insufficient',
@@ -137,6 +137,32 @@ test('M3D2 duplicate lines are cumulative and fail at the first threshold-crossi
         },
     ]);
     assert.deepEqual(calls, [`amount:${resourceId}`, `capacity:${resourceId}`]);
+});
+
+test('M3D2 reason ordering follows first threshold crossings across interleaved resources', async () => {
+    const { createPaymentAssessor, createPaymentQuote } = await modules();
+    const wood = 'example:resource/wood';
+    const stone = 'example:resource/stone';
+    const assessor = createPaymentAssessor(provider({
+        [wood]: { amount: 2, available: true, capacity: 5 },
+        [stone]: { amount: 10, available: true, capacity: 1 },
+    }));
+    const quote = createPaymentQuote([
+        line(wood, 2),
+        line(stone, 2),
+        line(wood, 1),
+    ]);
+
+    assert.deepEqual(assessor.assessCurrentAffordability(quote).reasons, [
+        {
+            code: 'payment.current.resource.capacity_insufficient',
+            details: { lineIndex: 1, resourceId: stone, requiredAmount: 2, capacity: 1 },
+        },
+        {
+            code: 'payment.current.resource.amount_insufficient',
+            details: { lineIndex: 2, resourceId: wood, requiredAmount: 3, currentAmount: 2 },
+        },
+    ]);
 });
 
 test('M3D2 caches one relevant observation per distinct resource within an assessment', async () => {
@@ -210,7 +236,7 @@ test('M3D2 accepts finite negative current amounts as an insufficient state obse
 
     const current = assessor.assessCurrentAffordability(quote);
     assert.equal(current.status, 'failed');
-    assert.equal(current.reasons[0].details.availableAmount, -3);
+    assert.equal(current.reasons[0].details.currentAmount, -3);
 });
 
 test('M3D2 fails closed when cumulative finite quote lines overflow numeric range', async () => {
