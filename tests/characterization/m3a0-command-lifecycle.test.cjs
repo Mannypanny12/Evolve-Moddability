@@ -7,7 +7,7 @@ const path = require('node:path');
 
 const root = path.resolve(__dirname, '../..');
 const actionsSource = fs.readFileSync(path.join(root, 'src/actions.js'), 'utf8');
-const functionsSource = fs.readFileSync(path.join(root, 'src/functions.js'), 'utf8');
+const mainSource = fs.readFileSync(path.join(root, 'src/main.js'), 'utf8');
 
 function contains(source, pattern, message){
     assert.match(source, pattern, message);
@@ -28,12 +28,12 @@ test('immediate execution overloads action return values with queue fallback con
 
 test('queued execution uses a different return-value test than immediate queue fallback', () => {
     contains(
-        functionsSource,
+        mainSource,
         /c_action\.action\(\{\s*isQueue:\s*true\s*\}\)\s*!==\s*false/,
         'build queue execution must retain the legacy !== false success test as characterization evidence'
     );
     contains(
-        functionsSource,
+        mainSource,
         /if\s*\(c_action\.action\(\{\s*isQueue:\s*true\s*\}\)\)/,
         'research queue execution must retain its truthy success test as characterization evidence'
     );
@@ -53,9 +53,9 @@ test('legacy queue records still embed action lookup and presentation fields', (
 });
 
 test('queue behavior still reads application preferences directly in legacy code', () => {
-    contains(actionsSource, /global\.settings\.q_merge/, 'q_merge legacy dependency must remain characterized');
-    contains(functionsSource, /global\.settings\.qAny\b/, 'qAny legacy dependency must remain characterized');
-    contains(functionsSource, /global\.settings\.qAny_res\b/, 'qAny_res legacy dependency must remain characterized');
+    contains(actionsSource, /global\.settings\.q_merge\b/, 'q_merge legacy dependency must remain characterized');
+    contains(mainSource, /global\.settings\.qAny\b/, 'qAny legacy dependency must remain characterized');
+    contains(mainSource, /global\.settings\.qAny_res\b/, 'qAny_res legacy dependency must remain characterized');
 });
 
 test('postBuild still mixes progression mutation, runtime callbacks, and UI reactions', () => {
