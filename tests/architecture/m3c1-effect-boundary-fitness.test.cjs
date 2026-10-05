@@ -30,11 +30,28 @@ test('M3C1 effect fitness rejects state, runtime, legacy, command and external d
         `import x from '../commands/command-bus.mjs';`,
         `import x from 'some-package';`,
         `const x = import('./common.mjs');`,
+        `const target = './common.mjs'; export const x = import(target);`,
         `const x = require('./common.mjs');`,
+        `const loader = require; export const x = loader('./common.mjs');`,
         `import data from './operations.json';`,
     ];
     for (const source of cases){
         assert.notEqual(analyzeEffectModule(source, EFFECT_FILE).length, 0, source);
+    }
+});
+
+test('M3C1 effect fitness rejects computed dynamic module loading independently of import resolution', () => {
+    const cases = [
+        `const target = './common.mjs'; export const x = import(target);`,
+        `const loader = require; export const x = loader('./common.mjs');`,
+    ];
+    for (const source of cases){
+        const violations = analyzeEffectModule(source, EFFECT_FILE);
+        assert.equal(
+            violations.some(item => item.includes('dynamic module loading')),
+            true,
+            `${source}: ${JSON.stringify(violations)}`
+        );
     }
 });
 
@@ -70,7 +87,7 @@ test('M3C1 effect fitness rejects direct and indirect dynamic-code capabilities'
     }
 
     assert.deepEqual(
-        analyzeEffectModule(`export const text = 'eval Function WebAssembly'; // eval`, EFFECT_FILE),
+        analyzeEffectModule(`export const text = 'eval Function WebAssembly require import('; // eval`, EFFECT_FILE),
         []
     );
 });
@@ -85,6 +102,7 @@ test('M3C1 inert-data contract fitness allows only static identity dependency', 
         `export const x = Date.now();`,
         `export const x = (0, eval)('1');`,
         `const x = require('../identity.mjs');`,
+        `const target = '../identity.mjs'; export const x = import(target);`,
     ]){
         assert.notEqual(analyzeInertDataContract(source).length, 0, source);
     }
