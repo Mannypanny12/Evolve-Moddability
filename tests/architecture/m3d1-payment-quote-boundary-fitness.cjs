@@ -8,6 +8,7 @@ const SOURCE_EXTENSIONS = new Set(['.js', '.mjs', '.cjs']);
 const COST_ROOT = 'src/engine/costs';
 const PUBLIC_QUOTE_FILE = 'src/engine/costs/payment-quote.mjs';
 const PUBLIC_ASSESSOR_FILE = 'src/engine/costs/payment-assessor.mjs';
+const PUBLIC_PLAN_FILE = 'src/engine/costs/payment-plan.mjs';
 const D1_SCOPE_FILES = new Set([
     PUBLIC_QUOTE_FILE,
     'src/engine/costs/common.mjs',
@@ -151,7 +152,7 @@ function analyzeProductionConsumer(source, relativePath){
             violations.push(`${relativePath}: M3D cost dependencies must use static ESM imports; found ${reference.kind} for ${target}`);
             continue;
         }
-        if (target !== PUBLIC_QUOTE_FILE && target !== PUBLIC_ASSESSOR_FILE){
+        if (target !== PUBLIC_QUOTE_FILE && target !== PUBLIC_ASSESSOR_FILE && target !== PUBLIC_PLAN_FILE){
             violations.push(`${relativePath}: production code may consume M3D costs only through reviewed public entries`);
         }
     }
@@ -204,12 +205,12 @@ function main(){
     const root = path.resolve(__dirname, '../..');
     const violations = findViolations(root);
     if (violations.length > 0){
-        console.error('M3D1/M3D2 cost boundary fitness failed:');
+        console.error('M3D cumulative cost boundary fitness failed:');
         for (const violation of violations) console.error(`- ${violation}`);
         process.exitCode = 1;
         return;
     }
-    console.log('M3D1/M3D2 cost boundary fitness passed.');
+    console.log('M3D cumulative cost boundary fitness passed.');
 }
 
 module.exports = {
