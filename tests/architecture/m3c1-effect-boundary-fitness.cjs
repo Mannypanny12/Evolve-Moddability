@@ -17,7 +17,7 @@ const FORBIDDEN_RUNTIME_PATTERNS = [
     ['Node/platform global', /\b(?:process|Buffer)\b/],
     ['runtime clock/random source', /\b(?:Date|performance|crypto)\b|\bMath\s*\.\s*(?:random|rand)\s*\(/],
     ['timer or microtask scheduling', /\b(?:setTimeout|setInterval|setImmediate|queueMicrotask|requestAnimationFrame|cancelAnimationFrame)\s*\(/],
-    ['dynamic code evaluation', /\beval\s*\(|\b(?:new\s+)?Function\s*\(/],
+    ['dynamic code capability', /\b(?:eval|Function|WebAssembly)\b/],
 ];
 
 const FORBIDDEN_AUTHORITY_PATTERN = /\b(?:mutationAuthority|createMutationScope|beginTransaction|commitTransaction|rollbackTransaction|modRes|setGlobal)\b/;
@@ -64,8 +64,9 @@ function analyzeEffectModule(source, relativePath){
     }
 
     for (const reference of extractModuleReferences(source, relativePath)){
-        if (reference.kind === 'dynamic-import'){
-            violations.push(`${relativePath}: M3C1 effect modules may not use dynamic import`);
+        if (reference.kind !== 'import-statement'){
+            violations.push(`${relativePath}: M3C1 effect modules may use only static ESM imports; found ${reference.kind}`);
+            continue;
         }
         const specifier = reference.specifier;
         if (!specifier.startsWith('.')){
@@ -74,7 +75,12 @@ function analyzeEffectModule(source, relativePath){
         }
         const target = resolveRelative(relativePath, specifier);
         if (target === IDENTITY_FILE || target === INERT_DATA_CONTRACT_FILE) continue;
-        if (target.startsWith(`${EFFECT_ROOT}/`)) continue;
+        if (target.startsWith(`${EFFECT_ROOT}/`)){
+            if (!SOURCE_EXTENSIONS.has(path.posix.extname(target))){
+                violations.push(`${relativePath}: sibling effect imports must target JavaScript source: ${target}`);
+            }
+            continue;
+        }
         if (target.startsWith('src/engine/state/')){
             violations.push(`${relativePath}: M3C1 effect planning may not import GameState/state infrastructure: ${target}`);
             continue;
@@ -113,8 +119,9 @@ function analyzeInertDataContract(source, relativePath = INERT_DATA_CONTRACT_FIL
         }
     }
     for (const reference of extractModuleReferences(source, relativePath)){
-        if (reference.kind === 'dynamic-import'){
-            violations.push(`${relativePath}: inert-data contract may not use dynamic import`);
+        if (reference.kind !== 'import-statement'){
+            violations.push(`${relativePath}: inert-data contract may use only static ESM imports; found ${reference.kind}`);
+            continue;
         }
         if (!reference.specifier.startsWith('.')){
             violations.push(`${relativePath}: inert-data contract may not import external packages: ${reference.specifier}`);
@@ -134,15 +141,22 @@ function findViolations(root){
     if (!fs.existsSync(effectDir)){
         return ['M3C1 effect source directory is missing'];
     }
-
-    for (const filename of listSourceFiles(effectDir, root, violations)){
-        const relative = normalize(path.relative(root, filename));
-        violations.push(...analyzeEffectModule(fs.readFileSync(filename, 'utf8'), relative));
+    if (fs.lstatSync(effectDir).isSymbolicLink()){
+        violations.push('M3C1 effect source directory may not be a symbolic link');
+    }
+    else {
+        for (const filename of listSourceFiles(effectDir, root, violations)){
+            const relative = normalize(path.relative(root, filename));
+            violations.push(...analyzeEffectModule(fs.readFileSync(filename, 'utf8'), relative));
+        }
     }
 
     const contractPath = path.join(root, ...INERT_DATA_CONTRACT_FILE.split('/'));
     if (!fs.existsSync(contractPath)){
         violations.push('M3C1 inert-data contract is missing');
+    }
+    else if (fs.lstatSync(contractPath).isSymbolicLink()){
+        violations.push('M3C1 inert-data contract may not be a symbolic link');
     }
     else {
         violations.push(...analyzeInertDataContract(fs.readFileSync(contractPath, 'utf8')));
