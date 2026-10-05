@@ -150,9 +150,10 @@ The M3C2 review adds the complementary inbound surface rule:
 - production code outside `src/engine/effects/**` may import only `src/engine/effects/effect-plan.mjs`;
 - effect-layer dependencies must use static ESM imports;
 - only `effect-plan.mjs` may consume `core-operations.mjs`;
-- only `effect-plan.mjs` and `core-operations.mjs` may consume `common.mjs` under the current M3C2 graph.
+- only `effect-plan.mjs` and `core-operations.mjs` may consume `common.mjs` under the current M3C2 graph;
+- `effect-plan.mjs` itself exposes exactly one synchronous production export: `createEffectPlan()`.
 
-This keeps `createEffectPlan()` as the reviewed production entry boundary rather than allowing callers to bypass inert inspection and use raw parser/normalizer helpers directly.
+This keeps `createEffectPlan()` as the reviewed production entry boundary rather than allowing callers to bypass inert inspection through direct internal imports or a later re-export of parser/normalizer helpers.
 
 ## Deliberate non-goals
 
@@ -206,5 +207,6 @@ M3C2 is complete when:
 10. operation objects wider than the current three-field schema fail before field-descriptor inspection;
 11. the M3C1 architecture fitness boundary remains unchanged and green;
 12. production effect consumers cannot bypass `createEffectPlan()` to import M3C2 parser/normalizer internals;
-13. no state, registry, payment, executor, legacy or UI dependency is introduced;
-14. no production gameplay behavior changes.
+13. `effect-plan.mjs` cannot expose additional production exports or re-export internals without a reviewed architecture change;
+14. no state, registry, payment, executor, legacy or UI dependency is introduced;
+15. no production gameplay behavior changes.
