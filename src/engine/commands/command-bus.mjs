@@ -9,6 +9,8 @@ import {
 } from './common.mjs';
 import { normalizeCommandOutcome } from './result.mjs';
 
+let dispatchActive = false;
+
 function fail(code, message, details){
     throw new EngineContractError(code, message, details);
 }
@@ -138,8 +140,6 @@ export function createCommandBus(rawOptions){
         }
         handlers.set(registration.id, registration);
     }
-
-    let dispatchActive = false;
 
     function ids(){
         return Object.freeze([...handlers.keys()].sort());
