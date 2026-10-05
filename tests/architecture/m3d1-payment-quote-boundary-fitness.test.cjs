@@ -12,11 +12,11 @@ const {
 
 const root = path.resolve(__dirname, '../..');
 
-test('M3D1 payment quote boundary is clean in the repository', () => {
+test('M3D1/M3D2 cumulative cost boundary is clean in the repository', () => {
     assert.deepEqual(findViolations(root), []);
 });
 
-test('M3D1 public quote entry is a single synchronous one-argument function', () => {
+test('M3D1 public quote entry remains a single synchronous one-argument function', () => {
     assert.deepEqual(
         analyzePaymentQuoteExports(
             'export function createPaymentQuote(resolvedLines){ return resolvedLines; }',
@@ -38,7 +38,7 @@ test('M3D1 public quote entry is a single synchronous one-argument function', ()
     }
 });
 
-test('M3D1 cost modules reject state, legacy, effect, runtime, and mutation authority', () => {
+test('M3D cost modules still reject state, legacy, effect, runtime, and mutation authority', () => {
     const cases = [
         ["import '../state/state-store.mjs';", 'state'],
         ["import '../../legacy/bridge/evolve-condition-read-adapter.mjs';", 'legacy'],
@@ -58,7 +58,7 @@ test('M3D1 cost modules reject state, legacy, effect, runtime, and mutation auth
     }
 });
 
-test('M3D1 quote construction cannot quietly absorb later affordability, queue, payment-plan, or modifier scope', () => {
+test('M3D1 quote files remain sealed against later affordability, queue, payment-plan, or modifier scope', () => {
     const cases = [
         ['function assessAffordability(){}', 'affordability'],
         ['const queueCapacity = 1;', 'queue/capacity'],
@@ -70,33 +70,42 @@ test('M3D1 quote construction cannot quietly absorb later affordability, queue, 
 
     for (const [source, label] of cases){
         assert.notDeepEqual(
-            analyzeCostModule(source, 'src/engine/costs/probe.mjs'),
+            analyzeCostModule(source, 'src/engine/costs/common.mjs'),
             [],
             label
         );
+        assert.deepEqual(
+            analyzeCostModule(source, 'src/engine/costs/payment-assessor.mjs'),
+            label === 'payment plan' || label === 'payment execution' || label === 'cost adjustment' || label === 'modifier pipeline'
+                ? analyzeCostModule(source, 'src/engine/costs/payment-assessor.mjs')
+                : [],
+            `D2 may own reviewed affordability/queue semantics: ${label}`
+        );
     }
+});
 
-    assert.deepEqual(
-        analyzeCostModule('// affordability and queue semantics belong to M3D2', 'src/engine/costs/probe.mjs'),
+test('M3D generic cost source rejects first-party namespace knowledge even in strings or comments', () => {
+    assert.notDeepEqual(
+        analyzeCostModule("const id = 'evolve:resource/rna';", 'src/engine/costs/payment-assessor.mjs'),
+        []
+    );
+    assert.notDeepEqual(
+        analyzeCostModule('// evolve-specific payment branch', 'src/engine/costs/payment-assessor.mjs'),
         []
     );
 });
 
-test('M3D1 generic cost source rejects first-party namespace knowledge even in strings or comments', () => {
-    assert.notDeepEqual(
-        analyzeCostModule("const id = 'evolve:resource/rna';", 'src/engine/costs/probe.mjs'),
-        []
-    );
-    assert.notDeepEqual(
-        analyzeCostModule('// evolve-specific payment branch', 'src/engine/costs/probe.mjs'),
-        []
-    );
-});
-
-test('M3D1 production consumers may not bypass or dynamically load the payment quote entry module', () => {
+test('M3D production consumers may use only reviewed static quote or assessor entries', () => {
     assert.deepEqual(
         analyzeProductionConsumer(
             "import { createPaymentQuote } from './engine/costs/payment-quote.mjs';",
+            'src/example.mjs'
+        ),
+        []
+    );
+    assert.deepEqual(
+        analyzeProductionConsumer(
+            "import { createPaymentAssessor } from './engine/costs/payment-assessor.mjs';",
             'src/example.mjs'
         ),
         []
