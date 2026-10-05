@@ -4,6 +4,8 @@
 
 M3C1 establishes the inert effect-planning boundary. It does not introduce gameplay execution authority and does not cut over any vanilla action.
 
+The post-implementation deep review is recorded in `M3C1_REVIEW_HARDENING.md`.
+
 ## Purpose
 
 M3C answers one narrow question in the M3 command pipeline: **what gameplay changes would this command intend to cause?**
@@ -22,15 +24,17 @@ M3C1 implements only step 3's safe data foundation. It deliberately does not imp
 
 ## Public foundation
 
-### `createEffectPlan(operations = [])`
+### `createEffectPlan(operations)`
 
-`src/engine/effects/effect-plan.mjs` creates a closed frozen plan:
+`src/engine/effects/effect-plan.mjs` creates a closed frozen plan from an **explicit** operation array:
 
 ```js
 {
     operations: []
 }
 ```
+
+An omitted, `undefined`, `null`, or non-array operation input fails closed. A legitimate no-op plan must therefore be written deliberately as `createEffectPlan([])` rather than being produced accidentally by missing planner output.
 
 M3C1 recognizes no gameplay operation kinds yet. Any non-empty operation currently fails closed. This is intentional: stable resource semantics are introduced in M3C2 rather than being smuggled into the foundation slice.
 
@@ -47,7 +51,9 @@ Effect contract data:
 - has deterministic sorted object keys;
 - rejects functions, symbols, bigint, exotic objects, accessors, hidden fields, symbol fields, sparse arrays, array subclasses, cycles, and repeated object/array aliases;
 - fails closed when hostile objects cannot be safely inspected;
-- enforces nesting, collection-length, and object-width limits.
+- enforces nesting, per-collection length, per-object width, and a total effect-data node budget.
+
+The total-node budget closes the multiplicative case where every individual object/array is below its local ceiling but the complete tree is still pathologically large.
 
 These properties ensure later EffectPlans remain inert data rather than a disguised execution surface.
 
@@ -65,7 +71,9 @@ The shared contract owns:
 - accessor/symbol/sparse/exotic-object rejection;
 - optional collection-width limits.
 
-Command and condition layers now reuse those inspection primitives while retaining their own domain-specific canonicalizers, limits, error codes, and policies. Mutable GameState canonicalization is intentionally not routed through this frozen-data contract.
+Wrong container types are rejected before deeper reflective inspection where possible. In particular, a non-array input is rejected before prototype/key/descriptor inspection, preserving the pre-extraction command/condition fail-fast behavior and reducing proxy trap exposure.
+
+Command and condition layers reuse those inspection primitives while retaining their own domain-specific canonicalizers, limits, error codes, and policies. Mutable GameState canonicalization is intentionally not routed through this frozen-data contract.
 
 ## Architecture boundary
 
@@ -75,7 +83,7 @@ Effect modules may depend only on:
 
 - `src/engine/identity.mjs`;
 - `src/engine/contracts/inert-data.mjs`;
-- sibling effect modules.
+- sibling JavaScript effect modules.
 
 The boundary rejects:
 
@@ -84,8 +92,12 @@ The boundary rejects:
 - legacy/platform/runtime adapters;
 - command and condition execution modules;
 - the inert definition Registry as executable storage;
-- external packages and dynamic imports;
-- browser/UI globals, storage, network APIs, timers, clock/random sources, and dynamic code evaluation.
+- external packages;
+- dynamic/non-ESM module loading;
+- non-JavaScript sibling effect imports;
+- browser/UI globals, storage, network APIs, timers, clock/random sources;
+- direct or indirect `eval`/`Function` capability and WebAssembly code execution;
+- symbolic-link effect source roots/entries and a symbolic-link inert-data contract.
 
 The neutral inert-data contract itself may import only the identity contract and is checked by the same fitness gate.
 
@@ -119,6 +131,6 @@ Those operations should remain semantic deltas, preserve declared order and dupl
 
 ## Verification
 
-M3C1 tests cover the empty EffectPlan contract, unsupported-operation fail-closed behavior, deterministic canonicalization, detachment, deep freezing, hostile inspection, accessors, hidden/symbol fields, sparse arrays, exotic arrays/objects, cycles, repeated aliases, non-finite numbers, excessive depth/width/length, and architecture-boundary violations.
+M3C1 tests cover the empty EffectPlan contract, explicit-plan-input requirement, unsupported-operation fail-closed behavior, deterministic canonicalization, detachment, deep freezing, hostile inspection, fail-fast wrong-container proxy handling, accessors, hidden/symbol fields, sparse arrays, exotic arrays/objects, cycles, repeated aliases, non-finite numbers, excessive depth/width/length/total-node count, and architecture-boundary violations.
 
 Existing M3A/M3B behavior remains covered by their original command and condition suites after the shared inspection extraction.
