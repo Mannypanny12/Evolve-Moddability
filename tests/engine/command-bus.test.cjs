@@ -39,10 +39,14 @@ test('M3A1 bus is sealed, deterministic and exposes no handler lookup or registr
     assert.equal('handlers' in bus, false);
 });
 
-test('M3A1 bus rejects duplicate, malformed, async and wrong-type registrations', async () => {
+test('M3A1 bus rejects malformed options plus duplicate, malformed, async and wrong-type registrations', async () => {
     const { createCommandBus, commandSucceeded, EngineContractError } = await modules();
     const valid = { id: 'evolve:command/test', validatePayload: passPayload, execute: () => commandSucceeded(null) };
 
+    assert.throws(
+        () => createCommandBus({ registrations: [], extra: true }),
+        error => error instanceof EngineContractError && error.code === 'INVALID_COMMAND_BUS_CONFIG'
+    );
     assert.throws(
         () => createCommandBus({ registrations: [valid, valid] }),
         error => error instanceof EngineContractError && error.code === 'DUPLICATE_COMMAND_ID'
@@ -63,6 +67,18 @@ test('M3A1 bus rejects duplicate, malformed, async and wrong-type registrations'
         () => createCommandBus({ registrations: [{ ...valid, extra: true }] }),
         error => error instanceof EngineContractError && error.code === 'INVALID_COMMAND_REGISTRATION'
     );
+
+    let getterCalls = 0;
+    const accessorRegistration = { ...valid };
+    Object.defineProperty(accessorRegistration, 'id', {
+        enumerable: true,
+        get(){ getterCalls++; return 'evolve:command/test'; },
+    });
+    assert.throws(
+        () => createCommandBus({ registrations: [accessorRegistration] }),
+        error => error instanceof EngineContractError && error.code === 'INVALID_COMMAND_REGISTRATION'
+    );
+    assert.equal(getterCalls, 0);
 });
 
 test('M3A1 dispatch validates a closed envelope, detaches payload and canonicalizes validator output', async () => {
@@ -100,6 +116,22 @@ test('M3A1 dispatch validates a closed envelope, detaches payload and canonicali
         data: { accepted: 1 },
         reasons: [],
     });
+});
+
+test('M3A1 validator and handler execution receive no implicit registration this-context', async () => {
+    const { createCommandBus, commandSucceeded } = await modules();
+    let validatorThis = 'unset';
+    let handlerThis = 'unset';
+
+    const bus = createCommandBus({ registrations: [{
+        id: 'evolve:command/context-free',
+        validatePayload: function(payload){ validatorThis = this; return payload; },
+        execute: function(){ handlerThis = this; return commandSucceeded(null); },
+    }] });
+
+    assert.equal(bus.dispatch({ id: 'evolve:command/context-free', payload: {} }).status, 'succeeded');
+    assert.equal(validatorThis, undefined);
+    assert.equal(handlerThis, undefined);
 });
 
 test('M3A1 dispatch returns structured rejection instead of overloading booleans', async () => {
@@ -142,6 +174,40 @@ test('M3A1 dispatch treats unknown IDs, malformed envelopes and invalid handler 
     );
 });
 
+test('M3A1 enriched contract failures preserve original structured diagnostic fields', async () => {
+    const { createCommandBus, commandSucceeded, EngineContractError } = await modules();
+    const payloadBus = createCommandBus({ registrations: [{
+        id: 'evolve:command/payload',
+        validatePayload: passPayload,
+        execute: () => commandSucceeded(null),
+    }] });
+    assert.throws(
+        () => payloadBus.dispatch({ id: 'evolve:command/payload', payload: { outer: { bad: undefined } } }),
+        error => error instanceof EngineContractError &&
+            error.code === 'INVALID_COMMAND_DATA' &&
+            error.details?.path === 'command.payload.outer.bad' &&
+            error.details?.phase === 'payload' &&
+            error.details?.commandId === 'evolve:command/payload' &&
+            error.details?.causeCode === 'INVALID_COMMAND_DATA'
+    );
+
+    const validatorBus = createCommandBus({ registrations: [{
+        id: 'evolve:command/validator-details',
+        validatePayload(){
+            throw new EngineContractError('VALIDATOR_RULE_FAILED', 'rule failed', { path: 'validator.rule', rule: 'demo' });
+        },
+        execute: () => commandSucceeded(null),
+    }] });
+    assert.throws(
+        () => validatorBus.dispatch({ id: 'evolve:command/validator-details', payload: {} }),
+        error => error instanceof EngineContractError &&
+            error.code === 'VALIDATOR_RULE_FAILED' &&
+            error.details?.path === 'validator.rule' &&
+            error.details?.rule === 'demo' &&
+            error.details?.phase === 'validate'
+    );
+});
+
 test('M3A1 validator and handler failures are phase-tagged deterministic contract errors', async () => {
     const { createCommandBus, EngineContractError } = await modules();
 
@@ -172,7 +238,7 @@ test('M3A1 validator and handler failures are phase-tagged deterministic contrac
     );
 });
 
-test('M3A1 rejects promise-like validator and handler results', async () => {
+test('M3A1 rejects promises and thenables without invoking then accessors', async () => {
     const { createCommandBus, commandSucceeded, EngineContractError } = await modules();
     const validatorBus = createCommandBus({ registrations: [{
         id: 'evolve:command/validator',
@@ -193,9 +259,47 @@ test('M3A1 rejects promise-like validator and handler results', async () => {
         () => handlerBus.dispatch({ id: 'evolve:command/handler', payload: {} }),
         error => error instanceof EngineContractError && error.code === 'INVALID_COMMAND_RESULT'
     );
+
+    let validatorThenCalls = 0;
+    const accessorValidatorBus = createCommandBus({ registrations: [{
+        id: 'evolve:command/accessor-validator',
+        validatePayload(){
+            const value = {};
+            Object.defineProperty(value, 'then', {
+                enumerable: true,
+                get(){ validatorThenCalls++; return () => {}; },
+            });
+            return value;
+        },
+        execute: () => commandSucceeded(null),
+    }] });
+    assert.throws(
+        () => accessorValidatorBus.dispatch({ id: 'evolve:command/accessor-validator', payload: {} }),
+        error => error instanceof EngineContractError && error.code === 'INVALID_COMMAND_PAYLOAD'
+    );
+    assert.equal(validatorThenCalls, 0);
+
+    let handlerThenCalls = 0;
+    const accessorHandlerBus = createCommandBus({ registrations: [{
+        id: 'evolve:command/accessor-handler',
+        validatePayload: passPayload,
+        execute(){
+            const value = { status: 'succeeded', data: null };
+            Object.defineProperty(value, 'then', {
+                enumerable: false,
+                get(){ handlerThenCalls++; return () => {}; },
+            });
+            return value;
+        },
+    }] });
+    assert.throws(
+        () => accessorHandlerBus.dispatch({ id: 'evolve:command/accessor-handler', payload: {} }),
+        error => error instanceof EngineContractError && error.code === 'INVALID_COMMAND_RESULT'
+    );
+    assert.equal(handlerThenCalls, 0);
 });
 
-test('M3A1 forbids nested dispatch from validation or execution and always clears the lock', async () => {
+test('M3A1 forbids nested dispatch from validation or execution, preserves cause phase and always clears the lock', async () => {
     const { createCommandBus, commandSucceeded, EngineContractError } = await modules();
     let bus;
     let mode = 'validate';
@@ -213,13 +317,19 @@ test('M3A1 forbids nested dispatch from validation or execution and always clear
 
     assert.throws(
         () => bus.dispatch({ id: 'evolve:command/test', payload: {} }),
-        error => error instanceof EngineContractError && error.code === 'COMMAND_DISPATCH_REENTRANCY'
+        error => error instanceof EngineContractError &&
+            error.code === 'COMMAND_DISPATCH_REENTRANCY' &&
+            error.details?.phase === 'validate' &&
+            error.details?.causePhase === 'dispatch'
     );
 
     mode = 'execute';
     assert.throws(
         () => bus.dispatch({ id: 'evolve:command/test', payload: {} }),
-        error => error instanceof EngineContractError && error.code === 'COMMAND_DISPATCH_REENTRANCY'
+        error => error instanceof EngineContractError &&
+            error.code === 'COMMAND_DISPATCH_REENTRANCY' &&
+            error.details?.phase === 'execute' &&
+            error.details?.causePhase === 'dispatch'
     );
 
     mode = 'ok';
