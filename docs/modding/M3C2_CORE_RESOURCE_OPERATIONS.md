@@ -12,6 +12,8 @@ Is this a well-formed inert instruction describing an intended resource change?
 
 It does not answer whether the change can happen against current state and it does not execute the change.
 
+The post-implementation deep review and hardening decisions are recorded in `M3C2_REVIEW_HARDENING.md`.
+
 ## Supported operation kinds
 
 M3C2 supports exactly:
@@ -31,7 +33,7 @@ Both use the same closed shape:
 }
 ```
 
-No other fields are permitted.
+No other fields are permitted. The supported-kind list is also the admission source of truth for the M3C2 core normalizer, so introspection and dispatch cannot drift independently.
 
 ### `resource.grant`
 
@@ -98,6 +100,8 @@ M3C2 never:
 
 Those transformations could change later capacity, statistics, event or domain-hook semantics.
 
+Two operation-list positions remain two semantic operations even when the caller reuses the exact same input object reference. Each position is normalized into its own detached frozen operation.
+
 ## Single-inspection parsing
 
 M3C2 refines the M3C1 parser so an untrusted operation object is inspected once into inert captured fields before its `kind` selects the fixed built-in schema.
@@ -116,11 +120,13 @@ inspect operation object once
   -> construct detached frozen operation
 ```
 
+Because every M3C2 core operation has exactly three fields, operation discovery applies a three-field ceiling before reading field descriptors. An oversized operation therefore fails immediately after key enumeration instead of forcing descriptor inspection for fields that can never be valid.
+
 There is no public or dynamic operation registration mechanism.
 
 ## Architecture boundary
 
-M3C2 requires no widening of the hardened M3C1 architecture boundary.
+M3C2 requires no widening of the hardened M3C1 outbound architecture boundary.
 
 Effect modules may continue to depend only on:
 
@@ -138,6 +144,15 @@ The effect layer still may not import or access:
 - the definition Registry;
 - DOM/UI APIs;
 - dynamic loading or runtime code generation.
+
+The M3C2 review adds the complementary inbound surface rule:
+
+- production code outside `src/engine/effects/**` may import only `src/engine/effects/effect-plan.mjs`;
+- effect-layer dependencies must use static ESM imports;
+- only `effect-plan.mjs` may consume `core-operations.mjs`;
+- only `effect-plan.mjs` and `core-operations.mjs` may consume `common.mjs` under the current M3C2 graph.
+
+This keeps `createEffectPlan()` as the reviewed production entry boundary rather than allowing callers to bypass inert inspection and use raw parser/normalizer helpers directly.
 
 ## Deliberate non-goals
 
@@ -185,9 +200,11 @@ M3C2 is complete when:
 4. amounts are positive finite numbers and may be fractional;
 5. operations are detached and frozen;
 6. EffectPlan and its operation array remain frozen;
-7. operation order and duplicates are preserved exactly;
+7. operation order and duplicates are preserved exactly, including repeated input object identity;
 8. malformed IDs, amounts, missing fields, unknown fields and unsupported kinds fail closed;
 9. hostile accessors are not invoked and operation schema parsing uses the captured single inspection;
-10. the M3C1 architecture fitness boundary remains unchanged and green;
-11. no state, registry, payment, executor, legacy or UI dependency is introduced;
-12. no production gameplay behavior changes.
+10. operation objects wider than the current three-field schema fail before field-descriptor inspection;
+11. the M3C1 architecture fitness boundary remains unchanged and green;
+12. production effect consumers cannot bypass `createEffectPlan()` to import M3C2 parser/normalizer internals;
+13. no state, registry, payment, executor, legacy or UI dependency is introduced;
+14. no production gameplay behavior changes.
