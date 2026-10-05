@@ -2,6 +2,10 @@ import { EngineContractError, describeContractValue } from '../identity.mjs';
 
 export const MAX_CONDITION_DATA_NESTING_DEPTH = 128;
 export const MAX_CONDITION_NESTING_DEPTH = 128;
+export const MAX_CONDITION_DEFINITION_DATA_NESTING_DEPTH =
+    (MAX_CONDITION_NESTING_DEPTH * 2) + MAX_CONDITION_DATA_NESTING_DEPTH + 4;
+export const MAX_CONDITION_COLLECTION_LENGTH = 4096;
+export const MAX_CONDITION_OBJECT_FIELDS = 4096;
 
 const CONDITION_KIND_PATTERN = /^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/;
 const SIMPLE_DATA_PATH_SEGMENT = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
@@ -40,6 +44,13 @@ function inspectPlainObject(value, path, code){
     if (array || (prototype !== Object.prototype && prototype !== null)){
         fail(code, `${path} must be a plain data object.`, { path, value });
     }
+    if (keys.length > MAX_CONDITION_OBJECT_FIELDS){
+        fail(code, `${path} contains too many fields.`, {
+            path,
+            fieldCount: keys.length,
+            maxFields: MAX_CONDITION_OBJECT_FIELDS,
+        });
+    }
 
     const fields = new Map();
     for (const key of keys){
@@ -63,7 +74,7 @@ function inspectPlainObject(value, path, code){
     return fields;
 }
 
-function inspectArray(value, path, code){
+function inspectArray(value, path, code, maxLength = MAX_CONDITION_COLLECTION_LENGTH){
     let prototype;
     let keys;
     let lengthDescriptor;
@@ -86,6 +97,13 @@ function inspectArray(value, path, code){
     const length = lengthDescriptor.value;
     if (!Number.isSafeInteger(length) || length < 0){
         fail(code, `${path}.length must be a non-negative safe integer.`, { path: `${path}.length`, value: length });
+    }
+    if (length > maxLength){
+        fail(code, `${path} exceeds the collection length limit.`, {
+            path,
+            length,
+            maxLength,
+        });
     }
 
     const allowedKeys = new Set(['length']);
@@ -117,7 +135,7 @@ function inspectArray(value, path, code){
     return values;
 }
 
-function canonicalizeInternal(value, path, context, depth){
+function canonicalizeInternal(value, path, context, depth, maxDepth){
     if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
     if (typeof value === 'number'){
         if (!Number.isFinite(value)){
@@ -128,8 +146,8 @@ function canonicalizeInternal(value, path, context, depth){
     if (typeof value !== 'object'){
         fail('INVALID_CONDITION_DATA', `${path} contains unsupported condition-data type ${typeof value}.`, { path, valueType: typeof value });
     }
-    if (depth > MAX_CONDITION_DATA_NESTING_DEPTH){
-        fail('INVALID_CONDITION_DATA', `${path} exceeds the condition-data nesting limit.`, { path, maxDepth: MAX_CONDITION_DATA_NESTING_DEPTH });
+    if (depth > maxDepth){
+        fail('INVALID_CONDITION_DATA', `${path} exceeds the condition-data nesting limit.`, { path, maxDepth });
     }
     if (context.active.has(value)){
         fail('INVALID_CONDITION_DATA', `${path} contains a cyclic reference.`, { path, firstPath: context.seen.get(value) });
@@ -151,14 +169,20 @@ function canonicalizeInternal(value, path, context, depth){
 
         if (isArray){
             const values = inspectArray(value, path, 'INVALID_CONDITION_DATA');
-            return Object.freeze(values.map((item, index) => canonicalizeInternal(item, `${path}[${index}]`, context, depth + 1)));
+            return Object.freeze(values.map((item, index) => canonicalizeInternal(
+                item,
+                `${path}[${index}]`,
+                context,
+                depth + 1,
+                maxDepth
+            )));
         }
 
         const fields = inspectPlainObject(value, path, 'INVALID_CONDITION_DATA');
         const output = {};
         for (const key of [...fields.keys()].sort()){
             Object.defineProperty(output, key, {
-                value: canonicalizeInternal(fields.get(key), dataPath(path, key), context, depth + 1),
+                value: canonicalizeInternal(fields.get(key), dataPath(path, key), context, depth + 1, maxDepth),
                 enumerable: true,
                 writable: false,
                 configurable: false,
@@ -171,8 +195,18 @@ function canonicalizeInternal(value, path, context, depth){
     }
 }
 
-export function canonicalizeConditionData(value, path = 'conditionData'){
-    return canonicalizeInternal(value, path, { active: new WeakSet(), seen: new WeakMap() }, 0);
+export function canonicalizeConditionData(
+    value,
+    path = 'conditionData',
+    maxDepth = MAX_CONDITION_DATA_NESTING_DEPTH
+){
+    if (!Number.isSafeInteger(maxDepth) || maxDepth < 0){
+        fail('INVALID_CONDITION_DATA_CONFIG', 'Condition-data maxDepth must be a non-negative safe integer.', {
+            path: 'maxDepth',
+            maxDepth,
+        });
+    }
+    return canonicalizeInternal(value, path, { active: new WeakSet(), seen: new WeakMap() }, 0, maxDepth);
 }
 
 export function canonicalizeConditionParams(value, path = 'condition.params'){
@@ -200,11 +234,23 @@ export function readClosedConditionObject(value, options){
     return fields;
 }
 
-export function readDenseConditionArray(value, path, code = 'INVALID_CONDITION_CONTRACT'){
-    if (!Array.isArray(value)){
+export function readDenseConditionArray(
+    value,
+    path,
+    code = 'INVALID_CONDITION_CONTRACT',
+    maxLength = MAX_CONDITION_COLLECTION_LENGTH
+){
+    let isArray;
+    try {
+        isArray = Array.isArray(value);
+    }
+    catch {
+        fail(code, `${path} could not be safely inspected.`, { path });
+    }
+    if (!isArray){
         fail(code, `${path} must be an array.`, { path });
     }
-    return inspectArray(value, path, code);
+    return inspectArray(value, path, code, maxLength);
 }
 
 export function assertConditionKind(value, path = 'condition.kind'){
@@ -225,8 +271,11 @@ export function assertSynchronousConditionFunction(value, path, code = 'INVALID_
     catch {
         fail(code, `${path} could not be inspected.`, { path });
     }
-    if (/^\s*async\b/.test(source)){
-        fail(code, `${path} must be synchronous.`, { path });
+    const declaredAsync = /^\s*async\b/.test(source);
+    const declaredGenerator = /^\s*(?:async\s+)?function\s*\*/.test(source) || /^\s*\*/.test(source);
+    const declaredClass = /^\s*class\b/.test(source);
+    if (declaredAsync || declaredGenerator || declaredClass){
+        fail(code, `${path} must be a directly callable synchronous non-generator function.`, { path });
     }
     return value;
 }

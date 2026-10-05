@@ -8,17 +8,35 @@ const SOURCE_EXTENSIONS = new Set(['.js', '.mjs', '.cjs']);
 const CONDITION_ROOT = 'src/engine/conditions';
 const IDENTITY_FILE = 'src/engine/identity.mjs';
 
+const FORBIDDEN_RUNTIME_PATTERNS = [
+    ['legacy/global object', /\b(?:global|globalThis|self)\b/],
+    ['browser/UI object', /\b(?:document|window|navigator|jQuery|Vue)\b|\$\s*\(/],
+    ['browser storage', /\b(?:localStorage|sessionStorage|indexedDB)\b/],
+    ['browser/network API', /\b(?:fetch|XMLHttpRequest|WebSocket)\b/],
+    ['Node/platform global', /\b(?:process|Buffer)\b/],
+    ['runtime clock/random source', /\b(?:Date|performance|crypto)\b|\bMath\s*\.\s*(?:random|rand)\s*\(/],
+    ['timer or microtask scheduling', /\b(?:setTimeout|setInterval|setImmediate|queueMicrotask|requestAnimationFrame|cancelAnimationFrame)\s*\(/],
+    ['dynamic code evaluation', /\beval\s*\(|\b(?:new\s+)?Function\s*\(/],
+];
+
 function normalize(relativePath){
     return relativePath.split(path.sep).join('/');
 }
 
-function listSourceFiles(dir){
+function listSourceFiles(dir, root, violations){
     if (!fs.existsSync(dir)) return [];
     const files = [];
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })){
         const full = path.join(dir, entry.name);
-        if (entry.isDirectory()) files.push(...listSourceFiles(full));
-        else if (entry.isFile() && SOURCE_EXTENSIONS.has(path.extname(entry.name))) files.push(full);
+        if (entry.isSymbolicLink()){
+            violations.push(`${normalize(path.relative(root, full))}: M3B1 condition source may not be a symbolic link`);
+        }
+        else if (entry.isDirectory()){
+            files.push(...listSourceFiles(full, root, violations));
+        }
+        else if (entry.isFile() && SOURCE_EXTENSIONS.has(path.extname(entry.name))){
+            files.push(full);
+        }
     }
     return files.sort();
 }
@@ -36,8 +54,10 @@ function analyzeConditionModule(source, relativePath){
     if (/\b(?:mutationAuthority|createMutationScope)\b/.test(code)){
         violations.push(`${relativePath}: M3B1 condition modules may not reference raw GameState mutation authority`);
     }
-    if (/\b(?:global|document|window|localStorage|jQuery|Vue)\b/.test(code) || /\$\s*\(/.test(code)){
-        violations.push(`${relativePath}: M3B1 condition modules may not access legacy globals or UI/platform objects`);
+    for (const [label, pattern] of FORBIDDEN_RUNTIME_PATTERNS){
+        if (pattern.test(code)){
+            violations.push(`${relativePath}: M3B1 condition modules may not access ${label}`);
+        }
     }
 
     for (const reference of extractModuleReferences(source, relativePath)){
@@ -69,6 +89,10 @@ function analyzeConditionModule(source, relativePath){
         }
         if (!target.startsWith(`${CONDITION_ROOT}/`)){
             violations.push(`${relativePath}: condition modules may import only identity.mjs or sibling condition modules: ${target}`);
+            continue;
+        }
+        if (!SOURCE_EXTENSIONS.has(path.posix.extname(target))){
+            violations.push(`${relativePath}: condition modules may import only JavaScript condition source: ${target}`);
         }
     }
 
@@ -81,7 +105,7 @@ function findViolations(root){
         return ['M3B1 condition source directory is missing'];
     }
     const violations = [];
-    for (const filename of listSourceFiles(conditionDir)){
+    for (const filename of listSourceFiles(conditionDir, root, violations)){
         const relative = normalize(path.relative(root, filename));
         violations.push(...analyzeConditionModule(fs.readFileSync(filename, 'utf8'), relative));
     }

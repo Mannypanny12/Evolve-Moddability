@@ -1,8 +1,10 @@
 import { EngineContractError } from '../identity.mjs';
 import {
+    MAX_CONDITION_DEFINITION_DATA_NESTING_DEPTH,
     MAX_CONDITION_NESTING_DEPTH,
     assertConditionKind,
     assertSynchronousConditionFunction,
+    canonicalizeConditionData,
     canonicalizeConditionParams,
     isConditionPromiseLike,
     readClosedConditionObject,
@@ -16,9 +18,124 @@ import {
 
 const COMPOUND_KINDS = Object.freeze(['all', 'any', 'not']);
 const COMPOUND_KIND_SET = new Set(COMPOUND_KINDS);
+export const MAX_COMPOUND_CONDITION_COUNT = 1024;
+let evaluationActive = false;
 
 function fail(code, message, details){
     throw new EngineContractError(code, message, details);
+}
+
+function isEngineContractError(value){
+    try {
+        return value instanceof EngineContractError;
+    }
+    catch {
+        return false;
+    }
+}
+
+function readOwnDataField(value, field){
+    if (value === null || (typeof value !== 'object' && typeof value !== 'function')) return undefined;
+    let descriptor;
+    try {
+        descriptor = Object.getOwnPropertyDescriptor(value, field);
+    }
+    catch {
+        return undefined;
+    }
+    return descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')
+        ? descriptor.value
+        : undefined;
+}
+
+function readDiagnosticDetail(details, field){
+    return readOwnDataField(details, field);
+}
+
+function copyDiagnosticDetails(details, reserved){
+    const output = {};
+    if (details === null || typeof details !== 'object') return output;
+
+    let keys;
+    try {
+        keys = Reflect.ownKeys(details);
+    }
+    catch {
+        return { causeDetails: '<uninspectable>' };
+    }
+
+    for (const key of keys){
+        if (typeof key !== 'string' || reserved.has(key)) continue;
+        let descriptor;
+        try {
+            descriptor = Object.getOwnPropertyDescriptor(details, key);
+        }
+        catch {
+            return { causeDetails: '<uninspectable>' };
+        }
+        if (!descriptor || !descriptor.enumerable || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) continue;
+        Object.defineProperty(output, key, {
+            value: descriptor.value,
+            enumerable: true,
+            writable: true,
+            configurable: true,
+        });
+    }
+    return output;
+}
+
+function genericFailureCode(phase){
+    if (phase === 'validate') return 'CONDITION_PARAM_VALIDATOR_FAILURE';
+    if (phase === 'result') return 'CONDITION_RESULT_NORMALIZATION_FAILURE';
+    return 'CONDITION_EVALUATOR_FAILURE';
+}
+
+function enrichConditionError(error, kind, path, phase){
+    if (isEngineContractError(error)){
+        const causeCodeValue = readOwnDataField(error, 'code');
+        const causeCode = typeof causeCodeValue === 'string' && causeCodeValue.length > 0
+            ? causeCodeValue
+            : null;
+        const messageValue = readOwnDataField(error, 'message');
+        const message = typeof messageValue === 'string' && messageValue.length > 0
+            ? messageValue
+            : 'Condition contract failed.';
+        const causeDetails = readOwnDataField(error, 'details');
+        const details = copyDiagnosticDetails(
+            causeDetails,
+            new Set([
+                'conditionKind',
+                'conditionPath',
+                'conditionPhase',
+                'causeCode',
+                'causeConditionKind',
+                'causeConditionPath',
+                'causeConditionPhase',
+            ])
+        );
+        const causeKind = readDiagnosticDetail(causeDetails, 'conditionKind');
+        const causePath = readDiagnosticDetail(causeDetails, 'conditionPath');
+        const causePhase = readDiagnosticDetail(causeDetails, 'conditionPhase');
+        if (causeKind !== undefined && causeKind !== kind) details.causeConditionKind = causeKind;
+        if (causePath !== undefined && causePath !== path) details.causeConditionPath = causePath;
+        if (causePhase !== undefined && causePhase !== phase) details.causeConditionPhase = causePhase;
+        details.conditionKind = kind;
+        details.conditionPath = path;
+        details.conditionPhase = phase;
+        details.causeCode = causeCode;
+
+        return new EngineContractError(
+            causeCode || 'CONDITION_CONTRACT_FAILURE',
+            `${message} [${kind || '<unresolved>'} @ ${phase}]`,
+            details
+        );
+    }
+
+    return new EngineContractError(
+        genericFailureCode(phase),
+        `Condition ${phase} phase threw unexpectedly. [${kind || '<unresolved>'}]`,
+        { conditionKind: kind, conditionPath: path, conditionPhase: phase }
+    );
 }
 
 function validateRegistration(rawRegistration, index){
@@ -37,26 +154,6 @@ function validateRegistration(rawRegistration, index){
         validateParams: assertSynchronousConditionFunction(fields.get('validateParams'), `${path}.validateParams`),
         evaluate: assertSynchronousConditionFunction(fields.get('evaluate'), `${path}.evaluate`),
     });
-}
-
-function enrichConditionError(error, kind, path, phase){
-    if (error instanceof EngineContractError){
-        return new EngineContractError(
-            error.code || 'CONDITION_CONTRACT_FAILURE',
-            `${error.message || 'Condition contract failed.'} [${kind || '<unresolved>'} @ ${phase}]`,
-            {
-                ...(error.details || {}),
-                conditionKind: kind,
-                conditionPath: path,
-                conditionPhase: phase,
-            }
-        );
-    }
-    return new EngineContractError(
-        phase === 'validate' ? 'CONDITION_PARAM_VALIDATOR_FAILURE' : 'CONDITION_EVALUATOR_FAILURE',
-        `Condition ${phase} phase threw unexpectedly. [${kind || '<unresolved>'}]`,
-        { conditionKind: kind, conditionPath: path, conditionPhase: phase }
-    );
 }
 
 function assertCompoundDepth(depth, path){
@@ -111,7 +208,12 @@ export function createConditionEvaluator(rawOptions){
                 allowed: ['kind', 'conditions'],
                 code: 'INVALID_CONDITION',
             });
-            const children = readDenseConditionArray(fields.get('conditions'), `${path}.conditions`, 'INVALID_CONDITION');
+            const children = readDenseConditionArray(
+                fields.get('conditions'),
+                `${path}.conditions`,
+                'INVALID_CONDITION',
+                MAX_COMPOUND_CONDITION_COUNT
+            );
             if (children.length === 0){
                 fail('INVALID_CONDITION', `${path}.conditions must contain at least one condition.`, { path: `${path}.conditions`, kind });
             }
@@ -147,18 +249,20 @@ export function createConditionEvaluator(rawOptions){
         let validatedParams;
         try {
             validatedParams = Reflect.apply(registration.validateParams, undefined, [detachedParams]);
+            if (isConditionPromiseLike(validatedParams, `${path}.validateParams`, 'INVALID_CONDITION_PARAMS')){
+                fail('INVALID_CONDITION_PARAMS', 'Condition parameter validators must not return a Promise or thenable.', {
+                    conditionKind: kind,
+                    conditionPath: path,
+                    conditionPhase: 'validate',
+                });
+            }
+            validatedParams = canonicalizeConditionParams(validatedParams, `${path}.validatedParams`);
         }
         catch (error){
             throw enrichConditionError(error, kind, path, 'validate');
         }
-        if (isConditionPromiseLike(validatedParams, `${path}.validateParams`, 'INVALID_CONDITION_PARAMS')){
-            fail('INVALID_CONDITION_PARAMS', 'Condition parameter validators must not return a Promise or thenable.', { conditionKind: kind, conditionPath: path, conditionPhase: 'validate' });
-        }
 
-        return Object.freeze({
-            kind,
-            params: canonicalizeConditionParams(validatedParams, `${path}.validatedParams`),
-        });
+        return Object.freeze({ kind, params: validatedParams });
     }
 
     function evaluateNormalized(condition, path){
@@ -202,13 +306,18 @@ export function createConditionEvaluator(rawOptions){
         let rawOutcome;
         try {
             rawOutcome = Reflect.apply(registration.evaluate, undefined, [condition.params]);
+            if (isConditionPromiseLike(rawOutcome, `${path}.evaluate`, 'INVALID_CONDITION_RESULT')){
+                fail('INVALID_CONDITION_RESULT', 'Condition evaluators must not return a Promise or thenable.', {
+                    conditionKind: condition.kind,
+                    conditionPath: path,
+                    conditionPhase: 'evaluate',
+                });
+            }
         }
         catch (error){
             throw enrichConditionError(error, condition.kind, path, 'evaluate');
         }
-        if (isConditionPromiseLike(rawOutcome, `${path}.evaluate`, 'INVALID_CONDITION_RESULT')){
-            fail('INVALID_CONDITION_RESULT', 'Condition evaluators must not return a Promise or thenable.', { conditionKind: condition.kind, conditionPath: path, conditionPhase: 'evaluate' });
-        }
+
         try {
             return normalizeConditionOutcome(rawOutcome, `${path}.outcome`);
         }
@@ -218,8 +327,25 @@ export function createConditionEvaluator(rawOptions){
     }
 
     function evaluate(rawCondition){
-        const condition = normalizeCondition(rawCondition);
-        return evaluateNormalized(condition, 'condition');
+        if (evaluationActive){
+            fail('CONDITION_EVALUATION_REENTRANCY', 'Condition evaluation may not be nested.', {
+                conditionPhase: 'evaluate-entry',
+            });
+        }
+
+        evaluationActive = true;
+        try {
+            const detachedCondition = canonicalizeConditionData(
+                rawCondition,
+                'condition',
+                MAX_CONDITION_DEFINITION_DATA_NESTING_DEPTH
+            );
+            const condition = normalizeCondition(detachedCondition);
+            return evaluateNormalized(condition, 'condition');
+        }
+        finally {
+            evaluationActive = false;
+        }
     }
 
     return Object.freeze({ evaluate, has, kinds });
