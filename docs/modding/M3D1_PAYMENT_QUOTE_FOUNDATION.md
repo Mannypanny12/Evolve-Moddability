@@ -19,7 +19,7 @@ M3D1 therefore adds no state read capability and no payment execution authority.
 The public entry point is:
 
 ```js
-createPaymentQuote(lines)
+createPaymentQuote(resolvedLines)
 ```
 
 It returns:
@@ -33,6 +33,8 @@ It returns:
 The quote object, line array, and every normalized line are detached and frozen.
 
 An empty line array is the canonical representation of a free resolved quote.
+
+The public entry remains a synchronous one-argument function. Production code outside `src/engine/costs/**` may reach the cost layer only through this entry and only by static ESM import.
 
 ## M3D1 line family
 
@@ -49,6 +51,14 @@ M3D1 supports exactly one quote-line family:
 This is sufficient for the first DNA payment vertical without prematurely defining prestige and special-payment families.
 
 The supported line set will widen only in reviewed later M3D slices.
+
+### Kind
+
+A line kind must first be a syntactically valid stable lowercase engine kind. Malformed values fail with `INVALID_PAYMENT_QUOTE_LINE_KIND`.
+
+A syntactically valid family that M3D1 does not yet support fails with `UNSUPPORTED_PAYMENT_QUOTE_LINE_KIND`.
+
+This distinction matters for future M3D expansion: malformed caller data is not confused with a reviewed-but-not-yet-supported semantic family.
 
 ### Identity
 
@@ -74,7 +84,9 @@ The positive-only rule is an intentional hardening boundary rather than an assum
 
 M3D1 characterization proves that legacy `checkCosts()` / `payCosts()` accept a zero ordinary-resource cost as affordable and treat payment as a no-op. More importantly, they also accept a negative ordinary-resource cost and `payCosts()` then increases that resource because it subtracts the negative value.
 
-M3D1 does not preserve that accidental arithmetic behavior in the engine contract. A resolved zero price is omitted; a negative price is invalid. If later vanilla characterization finds a legitimate mechanic whose semantic meaning is a refund or grant, that mechanic must be represented explicitly rather than smuggled through a negative payment amount.
+The review hardening pass also proves that the legacy adjustment pipeline can turn a positive declared price into a resolved zero price. A representative `Food: 1` synthetic cost under the lone-survivor adjustment resolves to `Food: 0` after rounding.
+
+M3D1 does not preserve negative arithmetic as payment semantics. A negative resolved price is invalid. A resolved zero price is normalized away before quote construction rather than represented as `{ amount: 0 }`. If later vanilla characterization finds a legitimate mechanic whose semantic meaning is a refund or grant, that mechanic must be represented explicitly rather than smuggled through a negative payment amount.
 
 ## Resolved means resolved
 
@@ -85,6 +97,7 @@ The intended architecture remains:
 ```text
 declared cost
   -> contextual calculation/transformation (M4, or a bounded compatibility seam before M4)
+  -> remove semantically empty zero-valued resolved lines
   -> resolved PaymentQuote (M3D)
   -> current affordability (M3D2)
   -> payment planning (later M3D)
@@ -92,6 +105,8 @@ declared cost
 ```
 
 Numeric modifiers and general resource substitution remain outside the quote contract.
+
+The bounded pre-M4 compatibility resolver is responsible for translating legacy zero-valued adjusted entries into omission. PaymentQuote itself remains strict and never treats zero as a normal payment line.
 
 ## Ordering and duplicate preservation
 
@@ -115,13 +130,17 @@ M3D1 rejects:
 - hidden fields;
 - accessors without invoking their getter;
 - exotic line objects;
+- malformed line kinds;
+- well-formed but unsupported line families;
 - malformed or wrongly typed content IDs;
 - unknown fields;
 - missing fields;
-- unsupported line kinds;
+- invalid amounts;
 - over-large line collections.
 
 A quote line is inspected into captured inert fields before its values are validated, so validation does not repeatedly dereference the original record.
+
+For the reviewed scalar fields (`kind`, `resourceId`, `amount`), validation failures do not retain hostile caller objects in diagnostic details. Non-string/non-number values are represented by safe type metadata instead, so ordinary serialization of those contract-error details cannot re-trigger caller-controlled proxy traps.
 
 ## Architecture boundary
 
@@ -144,9 +163,13 @@ M3D1 cost source may not import or access:
 - dynamic loading or runtime code generation;
 - first-party Evolve content namespace knowledge.
 
-Production consumers outside the cost package may enter M3D1 only through `payment-quote.mjs`.
+The D1 boundary also machine-rejects ordinary code-level drift into later M3D responsibilities such as affordability, queue/capacity feasibility, PaymentPlan/payment execution, and cost modifier/calculation logic. That vocabulary ratchet is deliberately D1-specific and must be consciously revised when M3D2 begins.
 
-That module exposes exactly one production export: `createPaymentQuote()`.
+Production consumers outside the cost package may enter M3D1 only through `payment-quote.mjs` using static ESM import.
+
+That module exposes exactly one synchronous production export with one explicit input: `createPaymentQuote(resolvedLines)`.
+
+The dedicated D1 boundary executable is part of `npm run test:architecture`, not merely covered incidentally through unit-test discovery.
 
 ## DNA boundary
 
@@ -191,15 +214,19 @@ M3D1 is complete when:
 1. the resolved `PaymentQuote` contract exists as production engine code;
 2. the only supported line family is `resource`;
 3. line shape is exactly `kind`, `resourceId`, `amount`;
-4. resource IDs use canonical typed M1 identity across arbitrary namespaces;
-5. amounts are strictly positive finite numbers and may be fractional;
-6. an empty line list represents a free quote;
-7. quote, line array and lines are detached and frozen;
-8. exact order and duplicates are preserved, including repeated input object identity;
-9. malformed containers, hostile records, malformed IDs, bad amounts, unknown fields and unsupported kinds fail closed;
-10. the line collection has an explicit safety ceiling;
-11. legacy zero and negative ordinary-resource helper behavior is characterized, and the positive-only engine rule is recorded as an intentional hardening decision;
-12. generic M3D1 source contains no state reads, mutation/payment authority, legacy dependencies, UI/runtime dependencies or first-party namespace knowledge;
-13. production callers cannot bypass the reviewed quote entry module;
-14. no gameplay, persistence, reset, UI or oracle behavior changes;
-15. M3D2 remains responsible for current affordability and queue-payment feasibility.
+4. malformed kind syntax is distinct from a well-formed but unsupported family;
+5. resource IDs use canonical typed M1 identity across arbitrary namespaces;
+6. amounts are strictly positive finite numbers and may be fractional;
+7. an empty line list represents a free quote;
+8. legacy adjusted zero values are explicitly normalized to omitted lines before quote construction;
+9. quote, line array and lines are detached and frozen;
+10. exact order and duplicates are preserved, including repeated input object identity;
+11. malformed containers, hostile records, malformed IDs, bad amounts, unknown fields and unsupported kinds fail closed;
+12. scalar validation errors do not retain hostile caller objects in diagnostic details;
+13. the line collection has an explicit safety ceiling;
+14. legacy zero and negative ordinary-resource helper behavior and positive-to-zero adjustment behavior are characterized, with the positive-only engine rule recorded as an intentional hardening decision;
+15. generic M3D1 source contains no state reads, mutation/payment authority, later-M3D semantic scope, legacy dependencies, UI/runtime dependencies or first-party namespace knowledge;
+16. production callers cannot bypass or dynamically load around the reviewed quote entry module;
+17. the dedicated M3D1 boundary is wired into the repository architecture command;
+18. no gameplay, persistence, reset, UI or oracle behavior changes;
+19. M3D2 remains responsible for current affordability and queue-payment feasibility.
