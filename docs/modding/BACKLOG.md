@@ -262,11 +262,37 @@ Established the first production command primitive from the M3A0 laws:
 
 See [M3A1_COMMAND_BUS.md](M3A1_COMMAND_BUS.md).
 
-### M3B - Condition engine - next
+### M3B - Condition engine - complete
 
-Implement reusable machine-readable conditions while preserving the M3A0 distinction between availability, execution conditions, current affordability, and queue/prediction eligibility.
+Established the reusable condition layer and closed it against legacy drift:
 
-Initial primitives should cover technology/resource/structure/trait requirements without introducing payment or mutation behavior.
+- inert, canonical, deeply frozen condition data with hostile-input hardening;
+- reusable technology, resource, structure and trait predicates;
+- explicit separation between availability/execution conditions and affordability/payment;
+- read-only legacy compatibility providers where current authoritative state has not yet migrated;
+- differential evidence against representative legacy qualification behavior, including DNA resource predicates;
+- cumulative architecture closure preventing condition evaluation from acquiring mutation/payment authority.
+
+M3B does not cut over vanilla actions and does not own payment semantics.
+
+### M3C - Effect/operation planning - complete
+
+Closed the effect-planning layer after implementation and hardening:
+
+- explicit inert `EffectPlan` data with no execution or mutation authority;
+- first generic operations `resource.grant` and `resource.consume` with canonical typed IDs and positive finite amounts;
+- exact operation order/duplicate preservation and fail-closed hostile-input handling;
+- cumulative architecture guards keeping M3C state-free, mutation-free, payment-free, presentation-free and free of first-party Evolve namespace knowledge;
+- DNA differential closure proving the complete successful legacy mutation is `RNA -2` plus `DNA +1`, while the M3C representation contains only `resource.grant(evolve:resource/dna, 1)`;
+- review hardening proving failed direct execution is complete non-mutation and presentation qualification remains separate from effect planning.
+
+M3C does not execute effects or cut over vanilla gameplay. RNA payment remains reserved for M3D.
+
+### M3D - Quote/cost/payment engine - next
+
+Define the quote, affordability and payment-planning contracts while preserving the M3A0 distinction between current affordability, queue/capacity feasibility, pseudo-cost requirements, adjusted costs and actual consumptive payment.
+
+DNA's `2 RNA` price is the first simple evidence vertical; special legacy payment families such as Knowledge, prestige currencies, Supply and Species must remain explicit rather than being forced into generic resource effects.
 
 ## Immediate sequence
 
@@ -277,18 +303,20 @@ M1A-M1D engine kernel and seams - complete
    |
 M2A-M2E explicit state architecture - complete
    |
-M3A0 legacy command behavior/design authority - complete
+M3A0-M3A1 command foundation - complete
    |
-M3A1 command contract/bus - complete
+M3B condition engine - complete
    |
-M3B condition engine - next
+M3C effect/operation planning - complete
+   |
+M3D quote/cost/payment engine - next
 ```
 
 Do not jump directly to mod loading, total conversions, or bulk content conversion. Those would lock in legacy assumptions before the engine is ready.
 
 ## Later milestones
 
-- M3B-M3G conditions/effects/costs/queues and first vanilla cutover;
+- M3D-M3G costs/payments, queues, first vanilla cutover and M3 closure;
 - M4 calculation/modifier engine;
 - M5 deterministic simulation;
 - M6 vanilla migration waves;
