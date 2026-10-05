@@ -9,7 +9,7 @@ function fail(code, message, details){
     throw new EngineContractError(code, message, details);
 }
 
-export function createEffectPlan(operations = []){
+export function createEffectPlan(operations){
     const input = readDenseEffectArray(
         operations,
         'effectPlan.operations',
