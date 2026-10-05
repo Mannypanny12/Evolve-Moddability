@@ -2,12 +2,20 @@ import { EngineContractError, parseContentId, describeContractValue } from '../i
 
 export const MAX_COMMAND_DATA_NESTING_DEPTH = 128;
 
+const SIMPLE_DATA_PATH_SEGMENT = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
+
 function fail(code, message, details){
     throw new EngineContractError(code, message, details);
 }
 
 function dataPath(parent, key){
-    return parent === '<root>' ? String(key) : `${parent}.${String(key)}`;
+    const segment = String(key);
+    if (parent === '<root>'){
+        return SIMPLE_DATA_PATH_SEGMENT.test(segment) ? segment : `[${JSON.stringify(segment)}]`;
+    }
+    return SIMPLE_DATA_PATH_SEGMENT.test(segment)
+        ? `${parent}.${segment}`
+        : `${parent}[${JSON.stringify(segment)}]`;
 }
 
 function inspectPlainObject(value, path, code){
@@ -229,10 +237,35 @@ export function assertSynchronousFunction(value, path, code = 'INVALID_COMMAND_R
 
 export function isPromiseLike(value, path, code){
     if (value === null || (typeof value !== 'object' && typeof value !== 'function')) return false;
-    try {
-        return typeof value.then === 'function';
+
+    let cursor = value;
+    const seen = new WeakSet();
+    while (cursor !== null){
+        if ((typeof cursor !== 'object' && typeof cursor !== 'function') || seen.has(cursor)){
+            fail(code, `${path} returned a value whose thenable state could not be safely inspected.`, { path });
+        }
+        seen.add(cursor);
+
+        let descriptor;
+        try {
+            descriptor = Object.getOwnPropertyDescriptor(cursor, 'then');
+        }
+        catch {
+            fail(code, `${path} returned a value whose thenable state could not be safely inspected.`, { path });
+        }
+        if (descriptor){
+            if (!Object.prototype.hasOwnProperty.call(descriptor, 'value')){
+                fail(code, `${path} returned a value with an accessor-based then property.`, { path });
+            }
+            return typeof descriptor.value === 'function';
+        }
+
+        try {
+            cursor = Object.getPrototypeOf(cursor);
+        }
+        catch {
+            fail(code, `${path} returned a value whose thenable state could not be safely inspected.`, { path });
+        }
     }
-    catch {
-        fail(code, `${path} returned a value whose thenable state could not be safely inspected.`, { path });
-    }
+    return false;
 }
