@@ -62,6 +62,8 @@ They reject:
 
 The bus canonicalizes and freezes the caller payload before command-specific validation, then canonicalizes and freezes validator output again before execution. Handlers therefore never receive the caller's original mutable object.
 
+Diagnostic paths use dot notation for ordinary field names and quoted bracket notation for unusual names, so fields containing dots or similar punctuation remain unambiguous.
+
 ## Registration model
 
 M3A1 uses fixed runtime registrations supplied when constructing the bus:
@@ -77,6 +79,8 @@ M3A1 uses fixed runtime registrations supplied when constructing the bus:
 Registrations are closed and command IDs must be unique.
 
 The existing M1 `Registry` is not used as an executable handler container. That registry is intentionally an inert definition registry, while command handlers are runtime capabilities.
+
+Validators and handlers are invoked context-free. They receive their payload argument but no implicit registration object through `this`.
 
 The bus exposes only:
 
@@ -106,7 +110,7 @@ reentrancy check
 
 The handler executes exactly once for a valid dispatch.
 
-Declared async validators/handlers are rejected during registration. Promise/thenable validator or handler results are rejected at runtime.
+Declared async validators/handlers are rejected during registration. Promise/thenable validator or handler results are rejected at runtime. Thenable detection inspects property descriptors rather than reading `value.then`, so an accessor-based `then` property is rejected without invoking its getter.
 
 ## Reentrancy
 
@@ -168,7 +172,9 @@ A reason contains only:
 }
 ```
 
-where `code` is a stable lowercase machine code and `details` is null or inert data. Localized presentation strings are not part of the engine result contract.
+where `code` is a stable lowercase machine code and `details` is null or an inert plain data object. Localized presentation strings are not part of the engine result contract.
+
+Result normalization independently validates that `commandId` is a canonical command ID, even when the result helper is called outside the bus.
 
 M3B may later produce richer structured condition details without redesigning the command result envelope.
 
@@ -193,7 +199,7 @@ Broken engine contracts are exceptions:
 
 These throw `EngineContractError`.
 
-Contract failures are enriched with deterministic command/phase context where a command ID has already been resolved.
+Contract failures are enriched with deterministic command/phase context where a command ID has already been resolved. Existing structured diagnostic fields such as `path`, `field`, or rule metadata are preserved rather than discarded. When an inner command failure already carries a phase or command ID, the outer command context is recorded while the inner values remain available as cause context.
 
 ## Mutation and atomicity boundary
 
@@ -232,6 +238,17 @@ M3A1 establishes one synchronous dispatch boundary, but does not claim unrestric
 
 The existing M0/M1/M2 architecture gates remain cumulative and continue to prohibit legacy globals, DOM/UI/platform access and raw mutation authority throughout `src/engine/**`.
 
+## Review hardening
+
+The post-implementation M3A1 review tightened four areas before closure:
+
+- enriched `EngineContractError` diagnostics now retain the underlying structured fields instead of replacing them with only command/phase metadata;
+- validators and handlers are invoked with no implicit `this` context;
+- thenable detection no longer invokes a potentially hostile `then` getter;
+- result normalization itself requires a canonical command ID, rather than relying solely on the bus caller.
+
+Adversarial coverage was expanded for null-prototype data, hidden/symbol fields, array subclasses, shared array identity, excessive nesting, hostile inspection failures, unusual diagnostic paths, registration accessors, preserved cause diagnostics, accessor-based thenables, and reentrancy cause phases.
+
 ## Production impact
 
 M3A1 adds a production engine primitive but does not route any current vanilla action through it.
@@ -261,16 +278,17 @@ M3A1 is complete when:
 5. fixed registration is immutable after bus construction;
 6. duplicate/malformed registrations fail closed;
 7. public bus surface is only `dispatch`, `has`, and `ids`;
-8. dispatch is synchronous and handlers execute once;
+8. dispatch is synchronous and handlers execute once without an implicit `this` context;
 9. nested dispatch is forbidden and the lock always recovers after failure;
-10. Promise/thenable validators and handlers fail closed;
+10. Promise/thenable validators and handlers fail closed without invoking then accessors;
 11. success and rejection use one frozen structured result contract;
 12. rejected results contain machine-readable reasons rather than localized messages;
 13. legacy `false`/`0`/truthy callback semantics are not accepted as command results;
 14. expected gameplay rejection remains distinct from `EngineContractError`;
-15. command modules cannot access raw GameState write authority or state composition;
-16. the M1 definition Registry is not repurposed as executable handler storage;
-17. M3A1 architecture fitness is part of the cumulative architecture CI chain;
-18. all unit, architecture, build, generated-output and browser smoke gates remain green;
-19. no vanilla gameplay path is cut over yet;
-20. M3B condition engine is the next production slice.
+15. enriched command errors preserve useful underlying diagnostic fields;
+16. command modules cannot access raw GameState write authority or state composition;
+17. the M1 definition Registry is not repurposed as executable handler storage;
+18. M3A1 architecture fitness is part of the cumulative architecture CI chain;
+19. all unit, architecture, build, generated-output and browser smoke gates remain green;
+20. no vanilla gameplay path is cut over yet;
+21. M3B condition engine is the next production slice.
