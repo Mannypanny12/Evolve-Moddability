@@ -27,9 +27,12 @@ const FORBIDDEN_PLAN_RUNTIME = [
 const FORBIDDEN_PLAN_AUTHORITY = /\b(?:mutationAuthority|createMutationScope|beginTransaction|commitTransaction|rollbackTransaction|modRes|setGlobal|payCosts|executePayment|applyPayment|commitPayment|paymentExecutor)\b/;
 const FORBIDDEN_PLAN_READS = /\b(?:assessCurrentAffordability|assessQueuePaymentFeasibility|currentAmount|capacity|available)\b/;
 const FORBIDDEN_SPECIAL_SCOPE = /\b(?:prestige|plasmid|antiplasmid|knowledge|supply|species)\b/i;
+const FORBIDDEN_SPECIAL_LITERAL = /['"](?:prestige|plasmid|antiplasmid|knowledge|supply|species)['"]/i;
 const FORBIDDEN_LATER_SCOPE = /\b(?:adjustCosts|costModifier|priceModifier|modifierPipeline|calculationPipeline|enqueue|dequeue|queueWorkItem|queueScheduler|scheduleQueue)\b/i;
 const FIRST_PARTY_NAMESPACE = /\bevolve:/i;
+const REVIEWED_PAYMENT_KIND = 'payment.resource.debit';
 const PAYMENT_DEBIT_KIND = /['"]payment\.resource\.debit['"]/;
+const PAYMENT_KIND_LITERAL = /['"]payment\.[a-z0-9._-]+['"]/ig;
 
 function normalize(value){
     return value.split(path.sep).join('/');
@@ -63,8 +66,27 @@ function analyzePlanExports(source, relativePath = PUBLIC_PLAN){
     return [];
 }
 
+function analyzePlanOperationKinds(source, relativePath = PUBLIC_PLAN){
+    if (relativePath !== PUBLIC_PLAN) return [];
+    const violations = [];
+    const code = maskNonCode(source);
+    const kindPropertyCount = (code.match(/\bkind\s*:/g) || []).length;
+    const paymentKinds = (source.match(PAYMENT_KIND_LITERAL) || []).map(value => value.slice(1, -1).toLowerCase());
+
+    if (kindPropertyCount !== 1 || !PAYMENT_DEBIT_KIND.test(source)){
+        violations.push(`${relativePath}: M3D3 PaymentPlan must construct exactly one reviewed kind property using ${REVIEWED_PAYMENT_KIND}`);
+    }
+    if (paymentKinds.some(kind => kind !== REVIEWED_PAYMENT_KIND)){
+        violations.push(`${relativePath}: M3D3 PaymentPlan may not introduce payment operation kinds beyond ${REVIEWED_PAYMENT_KIND}`);
+    }
+    return violations;
+}
+
 function analyzePlanSource(source, relativePath = PUBLIC_PLAN){
-    const violations = [...analyzePlanExports(source, relativePath)];
+    const violations = [
+        ...analyzePlanExports(source, relativePath),
+        ...analyzePlanOperationKinds(source, relativePath),
+    ];
     if (relativePath !== PUBLIC_PLAN) return violations;
     const code = maskNonCode(source);
 
@@ -77,7 +99,7 @@ function analyzePlanSource(source, relativePath = PUBLIC_PLAN){
     if (FORBIDDEN_PLAN_READS.test(code)){
         violations.push(`${relativePath}: M3D3 PaymentPlan may not read affordability/capacity state`);
     }
-    if (FORBIDDEN_SPECIAL_SCOPE.test(code)){
+    if (FORBIDDEN_SPECIAL_SCOPE.test(code) || FORBIDDEN_SPECIAL_LITERAL.test(source)){
         violations.push(`${relativePath}: M3D3 ordinary PaymentPlan may not acquire special payment-family semantics`);
     }
     if (FORBIDDEN_LATER_SCOPE.test(code)){
@@ -85,9 +107,6 @@ function analyzePlanSource(source, relativePath = PUBLIC_PLAN){
     }
     if (FIRST_PARTY_NAMESPACE.test(source)){
         violations.push(`${relativePath}: generic M3D3 PaymentPlan may not contain first-party Evolve IDs`);
-    }
-    if (!PAYMENT_DEBIT_KIND.test(source)){
-        violations.push(`${relativePath}: M3D3 PaymentPlan must derive the reviewed payment.resource.debit operation kind`);
     }
 
     const references = extractModuleReferences(source, relativePath);
@@ -108,8 +127,19 @@ function analyzePlanSource(source, relativePath = PUBLIC_PLAN){
     return violations;
 }
 
+function analyzeQuoteInputExports(source, relativePath = QUOTE_INPUT){
+    if (relativePath !== QUOTE_INPUT) return [];
+    const code = maskNonCode(source);
+    const exportCount = (code.match(/\bexport\b/g) || []).length;
+    const hasReviewedEntry = /\bexport\s+function\s+normalizePaymentQuoteInput\s*\(\s*[A-Za-z_$][A-Za-z0-9_$]*\s*\)/.test(code);
+    if (exportCount !== 1 || !hasReviewedEntry){
+        return [`${relativePath}: shared quote-input helper must export only synchronous one-argument normalizePaymentQuoteInput()`];
+    }
+    return [];
+}
+
 function analyzeQuoteInputSource(source, relativePath = QUOTE_INPUT){
-    const violations = [];
+    const violations = [...analyzeQuoteInputExports(source, relativePath)];
     if (relativePath !== QUOTE_INPUT) return violations;
     const code = maskNonCode(source);
     for (const [label, pattern] of FORBIDDEN_PLAN_RUNTIME){
@@ -118,6 +148,22 @@ function analyzeQuoteInputSource(source, relativePath = QUOTE_INPUT){
     if (FORBIDDEN_PLAN_AUTHORITY.test(code)){
         violations.push(`${relativePath}: shared quote input normalization may not acquire payment/mutation authority`);
     }
+    if (FORBIDDEN_PLAN_READS.test(code)){
+        violations.push(`${relativePath}: shared quote input normalization must remain state-independent validation`);
+    }
+    if (FORBIDDEN_SPECIAL_SCOPE.test(code) || FORBIDDEN_SPECIAL_LITERAL.test(source)){
+        violations.push(`${relativePath}: shared quote input normalization may not acquire special payment-family semantics`);
+    }
+    if (FORBIDDEN_LATER_SCOPE.test(code)){
+        violations.push(`${relativePath}: shared quote input normalization may not acquire modifier or queue scope`);
+    }
+    if (FIRST_PARTY_NAMESPACE.test(source)){
+        violations.push(`${relativePath}: shared quote input normalization may not contain first-party Evolve IDs`);
+    }
+    if (PAYMENT_DEBIT_KIND.test(source) || (source.match(PAYMENT_KIND_LITERAL) || []).length > 0){
+        violations.push(`${relativePath}: shared quote input normalization may validate quotes but may not construct payment operations`);
+    }
+
     const allowed = new Set([IDENTITY, INERT_DATA, PUBLIC_QUOTE]);
     for (const reference of extractModuleReferences(source, relativePath)){
         if (reference.kind !== 'import-statement'){
@@ -199,7 +245,9 @@ function main(){
 
 module.exports = {
     analyzePlanExports,
+    analyzePlanOperationKinds,
     analyzePlanSource,
+    analyzeQuoteInputExports,
     analyzeQuoteInputSource,
     analyzeCostInternalConsumer,
     analyzeProductionConsumer,
