@@ -27,7 +27,7 @@ import {
     universeAffix,
     alevel
 } from '../../src/achieve.js';
-import { modRes, loopTimers } from '../../src/functions.js';
+import { modRes, loopTimers, adjustCosts } from '../../src/functions.js';
 import '../../src/races.js';
 import '../../src/resources.js';
 import '../../src/jobs.js';
@@ -37,6 +37,7 @@ import {
     actions,
     checkCosts,
     payCosts,
+    checkAffordable,
     checkTechQualifications,
     checkTechRequirements
 } from '../../src/actions.js';
@@ -94,6 +95,26 @@ function numericCosts(costs){
         result[resource] = typeof value === 'function' ? value : () => value;
     });
     return result;
+}
+
+function evaluatedCosts(costs, offset = 0){
+    const result = {};
+    Object.keys(costs).forEach(resource => {
+        const value = costs[resource];
+        const evaluated = typeof value === 'function' ? value(offset) : value;
+        result[resource] = evaluated && typeof evaluated === 'object'
+            ? clone(evaluated)
+            : evaluated;
+    });
+    return result;
+}
+
+function actionDefinition(group, id){
+    const definition = actions[group] && actions[group][id];
+    if (!definition){
+        throw new Error(`Unknown legacy action: ${group}.${id}`);
+    }
+    return definition;
 }
 
 function clearObject(object){
@@ -167,8 +188,44 @@ function canAfford(costs){
     return checkCosts(numericCosts(costs));
 }
 
+function canAffordMax(costs){
+    return checkAffordable({ cost: numericCosts(costs) }, true, true);
+}
+
 function pay(costs){
     return payCosts({}, numericCosts(costs));
+}
+
+function rawActionCosts(group, id, offset = 0){
+    const definition = actionDefinition(group, id);
+    return evaluatedCosts(definition.cost || {}, offset);
+}
+
+function adjustedActionCosts(group, id, offset = 0){
+    const definition = actionDefinition(group, id);
+    return evaluatedCosts(adjustCosts(definition, offset), offset);
+}
+
+function adjustedSyntheticCosts(costs, offset = 0){
+    const definition = { cost: numericCosts(costs) };
+    return evaluatedCosts(adjustCosts(definition, offset), offset);
+}
+
+function actionAffordable(group, id, options = {}){
+    const definition = actionDefinition(group, id);
+    return checkAffordable(
+        definition,
+        options.max === true,
+        options.raw === true
+    );
+}
+
+function executeAction(group, id, options = {}){
+    const definition = actionDefinition(group, id);
+    if (typeof definition.action !== 'function'){
+        throw new Error(`Legacy action has no executable action callback: ${group}.${id}`);
+    }
+    return definition.action({ isQueue: options.isQueue === true });
 }
 
 function technologyRequirements(id, predictionList){
@@ -188,10 +245,7 @@ function technologyDefinition(id){
 }
 
 function actionCondition(group, id){
-    const definition = actions[group] && actions[group][id];
-    if (!definition){
-        throw new Error(`Unknown legacy action: ${group}.${id}`);
-    }
+    const definition = actionDefinition(group, id);
     return definition.condition ? definition.condition() : true;
 }
 
@@ -326,7 +380,13 @@ globalThis.__EVOLVE_LEGACY_TEST_API__ = {
     pristineLegacyState,
     applyResourceDelta,
     canAfford,
+    canAffordMax,
     pay,
+    rawActionCosts,
+    adjustedActionCosts,
+    adjustedSyntheticCosts,
+    actionAffordable,
+    executeAction,
     technologyRequirements,
     technologyQualifies,
     technologyDefinition,
