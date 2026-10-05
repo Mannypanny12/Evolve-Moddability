@@ -92,6 +92,29 @@ test('M3B2 read capability registration rejects async, generator, and class func
     }
 });
 
+test('M3B2 read facade independently validates canonical subject IDs and content types before invoking providers', async () => {
+    const { createConditionReadCapabilities, EngineContractError } = await modules();
+    let calls = 0;
+    const reads = createConditionReadCapabilities(validReads({
+        technology: { has: () => { calls++; return false; } },
+    }));
+
+    for (const subjectId of ['primitive', 'evolve:resource/food']){
+        assert.throws(
+            () => reads.technology.has(subjectId),
+            error => {
+                assert.equal(error instanceof EngineContractError, true);
+                assert.equal(error.code, 'INVALID_CONDITION_READ_SUBJECT_ID');
+                assert.equal(error.details.readFamily, 'technology');
+                assert.equal(error.details.readOperation, 'has');
+                assert.equal(error.details.expectedType, 'technology');
+                return true;
+            }
+        );
+    }
+    assert.equal(calls, 0);
+});
+
 test('M3B2 read capabilities validate semantic result types and normalize negative zero', async () => {
     const { createConditionReadCapabilities, EngineContractError } = await modules();
     const reads = createConditionReadCapabilities(validReads({
@@ -116,6 +139,50 @@ test('M3B2 read capabilities validate semantic result types and normalize negati
     assert.throws(
         () => badCapacity.resource.capacity('evolve:resource/test'),
         error => error instanceof EngineContractError && error.code === 'INVALID_CONDITION_READ_RESULT'
+    );
+});
+
+test('M3B2 read capabilities preserve safe machine diagnostics when a provider throws an EngineContractError', async () => {
+    const { createConditionReadCapabilities, EngineContractError } = await modules();
+    const reads = createConditionReadCapabilities(validReads({
+        trait: {
+            has: () => {
+                throw new EngineContractError('CORRUPT_TRAIT_STATE', 'Corrupt trait state.', { unsafeDetail: 'ignored by read boundary' });
+            },
+        },
+    }));
+
+    assert.throws(
+        () => reads.trait.has('evolve:trait/test'),
+        error => {
+            assert.equal(error instanceof EngineContractError, true);
+            assert.equal(error.code, 'CONDITION_READ_FAILURE');
+            assert.equal(error.details.readFamily, 'trait');
+            assert.equal(error.details.readOperation, 'has');
+            assert.equal(error.details.subjectId, 'evolve:trait/test');
+            assert.equal(error.details.readerCauseCode, 'CORRUPT_TRAIT_STATE');
+            assert.equal(Object.prototype.hasOwnProperty.call(error.details, 'unsafeDetail'), false);
+            return true;
+        }
+    );
+});
+
+test('M3B2 read failures remain normalized even when a provider throws a hostile value', async () => {
+    const { createConditionReadCapabilities, EngineContractError } = await modules();
+    const hostile = Proxy.revocable({}, {});
+    hostile.revoke();
+    const reads = createConditionReadCapabilities(validReads({
+        technology: { has: () => { throw hostile.proxy; } },
+    }));
+
+    assert.throws(
+        () => reads.technology.has('evolve:technology/test'),
+        error => {
+            assert.equal(error instanceof EngineContractError, true);
+            assert.equal(error.code, 'CONDITION_READ_FAILURE');
+            assert.equal(error.details.readerCauseCode, null);
+            return true;
+        }
     );
 });
 

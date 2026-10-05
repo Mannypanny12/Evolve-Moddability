@@ -19,12 +19,22 @@ function fail(code, message, details){
     throw new EngineContractError(code, message, details);
 }
 
+function isEngineContractError(value){
+    try {
+        return value instanceof EngineContractError;
+    }
+    catch {
+        return false;
+    }
+}
+
 function assertTypedContentId(value, expectedType, path){
     let parsed;
     try {
         parsed = parseContentId(value);
     }
-    catch {
+    catch (error){
+        if (!isEngineContractError(error)) throw error;
         fail(
             'INVALID_CONDITION_SUBJECT_ID',
             `${path} must be a canonical ${expectedType} content ID.`,

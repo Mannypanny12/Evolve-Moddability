@@ -52,7 +52,7 @@ async function evaluatorFor(state){
     return createConditionEvaluator({ registrations: createCoreRequirementRegistrations(stateReads(state)) });
 }
 
-test('M3B2 exposes the intended fixed core requirement kinds', async () => {
+test('M3B2 exposes exactly the intended fixed core requirement kinds', async () => {
     const { CORE_REQUIREMENT_KINDS } = await modules();
     const evaluator = await evaluatorFor({});
 
@@ -67,7 +67,10 @@ test('M3B2 exposes the intended fixed core requirement kinds', async () => {
         'trait.absent',
         'trait.present',
     ]);
-    for (const kind of CORE_REQUIREMENT_KINDS) assert.equal(evaluator.has(kind), true);
+    assert.deepEqual(
+        evaluator.kinds().filter(kind => !['all', 'any', 'not'].includes(kind)),
+        CORE_REQUIREMENT_KINDS
+    );
 });
 
 test('M3B2 technology acquired and not-acquired conditions use canonical technology IDs', async () => {
@@ -131,6 +134,36 @@ test('M3B2 resource predicates keep availability, threshold, and current capacit
     }).reasons[0], {
         code: 'condition.resource.at_capacity',
         details: { resourceId: food, actualAmount: 100, capacity: 100 },
+    });
+
+    const overCapacityEvaluator = await evaluatorFor({
+        resources: new Set([food]),
+        resourceAmounts: new Map([[food, 125]]),
+        resourceCapacities: new Map([[food, 100]]),
+    });
+    assert.deepEqual(overCapacityEvaluator.evaluate({
+        kind: 'resource.below_capacity',
+        params: { resourceId: food },
+    }).reasons[0], {
+        code: 'condition.resource.at_capacity',
+        details: { resourceId: food, actualAmount: 125, capacity: 100 },
+    });
+});
+
+test('M3B2 amount and availability remain independent even for a missing resource at a zero threshold', async () => {
+    const missing = 'evolve:resource/not_present';
+    const evaluator = await evaluatorFor({});
+
+    assert.equal(evaluator.evaluate({
+        kind: 'resource.amount.at_least',
+        params: { resourceId: missing, amount: 0 },
+    }).status, 'satisfied');
+    assert.deepEqual(evaluator.evaluate({
+        kind: 'resource.available',
+        params: { resourceId: missing },
+    }).reasons[0], {
+        code: 'condition.resource.unavailable',
+        details: { resourceId: missing },
     });
 });
 
@@ -239,6 +272,30 @@ test('M3B2 invalid semantic read results remain contract failures with condition
             assert.equal(error instanceof EngineContractError, true);
             assert.equal(error.code, 'INVALID_CONDITION_READ_RESULT');
             assert.equal(error.details.conditionKind, 'resource.amount.at_least');
+            assert.equal(error.details.conditionPhase, 'evaluate');
+            return true;
+        }
+    );
+});
+
+test('M3B2 reader failures preserve provider cause codes alongside condition context', async () => {
+    const { createConditionEvaluator, createCoreRequirementRegistrations, EngineContractError } = await modules();
+    const reads = stateReads({});
+    reads.technology.has = () => {
+        throw new EngineContractError('TECH_STATE_CORRUPT', 'Technology state is corrupt.');
+    };
+    const evaluator = createConditionEvaluator({ registrations: createCoreRequirementRegistrations(reads) });
+
+    assert.throws(
+        () => evaluator.evaluate({
+            kind: 'technology.acquired',
+            params: { technologyId: 'evolve:technology/bone_tools' },
+        }),
+        error => {
+            assert.equal(error instanceof EngineContractError, true);
+            assert.equal(error.code, 'CONDITION_READ_FAILURE');
+            assert.equal(error.details.readerCauseCode, 'TECH_STATE_CORRUPT');
+            assert.equal(error.details.conditionKind, 'technology.acquired');
             assert.equal(error.details.conditionPhase, 'evaluate');
             return true;
         }
