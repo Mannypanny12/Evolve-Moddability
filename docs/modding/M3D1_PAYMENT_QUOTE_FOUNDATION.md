@@ -68,6 +68,14 @@ Zero, negative zero, negative values, `NaN`, infinities, strings, BigInt and oth
 
 A zero-cost action is represented by omitting the line, normally yielding an empty quote when no other prices remain.
 
+### Legacy non-positive cost evidence
+
+The positive-only rule is an intentional hardening boundary rather than an assumption about the old helper implementation.
+
+M3D1 characterization proves that legacy `checkCosts()` / `payCosts()` accept a zero ordinary-resource cost as affordable and treat payment as a no-op. More importantly, they also accept a negative ordinary-resource cost and `payCosts()` then increases that resource because it subtracts the negative value.
+
+M3D1 does not preserve that accidental arithmetic behavior in the engine contract. A resolved zero price is omitted; a negative price is invalid. If later vanilla characterization finds a legitimate mechanic whose semantic meaning is a refund or grant, that mechanic must be represented explicitly rather than smuggled through a negative payment amount.
+
 ## Resolved means resolved
 
 M3D1 does not evaluate legacy cost functions and does not reproduce `adjustCosts()`.
@@ -190,7 +198,8 @@ M3D1 is complete when:
 8. exact order and duplicates are preserved, including repeated input object identity;
 9. malformed containers, hostile records, malformed IDs, bad amounts, unknown fields and unsupported kinds fail closed;
 10. the line collection has an explicit safety ceiling;
-11. generic M3D1 source contains no state reads, mutation/payment authority, legacy dependencies, UI/runtime dependencies or first-party namespace knowledge;
-12. production callers cannot bypass the reviewed quote entry module;
-13. no gameplay, persistence, reset, UI or oracle behavior changes;
-14. M3D2 remains responsible for current affordability and queue-payment feasibility.
+11. legacy zero and negative ordinary-resource helper behavior is characterized, and the positive-only engine rule is recorded as an intentional hardening decision;
+12. generic M3D1 source contains no state reads, mutation/payment authority, legacy dependencies, UI/runtime dependencies or first-party namespace knowledge;
+13. production callers cannot bypass the reviewed quote entry module;
+14. no gameplay, persistence, reset, UI or oracle behavior changes;
+15. M3D2 remains responsible for current affordability and queue-payment feasibility.
