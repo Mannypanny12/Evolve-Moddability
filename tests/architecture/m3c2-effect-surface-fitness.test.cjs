@@ -3,7 +3,11 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const path = require('node:path');
-const { analyzeSource, findViolations } = require('./m3c2-effect-surface-fitness.cjs');
+const {
+    analyzeEffectPlanExports,
+    analyzeSource,
+    findViolations,
+} = require('./m3c2-effect-surface-fitness.cjs');
 
 const root = path.resolve(__dirname, '../..');
 
@@ -39,7 +43,7 @@ test('M3C2 effect surface allows external production code to consume only create
 test('M3C2 effect internals have reviewed consumers only', () => {
     assert.deepEqual(
         analyzeSource(
-            "import { readEffectObjectFields } from './common.mjs';\nimport { normalizeCoreEffectOperation } from './core-operations.mjs';",
+            "import { readEffectObjectFields } from './common.mjs';\nimport { normalizeCoreEffectOperation } from './core-operations.mjs';\nexport function createEffectPlan(){}",
             'src/engine/effects/effect-plan.mjs'
         ),
         []
@@ -66,6 +70,28 @@ test('M3C2 effect internals have reviewed consumers only', () => {
         ),
         /only effect-plan\.mjs and core-operations\.mjs may consume/
     );
+});
+
+test('M3C2 effect-plan export surface exposes only synchronous createEffectPlan', () => {
+    assert.deepEqual(
+        analyzeEffectPlanExports(
+            'export function createEffectPlan(operations){ return operations; }',
+            'src/engine/effects/effect-plan.mjs'
+        ),
+        []
+    );
+
+    for (const source of [
+        'export async function createEffectPlan(operations){ return operations; }',
+        'export function createEffectPlan(){}\nexport const rawNormalizer = true;',
+        "export function createEffectPlan(){}\nexport { normalizeCoreEffectOperation } from './core-operations.mjs';",
+        'function createEffectPlan(){}',
+    ]){
+        assert.match(
+            analyzeEffectPlanExports(source, 'src/engine/effects/effect-plan.mjs').join('\n'),
+            /must export only synchronous createEffectPlan/
+        );
+    }
 });
 
 test('M3C2 effect surface rejects dynamic and path-normalized internal bypasses', () => {
