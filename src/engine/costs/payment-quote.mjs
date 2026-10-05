@@ -3,8 +3,8 @@ import {
     readPaymentQuoteLines,
 } from './common.mjs';
 
-export function createPaymentQuote(rawLines){
-    const lines = readPaymentQuoteLines(rawLines)
+export function createPaymentQuote(resolvedLines){
+    const lines = readPaymentQuoteLines(resolvedLines)
         .map((line, index) => normalizePaymentQuoteLine(line, index));
 
     return Object.freeze({
