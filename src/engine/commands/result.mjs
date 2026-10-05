@@ -1,5 +1,6 @@
 import { EngineContractError } from '../identity.mjs';
 import {
+    assertCommandId,
     canonicalizeCommandData,
     canonicalizeCommandPayload,
     readClosedCommandObject,
@@ -48,6 +49,7 @@ export function commandRejected(reasons){
 }
 
 export function normalizeCommandOutcome(commandId, rawOutcome){
+    const canonicalCommandId = assertCommandId(commandId, 'commandResult.commandId');
     const base = readClosedCommandObject(rawOutcome, {
         path: 'commandOutcome',
         allowed: ['status', 'data', 'reasons'],
@@ -57,13 +59,13 @@ export function normalizeCommandOutcome(commandId, rawOutcome){
     const status = base.get('status');
     if (status === 'succeeded'){
         if (!base.has('data') || base.has('reasons')){
-            fail('INVALID_COMMAND_RESULT', 'Succeeded command outcomes require data and may not contain reasons.', { commandId, status });
+            fail('INVALID_COMMAND_RESULT', 'Succeeded command outcomes require data and may not contain reasons.', { commandId: canonicalCommandId, status });
         }
         const data = base.get('data') === null
             ? null
             : canonicalizeCommandData(base.get('data'), 'commandOutcome.data');
         return Object.freeze({
-            commandId,
+            commandId: canonicalCommandId,
             status,
             data,
             reasons: Object.freeze([]),
@@ -71,14 +73,14 @@ export function normalizeCommandOutcome(commandId, rawOutcome){
     }
     if (status === 'rejected'){
         if (!base.has('reasons') || base.has('data')){
-            fail('INVALID_COMMAND_RESULT', 'Rejected command outcomes require reasons and may not contain data.', { commandId, status });
+            fail('INVALID_COMMAND_RESULT', 'Rejected command outcomes require reasons and may not contain data.', { commandId: canonicalCommandId, status });
         }
         return Object.freeze({
-            commandId,
+            commandId: canonicalCommandId,
             status,
             data: null,
             reasons: normalizeReasons(base.get('reasons')),
         });
     }
-    fail('INVALID_COMMAND_RESULT', 'Command outcome status must be "succeeded" or "rejected".', { commandId, status });
+    fail('INVALID_COMMAND_RESULT', 'Command outcome status must be "succeeded" or "rejected".', { commandId: canonicalCommandId, status });
 }
