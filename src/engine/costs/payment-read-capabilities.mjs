@@ -5,6 +5,29 @@ function fail(code, message, details){
     throw new EngineContractError(code, message, details);
 }
 
+function isEngineContractError(value){
+    try {
+        return value instanceof EngineContractError;
+    }
+    catch {
+        return false;
+    }
+}
+
+function readOwnDataField(value, field){
+    if (value === null || (typeof value !== 'object' && typeof value !== 'function')) return undefined;
+    let descriptor;
+    try {
+        descriptor = Object.getOwnPropertyDescriptor(value, field);
+    }
+    catch {
+        return undefined;
+    }
+    return descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')
+        ? descriptor.value
+        : undefined;
+}
+
 function readClosedObject(value, path, allowed, required = allowed){
     const fields = inspectPlainInertObject(value, {
         path,
@@ -112,8 +135,11 @@ function invoke(read, operation, resourceId){
         value = Reflect.apply(read, undefined, [canonicalId]);
     }
     catch (error){
-        const causeCode = error instanceof EngineContractError && typeof error.code === 'string'
-            ? error.code
+        const causeCodeValue = isEngineContractError(error)
+            ? readOwnDataField(error, 'code')
+            : undefined;
+        const causeCode = typeof causeCodeValue === 'string' && causeCodeValue.length > 0
+            ? causeCodeValue
             : null;
         fail('PAYMENT_READ_FAILURE', `Payment resource.${operation} read failed.`, {
             readFamily: 'resource',
