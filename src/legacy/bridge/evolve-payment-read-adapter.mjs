@@ -1,4 +1,4 @@
-import { EngineContractError } from '../../engine/identity.mjs';
+import { EngineContractError, parseContentId } from '../../engine/identity.mjs';
 import { inspectPlainInertObject } from '../../engine/contracts/inert-data.mjs';
 import { createEvolveLegacyMappingCatalog } from './evolve-mappings.mjs';
 
@@ -11,7 +11,34 @@ function fail(code, message, details){
     throw new EngineContractError(code, message, details);
 }
 
+function assertPlainOptionsContainer(value){
+    const path = 'evolveLegacyPaymentAdapterOptions';
+    if (value === null || typeof value !== 'object'){
+        fail('INVALID_LEGACY_PAYMENT_ADAPTER_CONFIG', `${path} must be a plain data object.`, {
+            path,
+            valueType: value === null ? 'null' : typeof value,
+        });
+    }
+
+    let isArray;
+    let prototype;
+    try {
+        isArray = Array.isArray(value);
+        prototype = Object.getPrototypeOf(value);
+    }
+    catch {
+        fail('INVALID_LEGACY_PAYMENT_ADAPTER_CONFIG', `${path} could not be safely inspected.`, { path });
+    }
+    if (isArray || (prototype !== Object.prototype && prototype !== null)){
+        fail('INVALID_LEGACY_PAYMENT_ADAPTER_CONFIG', `${path} must be a plain data object.`, {
+            path,
+            containerType: isArray ? 'array' : 'object',
+        });
+    }
+}
+
 function readOptions(rawOptions){
+    assertPlainOptionsContainer(rawOptions);
     const fields = inspectPlainInertObject(rawOptions, {
         path: 'evolveLegacyPaymentAdapterOptions',
         code: 'INVALID_LEGACY_PAYMENT_ADAPTER_CONFIG',
@@ -153,14 +180,42 @@ function mappingIndex(){
     return index;
 }
 
-function requireMapping(index, resourceId){
+function canonicalResourceId(value){
+    if (typeof value !== 'string'){
+        fail('INVALID_LEGACY_PAYMENT_SUBJECT_ID', 'Legacy payment resource subject must be a canonical resource content ID.', {
+            expectedType: 'resource',
+            valueType: typeof value,
+        });
+    }
+
+    let parsed;
+    try {
+        parsed = parseContentId(value);
+    }
+    catch {
+        fail('INVALID_LEGACY_PAYMENT_SUBJECT_ID', 'Legacy payment resource subject must be a canonical resource content ID.', {
+            expectedType: 'resource',
+            valueType: 'string',
+        });
+    }
+    if (parsed.type !== 'resource'){
+        fail('INVALID_LEGACY_PAYMENT_SUBJECT_ID', 'Legacy payment resource subject must identify content type resource.', {
+            expectedType: 'resource',
+            actualType: parsed.type,
+        });
+    }
+    return parsed.canonical;
+}
+
+function requireMapping(index, rawResourceId){
+    const resourceId = canonicalResourceId(rawResourceId);
     const mapping = index.get(resourceId);
     if (!mapping){
         fail('UNSUPPORTED_LEGACY_PAYMENT_SUBJECT', 'Legacy payment compatibility does not support this resource.', {
             resourceId,
         });
     }
-    return mapping;
+    return { mapping, resourceId };
 }
 
 function createRootReader(readLegacyRoot){
@@ -213,8 +268,8 @@ export function createEvolveLegacyPaymentReadProvider(rawOptions){
 
     return Object.freeze({
         resource: Object.freeze({
-            amount(resourceId){
-                const mapping = requireMapping(index, resourceId);
+            amount(rawResourceId){
+                const { mapping, resourceId } = requireMapping(index, rawResourceId);
                 const record = resourceRecord(currentRoot, mapping, resourceId);
                 if (record === MISSING) return 0;
                 const value = readDataField(record, 'amount', `legacy payment resource ${resourceId}`);
@@ -225,8 +280,8 @@ export function createEvolveLegacyPaymentReadProvider(rawOptions){
                 }
                 return finiteNumber(value, `${mapping.legacyPath}.amount`);
             },
-            available(resourceId){
-                const mapping = requireMapping(index, resourceId);
+            available(rawResourceId){
+                const { mapping, resourceId } = requireMapping(index, rawResourceId);
                 const record = resourceRecord(currentRoot, mapping, resourceId);
                 if (record === MISSING) return false;
                 return availability(
@@ -234,8 +289,8 @@ export function createEvolveLegacyPaymentReadProvider(rawOptions){
                     `${mapping.legacyPath}.display`
                 );
             },
-            capacity(resourceId){
-                const mapping = requireMapping(index, resourceId);
+            capacity(rawResourceId){
+                const { mapping, resourceId } = requireMapping(index, rawResourceId);
                 const record = resourceRecord(currentRoot, mapping, resourceId);
                 if (record === MISSING) return 0;
                 const value = readDataField(record, 'max', `legacy payment resource ${resourceId}`);
