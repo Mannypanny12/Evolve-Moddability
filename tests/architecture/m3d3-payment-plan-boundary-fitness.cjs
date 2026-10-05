@@ -31,7 +31,6 @@ const FORBIDDEN_SPECIAL_LITERAL = /['"](?:prestige|plasmid|antiplasmid|knowledge
 const FORBIDDEN_LATER_SCOPE = /\b(?:adjustCosts|costModifier|priceModifier|modifierPipeline|calculationPipeline|enqueue|dequeue|queueWorkItem|queueScheduler|scheduleQueue)\b/i;
 const FIRST_PARTY_NAMESPACE = /\bevolve:/i;
 const REVIEWED_PAYMENT_KIND = 'payment.resource.debit';
-const PAYMENT_DEBIT_KIND = /['"]payment\.resource\.debit['"]/;
 const PAYMENT_KIND_LITERAL = /['"]payment\.[a-z0-9._-]+['"]/ig;
 
 function normalize(value){
@@ -70,12 +69,23 @@ function analyzePlanOperationKinds(source, relativePath = PUBLIC_PLAN){
     if (relativePath !== PUBLIC_PLAN) return [];
     const violations = [];
     const code = maskNonCode(source);
-    const kindPropertyCount = (code.match(/\bkind\s*:/g) || []).length;
-    const paymentKinds = (source.match(PAYMENT_KIND_LITERAL) || []).map(value => value.slice(1, -1).toLowerCase());
+    const kindTokens = [...code.matchAll(/\bkind\b/g)];
+    const kindProperties = [...code.matchAll(/\bkind\s*:/g)];
 
-    if (kindPropertyCount !== 1 || !PAYMENT_DEBIT_KIND.test(source)){
-        violations.push(`${relativePath}: M3D3 PaymentPlan must construct exactly one reviewed kind property using ${REVIEWED_PAYMENT_KIND}`);
+    if (kindTokens.length !== 1 || kindProperties.length !== 1){
+        violations.push(`${relativePath}: M3D3 PaymentPlan must contain exactly one reviewed operation-kind construction`);
+        return violations;
     }
+
+    const property = kindProperties[0];
+    const afterColon = source.slice(property.index + property[0].length);
+    const literal = afterColon.match(/^\s*(['"])([^'"\r\n]+)\1/);
+    if (!literal || literal[2] !== REVIEWED_PAYMENT_KIND){
+        violations.push(`${relativePath}: M3D3 PaymentPlan kind must be the literal ${REVIEWED_PAYMENT_KIND}`);
+    }
+
+    const paymentKinds = (source.match(PAYMENT_KIND_LITERAL) || [])
+        .map(value => value.slice(1, -1).toLowerCase());
     if (paymentKinds.some(kind => kind !== REVIEWED_PAYMENT_KIND)){
         violations.push(`${relativePath}: M3D3 PaymentPlan may not introduce payment operation kinds beyond ${REVIEWED_PAYMENT_KIND}`);
     }
@@ -160,7 +170,7 @@ function analyzeQuoteInputSource(source, relativePath = QUOTE_INPUT){
     if (FIRST_PARTY_NAMESPACE.test(source)){
         violations.push(`${relativePath}: shared quote input normalization may not contain first-party Evolve IDs`);
     }
-    if (PAYMENT_DEBIT_KIND.test(source) || (source.match(PAYMENT_KIND_LITERAL) || []).length > 0){
+    if (/\bkind\s*:/.test(code) || (source.match(PAYMENT_KIND_LITERAL) || []).length > 0){
         violations.push(`${relativePath}: shared quote input normalization may validate quotes but may not construct payment operations`);
     }
 
@@ -188,7 +198,7 @@ function analyzeCostInternalConsumer(source, relativePath){
             violations.push(`${relativePath}: only PaymentAssessor and PaymentPlan may consume the shared quote-input normalizer`);
         }
     }
-    if (relativePath !== PUBLIC_PLAN && PAYMENT_DEBIT_KIND.test(source)){
+    if (relativePath !== PUBLIC_PLAN && source.includes(REVIEWED_PAYMENT_KIND)){
         violations.push(`${relativePath}: payment.resource.debit semantics are owned by the M3D3 PaymentPlan module`);
     }
     return violations;
