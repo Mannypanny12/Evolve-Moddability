@@ -12,6 +12,8 @@ const RESOURCE_OPERATION_FIELDS = Object.freeze([
     'amount',
 ]);
 
+export const MAX_CORE_EFFECT_OPERATION_FIELDS = RESOURCE_OPERATION_FIELDS.length;
+
 function fail(code, message, details){
     throw new EngineContractError(code, message, details);
 }
@@ -93,15 +95,12 @@ function normalizeResourceOperation(fields, kind, path){
 }
 
 export function normalizeCoreEffectOperation(fields, kind, path){
-    switch (kind){
-        case 'resource.consume':
-        case 'resource.grant':
-            return normalizeResourceOperation(fields, kind, path);
-        default:
-            fail(
-                'UNSUPPORTED_EFFECT_OPERATION_KIND',
-                `${path}.kind is not a supported core effect operation kind.`,
-                { path: `${path}.kind`, kind }
-            );
+    if (!CORE_EFFECT_OPERATION_KINDS.includes(kind)){
+        fail(
+            'UNSUPPORTED_EFFECT_OPERATION_KIND',
+            `${path}.kind is not a supported core effect operation kind.`,
+            { path: `${path}.kind`, kind }
+        );
     }
+    return normalizeResourceOperation(fields, kind, path);
 }
