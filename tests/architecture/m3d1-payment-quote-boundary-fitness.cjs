@@ -7,6 +7,11 @@ const { extractModuleReferences, maskNonCode } = require('./architecture-fitness
 const SOURCE_EXTENSIONS = new Set(['.js', '.mjs', '.cjs']);
 const COST_ROOT = 'src/engine/costs';
 const PUBLIC_QUOTE_FILE = 'src/engine/costs/payment-quote.mjs';
+const PUBLIC_ASSESSOR_FILE = 'src/engine/costs/payment-assessor.mjs';
+const D1_SCOPE_FILES = new Set([
+    PUBLIC_QUOTE_FILE,
+    'src/engine/costs/common.mjs',
+]);
 const IDENTITY_FILE = 'src/engine/identity.mjs';
 const INERT_DATA_CONTRACT_FILE = 'src/engine/contracts/inert-data.mjs';
 
@@ -42,7 +47,7 @@ function listSourceFiles(dir, root, violations){
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })){
         const full = path.join(dir, entry.name);
         if (entry.isSymbolicLink()){
-            violations.push(`${normalize(path.relative(root, full))}: M3D1 source traversal may not pass through a symbolic link`);
+            violations.push(`${normalize(path.relative(root, full))}: M3D cost source traversal may not pass through a symbolic link`);
         }
         else if (entry.isDirectory()){
             files.push(...listSourceFiles(full, root, violations));
@@ -76,45 +81,47 @@ function analyzeCostModule(source, relativePath){
     const code = maskNonCode(source);
 
     if (FORBIDDEN_AUTHORITY_PATTERN.test(code)){
-        violations.push(`${relativePath}: M3D1 quote construction may not reference payment/mutation authority`);
+        violations.push(`${relativePath}: M3D cost source may not reference payment/mutation authority`);
     }
     for (const [label, pattern] of FORBIDDEN_RUNTIME_PATTERNS){
         if (pattern.test(code)){
-            violations.push(`${relativePath}: M3D1 quote construction may not access ${label}`);
+            violations.push(`${relativePath}: M3D cost source may not access ${label}`);
         }
     }
-    for (const [label, pattern] of FORBIDDEN_D1_SCOPE_PATTERNS){
-        if (pattern.test(code)){
-            violations.push(`${relativePath}: M3D1 quote construction may not acquire ${label}`);
+    if (D1_SCOPE_FILES.has(relativePath)){
+        for (const [label, pattern] of FORBIDDEN_D1_SCOPE_PATTERNS){
+            if (pattern.test(code)){
+                violations.push(`${relativePath}: M3D1 quote construction may not acquire ${label}`);
+            }
         }
     }
     if (FIRST_PARTY_NAMESPACE_PATTERN.test(source)){
-        violations.push(`${relativePath}: generic M3D1 cost source may not contain first-party Evolve namespace knowledge`);
+        violations.push(`${relativePath}: generic M3D cost source may not contain first-party Evolve namespace knowledge`);
     }
 
     for (const reference of extractModuleReferences(source, relativePath)){
         if (reference.kind !== 'import-statement'){
-            violations.push(`${relativePath}: M3D1 cost modules may use only static ESM imports; found ${reference.kind}`);
+            violations.push(`${relativePath}: M3D cost modules may use only static ESM imports; found ${reference.kind}`);
             continue;
         }
         const specifier = reference.specifier;
         if (!specifier.startsWith('.')){
-            violations.push(`${relativePath}: M3D1 cost modules may not import external packages: ${specifier}`);
+            violations.push(`${relativePath}: M3D cost modules may not import external packages: ${specifier}`);
             continue;
         }
         const target = resolveRelative(relativePath, specifier);
         if (target === IDENTITY_FILE || target === INERT_DATA_CONTRACT_FILE) continue;
         if (target.startsWith(`${COST_ROOT}/`)) continue;
         if (target.startsWith('src/engine/state/')){
-            violations.push(`${relativePath}: M3D1 quote construction may not import GameState/state infrastructure: ${target}`);
+            violations.push(`${relativePath}: M3D cost source may not import GameState/state infrastructure: ${target}`);
             continue;
         }
         if (target.startsWith('src/legacy/') || target.startsWith('src/platform/')){
-            violations.push(`${relativePath}: M3D1 quote construction may not import legacy/platform adapters: ${target}`);
+            violations.push(`${relativePath}: M3D cost source may not import legacy/platform adapters: ${target}`);
             continue;
         }
         if (target.startsWith('src/engine/runtime/')){
-            violations.push(`${relativePath}: M3D1 quote construction may not import runtime capabilities: ${target}`);
+            violations.push(`${relativePath}: M3D cost source may not import runtime capabilities: ${target}`);
             continue;
         }
         if (
@@ -122,14 +129,14 @@ function analyzeCostModule(source, relativePath){
             target.startsWith('src/engine/conditions/') ||
             target.startsWith('src/engine/effects/')
         ){
-            violations.push(`${relativePath}: M3D1 quote construction may not depend on command/condition/effect modules: ${target}`);
+            violations.push(`${relativePath}: M3D cost source may not depend on command/condition/effect modules: ${target}`);
             continue;
         }
         if (target === 'src/engine/registry.mjs'){
-            violations.push(`${relativePath}: M3D1 quote construction may not depend on the definition Registry`);
+            violations.push(`${relativePath}: M3D cost source may not depend on the definition Registry`);
             continue;
         }
-        violations.push(`${relativePath}: unsupported M3D1 cost import: ${target}`);
+        violations.push(`${relativePath}: unsupported M3D cost import: ${target}`);
     }
     return violations;
 }
@@ -141,11 +148,11 @@ function analyzeProductionConsumer(source, relativePath){
         const target = resolveRelative(relativePath, reference.specifier);
         if (!target.startsWith(`${COST_ROOT}/`)) continue;
         if (reference.kind !== 'import-statement'){
-            violations.push(`${relativePath}: M3D1 cost dependencies must use static ESM imports; found ${reference.kind} for ${target}`);
+            violations.push(`${relativePath}: M3D cost dependencies must use static ESM imports; found ${reference.kind} for ${target}`);
             continue;
         }
-        if (target !== PUBLIC_QUOTE_FILE){
-            violations.push(`${relativePath}: production code may consume M3D1 costs only through ${PUBLIC_QUOTE_FILE}`);
+        if (target !== PUBLIC_QUOTE_FILE && target !== PUBLIC_ASSESSOR_FILE){
+            violations.push(`${relativePath}: production code may consume M3D costs only through reviewed public entries`);
         }
     }
     return violations;
@@ -154,14 +161,14 @@ function analyzeProductionConsumer(source, relativePath){
 function findViolations(root){
     const violations = [];
     const costDir = path.join(root, ...COST_ROOT.split('/'));
-    if (!fs.existsSync(costDir)) return ['M3D1 cost source directory is missing'];
+    if (!fs.existsSync(costDir)) return ['M3D cost source directory is missing'];
 
     const costStat = fs.lstatSync(costDir);
     if (costStat.isSymbolicLink()){
-        violations.push('M3D1 cost source directory may not be a symbolic link');
+        violations.push('M3D cost source directory may not be a symbolic link');
     }
     else if (!costStat.isDirectory()){
-        violations.push('M3D1 cost source path must be a directory');
+        violations.push('M3D cost source path must be a directory');
     }
     else {
         for (const filename of listSourceFiles(costDir, root, violations)){
@@ -197,12 +204,12 @@ function main(){
     const root = path.resolve(__dirname, '../..');
     const violations = findViolations(root);
     if (violations.length > 0){
-        console.error('M3D1 payment quote boundary fitness failed:');
+        console.error('M3D1/M3D2 cost boundary fitness failed:');
         for (const violation of violations) console.error(`- ${violation}`);
         process.exitCode = 1;
         return;
     }
-    console.log('M3D1 payment quote boundary fitness passed.');
+    console.log('M3D1/M3D2 cost boundary fitness passed.');
 }
 
 module.exports = {
