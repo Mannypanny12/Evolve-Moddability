@@ -50,7 +50,15 @@ The same ordering issue existed in the plain-object inspector for array inputs: 
 
 Focused regression tests prove wrong-container proxies are rejected without invoking prototype/key/descriptor traps.
 
-### 3. Local width limits did not bound total effect-data size
+### 3. Array size ceilings were checked after own-key enumeration
+
+The first shared array reader called `Reflect.ownKeys()` before applying an optional `maxLength` ceiling.
+
+For M3B/M3C data, a very large dense array could therefore force expensive key enumeration before the boundary rejected it for being too long. That undermines the purpose of the collection limit.
+
+**Fix:** array inspection now reads and validates the `length` data descriptor first, applies `maxLength`, and only then enumerates own keys and element descriptors. A regression test uses a proxy whose `ownKeys` trap throws and proves an over-limit array is rejected without invoking the trap.
+
+### 4. Local width limits did not bound total effect-data size
 
 M3C1 already limited:
 
@@ -64,7 +72,7 @@ Those limits still permit a multiplicative tree where every individual node is b
 
 The limit is intentionally far above realistic operation data while preventing combinatorial input amplification.
 
-### 4. The dedicated architecture gate had dynamic-loading/code-generation escape shapes
+### 5. The dedicated architecture gate had dynamic-loading/code-generation escape shapes
 
 The first M3C1 guard rejected literal dynamic imports and direct `eval(...)` / `Function(...)` calls, but that leaves avoidable spellings such as:
 
@@ -83,7 +91,7 @@ The first M3C1 guard rejected literal dynamic imports and direct `eval(...)` / `
 
 This is intentionally stricter than ordinary application code because effect planning has no legitimate need for runtime code or module loading.
 
-### 5. Sibling effect imports could target unscanned non-JavaScript files
+### 6. Sibling effect imports could target unscanned non-JavaScript files
 
 The first boundary allowed any normalized path under `src/engine/effects/**`, while the source scanner itself only inspects JavaScript extensions.
 
@@ -91,7 +99,7 @@ That creates a mismatch: a sibling JSON/WASM/other file could be imported while 
 
 **Fix:** sibling effect imports must resolve to `.js`, `.mjs`, or `.cjs` source. External packages remain forbidden.
 
-### 6. Boundary roots needed explicit filesystem-shape checks
+### 7. Boundary roots needed explicit filesystem-shape checks
 
 Nested effect-source symlinks were already rejected, but the effect root itself and the shared inert-data contract path were not explicitly verified as non-symlink regular filesystem objects.
 
@@ -103,7 +111,7 @@ Nested effect-source symlinks were already rejected, but the effect root itself 
 
 This keeps the static boundary scanner attached to the source tree it claims to inspect.
 
-### 7. Diagnostic retention was reviewed and intentionally left unchanged
+### 8. Diagnostic retention was reviewed and intentionally left unchanged
 
 `EngineContractError` owns a repository-wide shallow diagnostic-detail policy. Some generic contract errors may retain a raw value reference inside their frozen top-level detail object.
 
@@ -119,6 +127,7 @@ The hardening suite now covers:
 - explicit empty-plan creation;
 - fail-fast non-array proxy rejection without reflective traps;
 - fail-fast array-as-object proxy rejection without reflective traps;
+- over-limit array rejection before own-key enumeration;
 - total effect-data node-budget exhaustion using individually valid arrays;
 - literal and computed dynamic import attempts;
 - direct and aliased `require` attempts;
