@@ -61,6 +61,15 @@ test('M3D3 plan constructs only the reviewed payment.resource.debit operation ki
         "kind: 'payment.prestige.debit'"
     );
     assert.notDeepEqual(analyzePlanOperationKinds(specialPaymentKind), []);
+
+    const variableKind = validPlanSource().replace(
+        "kind: 'payment.resource.debit'",
+        "kind: operationKind"
+    ).replace(
+        'export function createPaymentPlan(q){',
+        "const operationKind = 'payment.resource.debit'; export function createPaymentPlan(q){"
+    );
+    assert.notDeepEqual(analyzePlanOperationKinds(variableKind), []);
 });
 
 test('M3D3 plan rejects state reads, mutation/payment execution, special families and unrelated dependencies', () => {
