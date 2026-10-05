@@ -7,6 +7,7 @@ const { extractModuleReferences, maskNonCode } = require('./architecture-fitness
 const SOURCE_EXTENSIONS = new Set(['.js', '.mjs', '.cjs']);
 const COMMAND_ROOT = 'src/engine/commands';
 const IDENTITY_FILE = 'src/engine/identity.mjs';
+const INERT_DATA_CONTRACT_FILE = 'src/engine/contracts/inert-data.mjs';
 
 function normalize(relativePath){
     return relativePath.split(path.sep).join('/');
@@ -47,7 +48,7 @@ function analyzeCommandModule(source, relativePath){
             continue;
         }
         const target = resolveRelative(relativePath, specifier);
-        if (target === IDENTITY_FILE) continue;
+        if (target === IDENTITY_FILE || target === INERT_DATA_CONTRACT_FILE) continue;
         if (target === 'src/engine/registry.mjs'){
             violations.push(`${relativePath}: executable command handlers may not use the inert definition Registry`);
             continue;
@@ -57,7 +58,7 @@ function analyzeCommandModule(source, relativePath){
             continue;
         }
         if (!target.startsWith(`${COMMAND_ROOT}/`)){
-            violations.push(`${relativePath}: command modules may import only identity.mjs or sibling command modules: ${target}`);
+            violations.push(`${relativePath}: command modules may import only identity.mjs, the inert-data contract, or sibling command modules: ${target}`);
         }
     }
 
