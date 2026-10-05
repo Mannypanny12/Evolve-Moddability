@@ -19,7 +19,7 @@ The pass re-read and cross-checked:
 - M3C2 resource-operation unit coverage;
 - M3A0 payment/effect separation;
 - M2 mutation-authority constraints;
-- the production import surface around `src/engine/effects/**`.
+- the production import/export surface around `src/engine/effects/**`.
 
 ## Review findings
 
@@ -82,7 +82,21 @@ That matters more in M3C2 because `core-operations.mjs` now exports the raw norm
 
 Tests remain free to import internals for adversarial coverage; the rule protects production source.
 
-### 4. Duplicate semantics did not explicitly cover repeated input object identity
+### 4. A closed import surface alone still allowed a future re-export bypass
+
+Even with the inbound consumer rules above, `effect-plan.mjs` is the allowed production entry module. If it later re-exported `normalizeCoreEffectOperation` or another raw helper, external production code could still reach internals through the approved file without directly importing an internal path.
+
+**Fix:** the M3C2 surface gate also freezes the current production export contract:
+
+```text
+src/engine/effects/effect-plan.mjs
+    -> exactly one export
+    -> synchronous createEffectPlan()
+```
+
+Additional exports, re-exports, a default export, or an async replacement fail the architecture gate and require an explicit future review.
+
+### 5. Duplicate semantics did not explicitly cover repeated input object identity
 
 M3C2 already preserved duplicate operations by value, but there is an important distinction from generic `canonicalizeEffectData()` alias rules.
 
@@ -113,7 +127,7 @@ tests/architecture/m3c2-effect-surface-fitness.test.cjs
 
 `npm run test:architecture` runs it after the M3C1 effect-boundary gate.
 
-M3C1 remains responsible for what effect code may depend on. M3C2 now adds the complementary rule describing how production code may enter the effect layer.
+M3C1 remains responsible for what effect code may depend on. M3C2 now adds the complementary rule describing how production code may enter the effect layer and what that entry module may expose.
 
 ## Deliberate non-changes
 
