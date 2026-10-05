@@ -36,19 +36,33 @@ export function inspectPlainInertObject(value, options){
     }
 
     let array;
-    let prototype;
-    let keys;
     try {
         array = Array.isArray(value);
-        prototype = Object.getPrototypeOf(value);
-        keys = Reflect.ownKeys(value);
     }
     catch {
         fail(code, `${path} could not be safely inspected.`, { path });
     }
-
-    if (array || (prototype !== Object.prototype && prototype !== null)){
+    if (array){
         fail(code, `${path} must be a plain data object.`, { path, value });
+    }
+
+    let prototype;
+    try {
+        prototype = Object.getPrototypeOf(value);
+    }
+    catch {
+        fail(code, `${path} could not be safely inspected.`, { path });
+    }
+    if (prototype !== Object.prototype && prototype !== null){
+        fail(code, `${path} must be a plain data object.`, { path, value });
+    }
+
+    let keys;
+    try {
+        keys = Reflect.ownKeys(value);
+    }
+    catch {
+        fail(code, `${path} could not be safely inspected.`, { path });
     }
     if (fieldLimit !== null && keys.length > fieldLimit){
         fail(code, `${path} contains too many fields.`, {
@@ -84,24 +98,35 @@ export function inspectDenseInertArray(value, options){
     const lengthLimit = assertLimit(maxLength, 'maxLength');
 
     let array;
+    try {
+        array = Array.isArray(value);
+    }
+    catch {
+        fail(code, `${path} could not be safely inspected.`, { path });
+    }
+    if (!array){
+        fail(code, `${path} must be an array.`, { path });
+    }
+
     let prototype;
+    try {
+        prototype = Object.getPrototypeOf(value);
+    }
+    catch {
+        fail(code, `${path} could not be safely inspected.`, { path });
+    }
+    if (prototype !== Array.prototype){
+        fail(code, `${path} must be a normal Array.`, { path, value });
+    }
+
     let keys;
     let lengthDescriptor;
     try {
-        array = Array.isArray(value);
-        prototype = Object.getPrototypeOf(value);
         keys = Reflect.ownKeys(value);
         lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
     }
     catch {
         fail(code, `${path} could not be safely inspected.`, { path });
-    }
-
-    if (!array){
-        fail(code, `${path} must be an array.`, { path });
-    }
-    if (prototype !== Array.prototype){
-        fail(code, `${path} must be a normal Array.`, { path, value });
     }
     if (!lengthDescriptor || !Object.prototype.hasOwnProperty.call(lengthDescriptor, 'value')){
         fail(code, `${path}.length could not be safely inspected.`, { path: `${path}.length` });
