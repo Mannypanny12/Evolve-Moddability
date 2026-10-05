@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
 const { pathToFileURL } = require('node:url');
+const { maskNonCode } = require('../architecture/architecture-fitness.cjs');
 
 require(process.env.EVOLVE_LEGACY_TEST_BUNDLE);
 const legacy = globalThis.__EVOLVE_LEGACY_TEST_API__;
@@ -126,14 +127,15 @@ test('vanilla species keys are safe canonical resource local IDs and legacy reso
     const { parseContentId } = await identityPromise;
     const racesSource = fs.readFileSync(path.join(root, 'src/races.js'), 'utf8');
     const resourcesSource = fs.readFileSync(path.join(root, 'src/resources.js'), 'utf8');
+    const racesCode = maskNonCode(racesSource);
 
     const startToken = 'export const races = {';
-    const start = racesSource.indexOf(startToken);
+    const start = racesCode.indexOf(startToken);
     assert.notEqual(start, -1, 'races export must exist');
-    const end = racesSource.indexOf('\n};', start + startToken.length);
+    const end = racesCode.indexOf('\n};', start + startToken.length);
     assert.notEqual(end, -1, 'races export must have a top-level closing brace');
 
-    const racesBlock = racesSource.slice(start + startToken.length, end);
+    const racesBlock = racesCode.slice(start + startToken.length, end);
     const speciesKeys = [...racesBlock.matchAll(/^    ([^:\n]+):\s*\{/gm)]
         .map(match => match[1].trim());
 
