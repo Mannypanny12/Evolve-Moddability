@@ -227,21 +227,36 @@ The first production command primitive now provides:
 
 M3A1 does not cut over vanilla gameplay and does not implement conditions, costs, effects or queues. Atomic gameplay mutation remains owned by semantic capabilities/domain services rather than the bus. See `M3A1_COMMAND_BUS.md`.
 
-### M3B Condition engine
+### M3B Condition engine - complete
 
-Implement reusable conditions and machine-readable failure reasons.
+M3B now provides reusable machine-readable conditions while preserving the M3A0 distinction between availability, execution conditions, affordability and queue/prediction eligibility.
 
-Keep availability, execution conditions, affordability, and queue/prediction eligibility semantically distinct even when they reuse lower-level condition primitives.
+The completed condition milestone includes:
 
-Start with technology/resource/structure/trait requirements.
+- a hardened inert condition contract/evaluator foundation;
+- reusable technology, resource, structure and trait requirement primitives;
+- read-only legacy compatibility providers where authoritative state is not yet migrated;
+- representative differential evidence against legacy behavior, including DNA resource qualification;
+- cumulative architecture closure preventing conditions from acquiring mutation or payment authority.
 
-### M3C Effect/operation planning
+M3B does not cut over vanilla gameplay and does not own affordability/payment semantics.
 
-Implement reusable state effects/operations and separate gameplay mutation from presentation reactions.
+### M3C Effect/operation planning - complete
 
-Effects must plan or describe authoritative state changes without importing DOM/UI behavior into the engine.
+M3C now provides inert semantic effect planning without execution or mutation authority.
 
-### M3D Quote/cost/payment engine
+The completed effect milestone includes:
+
+- the hardened explicit `EffectPlan` foundation;
+- closed `resource.grant` and `resource.consume` operations with canonical typed resource IDs and positive finite amounts;
+- exact operation-order and duplicate preservation;
+- cumulative architecture guards keeping the generic effect layer state-free, mutation-free, payment-free, presentation-free and free of first-party Evolve namespace knowledge;
+- DNA closure evidence proving the complete successful legacy mutation is `RNA -2` plus `DNA +1`, while the M3C representation is exactly one `resource.grant(evolve:resource/dna, 1)` operation;
+- post-implementation hardening proving failed direct execution is complete non-mutation and presentation qualification remains separate from effect planning.
+
+M3C deliberately adds no EffectExecutor and does not cut over vanilla gameplay. DNA's `2 RNA` payment remains M3D responsibility.
+
+### M3D Quote/cost/payment engine - next
 
 Migrate affordability and payment semantics from helpers such as:
 
@@ -251,6 +266,8 @@ Migrate affordability and payment semantics from helpers such as:
 - max-affordable/queue quoting.
 
 Support prestige/special currencies explicitly rather than hidden branches. Keep current affordability distinct from queue/capacity feasibility. M4 remains responsible for the general calculation/modifier pipeline.
+
+DNA's `2 RNA` price is the first simple payment evidence vertical; pseudo-cost requirements and special payment families remain distinct rather than being forced into generic M3C resource effects.
 
 ### M3E Queue work-item model
 
