@@ -33,6 +33,24 @@ function validProvider(overrides = {}){
     };
 }
 
+function hostileContainer(){
+    return new Proxy({}, {
+        getPrototypeOf(){ return {}; },
+        get(){ throw new Error('hostile container escaped into diagnostics'); },
+    });
+}
+
+test('M3D2 assessor facade is frozen and exposes exactly the two reviewed assessment operations', async () => {
+    const { createPaymentAssessor } = await modules();
+    const assessor = createPaymentAssessor(validProvider());
+
+    assert.equal(Object.isFrozen(assessor), true);
+    assert.deepEqual(Object.keys(assessor).sort(), [
+        'assessCurrentAffordability',
+        'assessQueuePaymentFeasibility',
+    ]);
+});
+
 test('M3D2 rejects malformed read capability containers and non-callable members', async () => {
     const { createPaymentAssessor, EngineContractError } = await modules();
 
@@ -47,6 +65,26 @@ test('M3D2 rejects malformed read capability containers and non-callable members
         assert.throws(
             () => createPaymentAssessor(bad),
             error => error instanceof EngineContractError && error.code === 'INVALID_PAYMENT_READ_CAPABILITIES'
+        );
+    }
+});
+
+test('M3D2 malformed capability containers cannot escape through error details', async () => {
+    const { createPaymentAssessor, EngineContractError } = await modules();
+
+    for (const bad of [
+        hostileContainer(),
+        { resource: hostileContainer() },
+    ]){
+        assert.throws(
+            () => createPaymentAssessor(bad),
+            error => {
+                assert.equal(error instanceof EngineContractError, true);
+                assert.equal(error.code, 'INVALID_PAYMENT_READ_CAPABILITIES');
+                assert.equal(Object.prototype.hasOwnProperty.call(error.details || {}, 'value'), false);
+                assert.doesNotThrow(() => JSON.stringify(error.details));
+                return true;
+            }
         );
     }
 });
@@ -161,7 +199,24 @@ test('M3D2 detaches quote input before resource providers can mutate caller-owne
     assert.equal(result.status, 'satisfied');
 });
 
-test('M3D2 rejects reentrant assessment and recovers the lock afterwards', async () => {
+test('M3D2 malformed quote containers cannot escape through assessor diagnostics', async () => {
+    const { createPaymentAssessor, EngineContractError } = await modules();
+    const assessor = createPaymentAssessor(validProvider());
+    const hostile = hostileContainer();
+
+    assert.throws(
+        () => assessor.assessCurrentAffordability(hostile),
+        error => {
+            assert.equal(error instanceof EngineContractError, true);
+            assert.equal(error.code, 'INVALID_PAYMENT_QUOTE');
+            assert.equal(Object.prototype.hasOwnProperty.call(error.details || {}, 'value'), false);
+            assert.doesNotThrow(() => JSON.stringify(error.details));
+            return true;
+        }
+    );
+});
+
+test('M3D2 rejects cross-mode reentrant assessment and recovers the lock afterwards', async () => {
     const { createPaymentAssessor, createPaymentQuote, EngineContractError } = await modules();
     const quote = createPaymentQuote([line('example:resource/wood', 1)]);
     let assessor;
@@ -170,7 +225,7 @@ test('M3D2 rejects reentrant assessment and recovers the lock afterwards', async
     assessor = createPaymentAssessor(validProvider({
         amount(){
             try {
-                assessor.assessCurrentAffordability(quote);
+                assessor.assessQueuePaymentFeasibility(quote);
             }
             catch (error){
                 nestedError = error;
@@ -182,6 +237,49 @@ test('M3D2 rejects reentrant assessment and recovers the lock afterwards', async
     assert.equal(assessor.assessCurrentAffordability(quote).status, 'satisfied');
     assert.equal(nestedError instanceof EngineContractError, true);
     assert.equal(nestedError.code, 'PAYMENT_ASSESSMENT_REENTRANCY');
+    assert.equal(assessor.assessCurrentAffordability(quote).status, 'satisfied');
+});
+
+test('M3D2 assessment locks are instance-local rather than process-global', async () => {
+    const { createPaymentAssessor, createPaymentQuote } = await modules();
+    const quote = createPaymentQuote([line('example:resource/wood', 1)]);
+    const inner = createPaymentAssessor(validProvider({ amount: () => 2, capacity: () => 2 }));
+    let innerResult;
+    const outer = createPaymentAssessor(validProvider({
+        amount(){
+            innerResult = inner.assessCurrentAffordability(quote);
+            return 2;
+        },
+        capacity: () => 2,
+    }));
+
+    assert.equal(outer.assessCurrentAffordability(quote).status, 'satisfied');
+    assert.equal(innerResult.status, 'satisfied');
+});
+
+test('M3D2 assessment lock recovers after quote and provider failures', async () => {
+    const { createPaymentAssessor, createPaymentQuote, EngineContractError } = await modules();
+    const quote = createPaymentQuote([line('example:resource/wood', 1)]);
+    let failRead = true;
+    const assessor = createPaymentAssessor(validProvider({
+        amount(){
+            if (failRead){
+                failRead = false;
+                throw new Error('first read fails');
+            }
+            return 2;
+        },
+        capacity: () => 2,
+    }));
+
+    assert.throws(
+        () => assessor.assessCurrentAffordability({}),
+        error => error instanceof EngineContractError && error.code === 'INVALID_PAYMENT_QUOTE'
+    );
+    assert.throws(
+        () => assessor.assessCurrentAffordability(quote),
+        error => error instanceof EngineContractError && error.code === 'PAYMENT_READ_FAILURE'
+    );
     assert.equal(assessor.assessCurrentAffordability(quote).status, 'satisfied');
 });
 
