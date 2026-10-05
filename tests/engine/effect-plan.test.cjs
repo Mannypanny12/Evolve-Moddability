@@ -43,6 +43,21 @@ test('M3C1 creates a detached frozen empty EffectPlan without execution authorit
     assert.deepEqual(Object.keys(plan), ['operations']);
 });
 
+test('M3C1 requires an explicit operation array so missing planner output fails closed', async () => {
+    const { createEffectPlan, EngineContractError } = await modules();
+    for (const create of [
+        () => createEffectPlan(),
+        () => createEffectPlan(undefined),
+        () => createEffectPlan(null),
+    ]){
+        assert.throws(
+            create,
+            error => error instanceof EngineContractError && error.code === 'INVALID_EFFECT_PLAN'
+        );
+    }
+    assert.deepEqual(createEffectPlan([]), { operations: [] });
+});
+
 test('M3C1 deliberately supports no gameplay operation kinds yet', async () => {
     const { createEffectPlan, EngineContractError } = await modules();
     assert.throws(
@@ -63,6 +78,42 @@ test('M3C1 deliberately supports no gameplay operation kinds yet', async () => {
         () => createEffectPlan({}),
         error => error instanceof EngineContractError && error.code === 'INVALID_EFFECT_PLAN'
     );
+});
+
+test('M3C1 shared inert readers reject wrong container types before reflective proxy traps', async () => {
+    const {
+        readClosedEffectObject,
+        readDenseEffectArray,
+        EngineContractError,
+    } = await modules();
+
+    let objectProxyTrapCalls = 0;
+    const objectProxy = new Proxy({}, {
+        getPrototypeOf(){ objectProxyTrapCalls++; throw new Error('unexpected getPrototypeOf'); },
+        ownKeys(){ objectProxyTrapCalls++; throw new Error('unexpected ownKeys'); },
+        getOwnPropertyDescriptor(){ objectProxyTrapCalls++; throw new Error('unexpected descriptor'); },
+    });
+    assert.throws(
+        () => readDenseEffectArray(objectProxy, 'effectPlan.operations', 'INVALID_EFFECT_PLAN'),
+        error => error instanceof EngineContractError && error.code === 'INVALID_EFFECT_PLAN'
+    );
+    assert.equal(objectProxyTrapCalls, 0);
+
+    let arrayProxyTrapCalls = 0;
+    const arrayProxy = new Proxy([], {
+        getPrototypeOf(){ arrayProxyTrapCalls++; throw new Error('unexpected getPrototypeOf'); },
+        ownKeys(){ arrayProxyTrapCalls++; throw new Error('unexpected ownKeys'); },
+        getOwnPropertyDescriptor(){ arrayProxyTrapCalls++; throw new Error('unexpected descriptor'); },
+    });
+    assert.throws(
+        () => readClosedEffectObject(arrayProxy, {
+            path: 'effect',
+            allowed: [],
+            code: 'INVALID_EFFECT_OPERATION',
+        }),
+        error => error instanceof EngineContractError && error.code === 'INVALID_EFFECT_OPERATION'
+    );
+    assert.equal(arrayProxyTrapCalls, 0);
 });
 
 test('M3C1 effect data canonicalizes deterministically, detaches, freezes and normalizes -0', async () => {
@@ -150,12 +201,13 @@ test('M3C1 effect data rejects cycles and shared object or array identity', asyn
     await expectEffectDataInvalid({ a: sharedArray, b: sharedArray }, 'effectData.b');
 });
 
-test('M3C1 effect data enforces nesting, collection and object-width limits', async () => {
+test('M3C1 effect data enforces nesting, collection, object-width and total-node limits', async () => {
     const {
         canonicalizeEffectData,
         MAX_EFFECT_DATA_NESTING_DEPTH,
         MAX_EFFECT_COLLECTION_LENGTH,
         MAX_EFFECT_OBJECT_FIELDS,
+        MAX_EFFECT_DATA_NODE_COUNT,
         EngineContractError,
     } = await modules();
 
@@ -183,6 +235,22 @@ test('M3C1 effect data enforces nesting, collection and object-width limits', as
         error => error instanceof EngineContractError &&
             error.code === 'INVALID_EFFECT_DATA' &&
             error.details?.maxFields === MAX_EFFECT_OBJECT_FIELDS
+    );
+
+    const rowWidth = 128;
+    const rowCount = Math.ceil(MAX_EFFECT_DATA_NODE_COUNT / (rowWidth + 1)) + 1;
+    assert.equal(rowWidth <= MAX_EFFECT_COLLECTION_LENGTH, true);
+    assert.equal(rowCount <= MAX_EFFECT_COLLECTION_LENGTH, true);
+    const tooManyNodes = Array.from(
+        { length: rowCount },
+        () => new Array(rowWidth).fill(0)
+    );
+    assert.throws(
+        () => canonicalizeEffectData(tooManyNodes),
+        error => error instanceof EngineContractError &&
+            error.code === 'INVALID_EFFECT_DATA' &&
+            error.details?.nodeCount === MAX_EFFECT_DATA_NODE_COUNT + 1 &&
+            error.details?.maxNodes === MAX_EFFECT_DATA_NODE_COUNT
     );
 });
 
