@@ -65,8 +65,11 @@ test('M2E4 architecture report is complete, JSON-safe, and reflects the guarded 
     assert.equal(report.stateArchitecture.migration.gates.achievementReaders.details.readerExportCount, 6);
     assert.equal(report.stateArchitecture.selectors.domainCount, 1);
 
-    assert.equal(report.legacyMappings.size, 2);
-    assert.equal(report.legacyMappings.mappings.length, 2);
+    assert.equal(report.legacyMappings.size, report.legacyMappings.mappings.length);
+    assert.equal(report.legacyMappings.size >= 2, true, 'later milestones may extend the M1D legacy mapping catalog');
+    const mappingIds = new Set(report.legacyMappings.mappings.map(mapping => mapping.id));
+    assert.equal(mappingIds.has('evolve.resource.food_state'), true, 'M1D Food mapping must remain represented');
+    assert.equal(mappingIds.has('evolve.technology.primitive_progression'), true, 'M1D primitive mapping must remain represented');
     assert.equal(typeof report.legacyMappings.byDomain, 'object');
     assert.deepEqual(reportViolations(report), []);
 
@@ -74,8 +77,8 @@ test('M2E4 architecture report is complete, JSON-safe, and reflects the guarded 
     const serialized = JSON.stringify(report);
     const roundTrip = JSON.parse(serialized);
     assert.deepEqual(roundTrip, report);
-    assert.equal(roundTrip.legacyMappings.size, 2, 'legacy mappings must survive report serialization');
-    assert.equal(roundTrip.legacyMappings.mappings.length, 2, 'legacy mapping records must survive report serialization');
+    assert.equal(roundTrip.legacyMappings.size, report.legacyMappings.size, 'legacy mapping count must survive report serialization');
+    assert.equal(roundTrip.legacyMappings.mappings.length, report.legacyMappings.mappings.length, 'legacy mapping records must survive report serialization');
 });
 
 test('M2E4 JSON normalization fails closed instead of silently losing unsupported report data', () => {

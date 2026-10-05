@@ -102,16 +102,19 @@ test('M1D mapping validation and inspection are safe for prototype-shaped keys',
     assert.deepEqual(snapshot.byDomain.constructor, ['evolve.resource.constructor_domain']);
 });
 
-test('M1D seeded Evolve mappings expose explicit lifecycle and contextual semantics', async () => {
+test('M1D seeded Evolve mappings retain the original lifecycle and contextual semantics as later milestones extend the catalog', async () => {
     const [{ createEvolveLegacyMappingCatalog }, { inspectLegacyMappings }] = await Promise.all([
         evolvePromise,
         inspectorPromise,
     ]);
     const snapshot = inspectLegacyMappings(createEvolveLegacyMappingCatalog());
 
-    assert.equal(snapshot.size, 2);
+    assert.equal(snapshot.size, snapshot.mappings.length);
+    assert.equal(snapshot.size >= 2, true, 'later milestones may extend the M1D mapping catalog but may not remove its original entries');
     const food = snapshot.mappings.find(mapping => mapping.id === 'evolve.resource.food_state');
     const primitive = snapshot.mappings.find(mapping => mapping.id === 'evolve.technology.primitive_progression');
+    assert.ok(food, 'M1D Food mapping must remain present');
+    assert.ok(primitive, 'M1D primitive progression mapping must remain present');
 
     assert.equal(food.mode, 'direct');
     assert.equal(food.removeBy, 'M6B');

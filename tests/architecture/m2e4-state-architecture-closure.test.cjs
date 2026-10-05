@@ -42,7 +42,8 @@ test('M2E4 closure accepts the actual integrated M2 architecture', async () => {
     assert.deepEqual(result.summary.metadataRoots, ['schemaVersion']);
     assert.equal(result.summary.requiredM2GateCount, 13);
     assert.equal(result.summary.cumulativeGateCount >= result.summary.requiredM2GateCount, true);
-    assert.equal(result.summary.legacyMappingCount, 2);
+    assert.equal(result.summary.legacyMappingCount, result.report.legacyMappings.size);
+    assert.equal(result.summary.legacyMappingCount >= 2, true, 'later milestones may extend the M1D legacy mapping catalog without reopening M2');
     assert.equal(result.summary.sourceSymlinkViolationCount, 0);
 });
 
