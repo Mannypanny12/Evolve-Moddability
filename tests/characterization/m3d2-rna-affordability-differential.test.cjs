@@ -59,12 +59,24 @@ const cases = [
         state: { amount: 2, max: 10, display: true },
     },
     {
+        name: 'exact capacity remains feasible',
+        state: { amount: 2, max: 2, display: true },
+    },
+    {
         name: 'current amount is high but capacity is below the price',
         state: { amount: 10, max: 1, display: true },
     },
     {
         name: 'hidden RNA remains currently payable but is not queue-payment feasible',
         state: { amount: 10, max: 10, display: false },
+    },
+    {
+        name: 'numeric legacy display marker remains available',
+        state: { amount: 2, max: 2, display: 1 },
+    },
+    {
+        name: 'negative current holdings remain currently unaffordable but capacity-feasible',
+        state: { amount: -1, max: 10, display: true },
     },
     {
         name: 'legacy unbounded capacity remains feasible',
@@ -82,3 +94,11 @@ for (const entry of cases){
         assert.deepEqual(await newAnswers(), expected);
     });
 }
+
+test('M3D2 RNA differential path leaves complete legacy state unchanged', async () => {
+    installRna({ amount: 3, max: 10, display: true });
+    const before = JSON.stringify(legacy.legacyState());
+
+    assert.deepEqual(await newAnswers(), { current: true, queue: true });
+    assert.equal(JSON.stringify(legacy.legacyState()), before);
+});
