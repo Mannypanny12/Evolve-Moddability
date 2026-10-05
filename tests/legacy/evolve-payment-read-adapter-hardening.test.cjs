@@ -101,6 +101,6 @@ test('M3D2 legacy payment bridge fails closed on throwing, Promise and hostile r
     const hostileProvider = await create({ readLegacyRoot: () => hostile });
     assert.throws(
         () => hostileProvider.resource.amount('evolve:resource/rna'),
-        error => error && error.code === 'INVALID_LEGACY_PAYMENT_STATE'
+        error => error && error.code === 'INVALID_LEGACY_PAYMENT_ROOT_PROVIDER'
     );
 });
