@@ -23,10 +23,10 @@ const FORBIDDEN_RUNTIME_PATTERNS = [
 ];
 
 const FORBIDDEN_D1_SCOPE_PATTERNS = [
-    ['affordability semantics', /\b[A-Za-z_$][A-Za-z0-9_$]*afford[A-Za-z0-9_$]*\b/i],
-    ['queue/capacity feasibility semantics', /\b[A-Za-z_$][A-Za-z0-9_$]*(?:queue|capacity|feasib)[A-Za-z0-9_$]*\b/i],
-    ['payment planning/execution semantics', /\b[A-Za-z_$][A-Za-z0-9_$]*(?:paymentPlan|executePayment|applyPayment|commitPayment|paymentExecutor|debit)[A-Za-z0-9_$]*\b/i],
-    ['cost calculation/modifier semantics', /\b[A-Za-z_$][A-Za-z0-9_$]*(?:adjustCost|costModifier|priceModifier|modifierPipeline)[A-Za-z0-9_$]*\b/i],
+    ['affordability semantics', /\b[A-Za-z0-9_$]*afford[A-Za-z0-9_$]*\b/i],
+    ['queue/capacity feasibility semantics', /\b[A-Za-z0-9_$]*(?:queue|capacity|feasib)[A-Za-z0-9_$]*\b/i],
+    ['payment planning/execution semantics', /\b[A-Za-z0-9_$]*(?:paymentPlan|executePayment|applyPayment|commitPayment|paymentExecutor|debit)[A-Za-z0-9_$]*\b/i],
+    ['cost calculation/modifier semantics', /\b[A-Za-z0-9_$]*(?:adjustCost|costModifier|priceModifier|modifierPipeline)[A-Za-z0-9_$]*\b/i],
 ];
 
 const FORBIDDEN_AUTHORITY_PATTERN = /\b(?:mutationAuthority|createMutationScope|beginTransaction|commitTransaction|rollbackTransaction|modRes|setGlobal|payCosts)\b/;
