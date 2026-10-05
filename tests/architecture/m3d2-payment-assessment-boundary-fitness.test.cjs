@@ -13,6 +13,14 @@ const {
 
 const root = path.resolve(__dirname, '../..');
 
+function validLegacyAdapterSource(){
+    return "import { EngineContractError } from '../../engine/identity.mjs';\n" +
+        "import { inspectPlainInertObject } from '../../engine/contracts/inert-data.mjs';\n" +
+        "import { createEvolveLegacyMappingCatalog } from './evolve-mappings.mjs';\n" +
+        "const SUPPORTED_PAYMENT_MAPPING_IDS = Object.freeze(['evolve.resource.rna_state']);\n" +
+        'export function createEvolveLegacyPaymentReadProvider(options){ return options; }';
+}
+
 test('M3D2 payment assessment boundary is clean in the repository', () => {
     assert.deepEqual(findViolations(root), []);
 });
@@ -46,6 +54,8 @@ test('M3D2 cost source rejects condition coupling, state/mutation authority, lat
         'const paymentPlan = [];',
         'function executePayment(){}',
         'function adjustCosts(){}',
+        'function checkCosts(){}',
+        'function checkAffordable(){}',
         'const queueWorkItem = {};',
         "const id = 'evolve:resource/rna';",
     ];
@@ -57,18 +67,45 @@ test('M3D2 cost source rejects condition coupling, state/mutation authority, lat
     }
 });
 
-test('M3D2 legacy adapter remains read-only and narrowly dependent', () => {
-    assert.deepEqual(
-        analyzeLegacyAdapter(
-            "import { EngineContractError } from '../../engine/identity.mjs';\n" +
-            "import { inspectPlainInertObject } from '../../engine/contracts/inert-data.mjs';\n" +
-            "import { createEvolveLegacyMappingCatalog } from './evolve-mappings.mjs';"
-        ),
+test('M3D2 cost source rejects hidden async, Promise and generator control flow', () => {
+    for (const source of [
+        'async function helper(){}',
+        'function helper(){ return Promise.resolve(1); }',
+        'function helper(){ return new Promise(() => {}); }',
+        'async function helper(){ await value; }',
+        'function* helper(){ yield 1; }',
+    ]){
+        assert.notDeepEqual(
+            analyzeCostSource(source, 'src/engine/costs/payment-assessor.mjs'),
+            []
+        );
+    }
+});
+
+test('M3D2 legacy adapter remains one RNA-only read provider with narrow dependencies', () => {
+    assert.deepEqual(analyzeLegacyAdapter(validLegacyAdapterSource()), []);
+
+    assert.notDeepEqual(
+        analyzeLegacyAdapter(validLegacyAdapterSource().replace(
+            "['evolve.resource.rna_state']",
+            "['evolve.resource.rna_state', 'evolve.resource.dna_state']"
+        )),
         []
     );
-    assert.notDeepEqual(analyzeLegacyAdapter("import '../../actions.js';"), []);
-    assert.notDeepEqual(analyzeLegacyAdapter('global.resource.RNA.amount;'), []);
-    assert.notDeepEqual(analyzeLegacyAdapter('modRes("RNA", -2);'), []);
+    assert.notDeepEqual(
+        analyzeLegacyAdapter(validLegacyAdapterSource() + '\nexport const bypass = true;'),
+        []
+    );
+    assert.notDeepEqual(
+        analyzeLegacyAdapter(validLegacyAdapterSource().replace(
+            'export function createEvolveLegacyPaymentReadProvider(options)',
+            'export async function createEvolveLegacyPaymentReadProvider(options)'
+        )),
+        []
+    );
+    assert.notDeepEqual(analyzeLegacyAdapter(validLegacyAdapterSource() + "\nimport '../../actions.js';"), []);
+    assert.notDeepEqual(analyzeLegacyAdapter(validLegacyAdapterSource() + '\nglobal.resource.RNA.amount;'), []);
+    assert.notDeepEqual(analyzeLegacyAdapter(validLegacyAdapterSource() + '\nmodRes("RNA", -2);'), []);
 });
 
 test('M3D2 production consumers cannot import cost internals or dynamically load the public surface', () => {
