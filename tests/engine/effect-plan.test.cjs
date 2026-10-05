@@ -58,13 +58,21 @@ test('M3C1 requires an explicit operation array so missing planner output fails 
     assert.deepEqual(createEffectPlan([]), { operations: [] });
 });
 
-test('M3C1 deliberately supports no gameplay operation kinds yet', async () => {
+test('M3C2 supports reviewed core operation kinds and rejects malformed or unsupported kinds', async () => {
     const { createEffectPlan, EngineContractError } = await modules();
-    assert.throws(
-        () => createEffectPlan([{ kind: 'resource.grant' }]),
-        error => error instanceof EngineContractError &&
-            error.code === 'UNSUPPORTED_EFFECT_OPERATION_KIND' &&
-            error.details?.kind === 'resource.grant'
+    assert.deepEqual(
+        createEffectPlan([{
+            kind: 'resource.grant',
+            resourceId: 'evolve:resource/dna',
+            amount: 1,
+        }]),
+        {
+            operations: [{
+                kind: 'resource.grant',
+                resourceId: 'evolve:resource/dna',
+                amount: 1,
+            }],
+        }
     );
     assert.throws(
         () => createEffectPlan([{ kind: 'Bad Kind' }]),
@@ -72,7 +80,7 @@ test('M3C1 deliberately supports no gameplay operation kinds yet', async () => {
     );
     assert.throws(
         () => createEffectPlan([{ kind: 'future.operation', amount: 1 }]),
-        error => error instanceof EngineContractError && error.code === 'INVALID_EFFECT_OPERATION'
+        error => error instanceof EngineContractError && error.code === 'UNSUPPORTED_EFFECT_OPERATION_KIND'
     );
     assert.throws(
         () => createEffectPlan({}),
