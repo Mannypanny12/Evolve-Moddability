@@ -217,6 +217,42 @@ The M2 state laws are now machine-enforced cumulatively:
 
 See [M2_CLOSURE_REVIEW.md](M2_CLOSURE_REVIEW.md) for the M2 exit authority.
 
+## M3: Commands, conditions, effects, and costs
+
+### M3A0 - Legacy command behavior and architecture contract - complete
+
+Established the pre-implementation evidence and design authority for M3:
+
+- source-backed immediate, queued, post-build, grant and callback lifecycle evidence;
+- explicit characterization of overloaded legacy action return values;
+- separation of availability, execution conditions, current affordability and queue/capacity feasibility;
+- special legacy payment semantics for prestige currencies, antimatter Plasmid, Supply, Species and Knowledge;
+- separation of consumptive payments from pseudo-cost requirements such as `Bool`, `Structs`, morale and army gates;
+- representative numeric and resource-substitution cost-adjustment evidence;
+- explicit M3 quote/payment versus M4 calculation/modifier boundary;
+- separation of authoritative semantic effects from legacy presentation `effect`, callbacks and redraws;
+- queue preferences retained as application settings that cross the future engine boundary only as explicit command/enqueue inputs;
+- first vanilla vertical evidence for `evolution.dna`, including qualification/execution differences;
+- preservation of M2 mutation authority: commands may orchestrate semantic services but may not acquire generic GameState write authority;
+- a narrow temporary resource compatibility boundary with M6B as the removal target;
+- no production command engine, GameState schema change, persistence change or gameplay cutover.
+
+See [M3A0_COMMAND_BEHAVIOR_CONTRACT.md](M3A0_COMMAND_BEHAVIOR_CONTRACT.md).
+
+### M3A1 - Command contract and bus - next
+
+Implement the first production command primitive from the M3A0 laws:
+
+- canonical namespaced command IDs;
+- closed inert payload validation;
+- synchronous dispatch;
+- structured success/rejection results;
+- deterministic diagnostics;
+- no raw mutation authority or legacy/UI dependency;
+- explicit reentrancy policy.
+
+M3A1 should establish command execution structure without prematurely implementing the full condition, cost, effect or queue engines.
+
 ## Immediate sequence
 
 ```text
@@ -224,24 +260,18 @@ M0A-M0E safety foundation - complete
    |
 M1A-M1D engine kernel and seams - complete
    |
-M2A GameState schema - complete
+M2A-M2E explicit state architecture - complete
    |
-M2B state store/selectors - complete
+M3A0 legacy command behavior/design authority - complete
    |
-M2C settings/transient separation - complete
-   |
-M2D first authoritative state-domain migration - complete
-   |
-M2E state architecture guard expansion/closure - complete
-   |
-M3 commands/conditions/effects/costs - next
+M3A1 command contract/bus - next
 ```
 
 Do not jump directly to mod loading, total conversions, or bulk content conversion. Those would lock in legacy assumptions before the engine is ready.
 
 ## Later milestones
 
-- M3 commands/conditions/effects/costs;
+- M3A1-M3G commands/conditions/effects/costs and first vanilla cutover;
 - M4 calculation/modifier engine;
 - M5 deterministic simulation;
 - M6 vanilla migration waves;
