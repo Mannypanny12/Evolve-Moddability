@@ -39,6 +39,7 @@ test('M3D1 requires an explicit dense line array and exposes only the reviewed p
     const { createPaymentQuote, EngineContractError } = await modules();
 
     assert.deepEqual(Object.keys(quoteModule).sort(), ['createPaymentQuote']);
+    assert.equal(createPaymentQuote.length, 1);
     for (const create of [
         () => createPaymentQuote(),
         () => createPaymentQuote(undefined),
@@ -125,7 +126,25 @@ test('M3D1 preserves exact line order, duplicates, and repeated input identity',
     assert.equal(quote.lines[2].amount, 2);
 });
 
-test('M3D1 rejects unknown, missing, and unsupported quote-line fields and kinds', async () => {
+test('M3D1 distinguishes malformed line kinds from well-formed but unsupported families', async () => {
+    const { createPaymentQuote, EngineContractError } = await modules();
+
+    for (const kind of [null, 1, {}, 'Resource', 'Bad Kind', 'resource..grant']){
+        assert.throws(
+            () => createPaymentQuote([{ kind, resourceId: 'example:resource/wood', amount: 1 }]),
+            error => error instanceof EngineContractError && error.code === 'INVALID_PAYMENT_QUOTE_LINE_KIND'
+        );
+    }
+
+    for (const kind of ['prestige', 'special', 'resource.consume']){
+        assert.throws(
+            () => createPaymentQuote([{ kind, resourceId: 'example:resource/wood', amount: 1 }]),
+            error => error instanceof EngineContractError && error.code === 'UNSUPPORTED_PAYMENT_QUOTE_LINE_KIND'
+        );
+    }
+});
+
+test('M3D1 rejects unknown and missing quote-line fields', async () => {
     const { createPaymentQuote, EngineContractError } = await modules();
 
     assert.throws(
@@ -136,10 +155,36 @@ test('M3D1 rejects unknown, missing, and unsupported quote-line fields and kinds
         () => createPaymentQuote([{ kind: 'resource', resourceId: 'example:resource/wood' }]),
         error => error instanceof EngineContractError && error.code === 'INVALID_PAYMENT_QUOTE_LINE'
     );
-    assert.throws(
-        () => createPaymentQuote([{ kind: 'prestige', resourceId: 'example:resource/wood', amount: 1 }]),
-        error => error instanceof EngineContractError && error.code === 'UNSUPPORTED_PAYMENT_QUOTE_LINE_KIND'
-    );
+});
+
+test('M3D1 invalid field diagnostics do not retain hostile caller objects', async () => {
+    const { createPaymentQuote, EngineContractError } = await modules();
+    const hostile = new Proxy({}, {
+        get(){ throw new Error('hostile get'); },
+        ownKeys(){ throw new Error('hostile ownKeys'); },
+        getOwnPropertyDescriptor(){ throw new Error('hostile descriptor'); },
+        getPrototypeOf(){ throw new Error('hostile prototype'); },
+    });
+
+    const cases = [
+        [{ kind: hostile, resourceId: 'example:resource/wood', amount: 1 }, 'INVALID_PAYMENT_QUOTE_LINE_KIND'],
+        [{ kind: 'resource', resourceId: hostile, amount: 1 }, 'INVALID_PAYMENT_QUOTE_RESOURCE_ID'],
+        [{ kind: 'resource', resourceId: 'example:resource/wood', amount: hostile }, 'INVALID_PAYMENT_QUOTE_AMOUNT'],
+    ];
+
+    for (const [line, code] of cases){
+        assert.throws(
+            () => createPaymentQuote([line]),
+            error => {
+                assert.equal(error instanceof EngineContractError, true);
+                assert.equal(error.code, code);
+                assert.equal(Object.isFrozen(error.details), true);
+                assert.doesNotThrow(() => JSON.stringify(error.details));
+                assert.equal(Object.values(error.details).includes(hostile), false);
+                return true;
+            }
+        );
+    }
 });
 
 test('M3D1 accepts null-prototype line objects but emits normal frozen records', async () => {
