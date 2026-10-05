@@ -8,6 +8,15 @@ import { createEvolveLegacyMappingCatalog } from './evolve-mappings.mjs';
 
 const MISSING = Symbol('missing-legacy-condition-state');
 const SUPPORTED_TECHNOLOGY_MAPPING = 'evolve.technology.primitive_progression';
+const SUPPORTED_LEGACY_CONDITION_MAPPING_IDS = Object.freeze([
+    'evolve.resource.dna_state',
+    'evolve.resource.rna_state',
+    'evolve.technology.primitive_progression',
+    'evolve.trait.gravity_well_state',
+    'evolve.trait.flier_state',
+    'evolve.trait.warlord_state',
+    'evolve.structure.city_compost_state',
+]);
 
 function fail(code, message, details){
     throw new EngineContractError(code, message, details);
@@ -116,9 +125,23 @@ function assertCount(value, path){
     return Object.is(value, -0) ? 0 : value;
 }
 
+function readLegacyPresence(value, path){
+    if (value === MISSING) return false;
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number' && Number.isFinite(value) && value >= 0){
+        return value !== 0;
+    }
+    fail(
+        'INVALID_LEGACY_CONDITION_STATE',
+        `${path} must be a boolean or non-negative finite numeric presence marker.`,
+        { path, valueType: typeof value }
+    );
+}
+
 function mappingIndex(catalog){
     const index = new Map();
-    for (const mapping of catalog.entries()){
+    for (const mappingId of SUPPORTED_LEGACY_CONDITION_MAPPING_IDS){
+        const mapping = catalog.getRequired(mappingId);
         for (const canonicalId of mapping.canonicalIds){
             const key = `${mapping.family}:${canonicalId}`;
             if (index.has(key)){
@@ -181,15 +204,8 @@ function resourceRecord(currentRoot, mapping){
     return directRecord(currentRoot, mapping, `legacy resource ${mapping.canonicalIds[0]}`);
 }
 
-function primitiveRank(currentRoot, mapping){
-    const value = readLegacyPath(currentRoot(), mapping.legacyPath);
-    if (value === MISSING) return 0;
-    return assertCount(value, mapping.legacyPath);
-}
-
-function truthyPath(root, legacyPath){
-    const value = readLegacyPath(root, legacyPath);
-    return value === MISSING ? false : Boolean(value);
+function presencePath(root, legacyPath){
+    return readLegacyPresence(readLegacyPath(root, legacyPath), legacyPath);
 }
 
 function primitiveTechnologyHas(currentRoot, mapping, technologyId){
@@ -207,8 +223,8 @@ function primitiveTechnologyHas(currentRoot, mapping, technologyId){
     if (technologyId === 'evolve:technology/club') return rank >= 1;
     if (technologyId === 'evolve:technology/sundial') return rank >= 3;
 
-    const soulEater = truthyPath(root, 'global.race.soul_eater');
-    const evil = truthyPath(root, 'global.race.evil');
+    const soulEater = presencePath(root, 'global.race.soul_eater');
+    const evil = presencePath(root, 'global.race.evil');
     if (technologyId === 'evolve:technology/bone_tools'){
         return rank >= 2 && !(soulEater && !evil);
     }
@@ -260,8 +276,10 @@ export function createEvolveLegacyConditionReadProvider(rawOptions){
             const mapping = requireMapping(index, 'resource', resourceId);
             const record = resourceRecord(currentRoot, mapping);
             if (record === MISSING) return false;
-            const display = readDataField(record, 'display', `legacy resource ${resourceId}`);
-            return display === MISSING ? false : Boolean(display);
+            return readLegacyPresence(
+                readDataField(record, 'display', `legacy resource ${resourceId}`),
+                `${mapping.legacyPath}.display`
+            );
         },
         capacity(resourceId){
             const mapping = requireMapping(index, 'resource', resourceId);
@@ -298,8 +316,10 @@ export function createEvolveLegacyConditionReadProvider(rawOptions){
     const trait = Object.freeze({
         has(traitId){
             const mapping = requireMapping(index, 'trait', traitId);
-            const value = readLegacyPath(currentRoot(), mapping.legacyPath);
-            return value === MISSING ? false : Boolean(value);
+            return readLegacyPresence(
+                readLegacyPath(currentRoot(), mapping.legacyPath),
+                mapping.legacyPath
+            );
         },
     });
 
