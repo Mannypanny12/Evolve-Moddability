@@ -2,11 +2,14 @@
 
 const assert = require('node:assert/strict');
 const test = require('node:test');
+const path = require('node:path');
 const {
     analyzeEffectModule,
     analyzeInertDataContract,
+    findViolations,
 } = require('./m3c1-effect-boundary-fitness.cjs');
 
+const root = path.resolve(__dirname, '../..');
 const EFFECT_FILE = 'src/engine/effects/example.mjs';
 
 test('M3C1 effect fitness allows identity, inert-data contract and sibling effect imports', () => {
@@ -61,4 +64,8 @@ test('M3C1 inert-data contract fitness allows only identity dependency', () => {
         analyzeInertDataContract(`export const x = Date.now();`).length,
         0
     );
+});
+
+test('M3C1 current repository satisfies effect boundary fitness', () => {
+    assert.deepEqual(findViolations(root), []);
 });
