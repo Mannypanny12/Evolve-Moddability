@@ -54,22 +54,9 @@ function readClosedObject(value, path, allowed, required = allowed){
     return fields;
 }
 
-function assertSynchronousFunction(value, path){
+function assertReadFunction(value, path){
     if (typeof value !== 'function'){
         fail('INVALID_PAYMENT_READ_CAPABILITIES', `${path} must be a function.`, { path, valueType: typeof value });
-    }
-    let source;
-    try {
-        source = Function.prototype.toString.call(value);
-    }
-    catch {
-        fail('INVALID_PAYMENT_READ_CAPABILITIES', `${path} could not be inspected.`, { path });
-    }
-    const declaredAsync = /^\s*async\b/.test(source);
-    const declaredGenerator = /^\s*(?:async\s+)?function\s*\*/.test(source) || /^\s*\*/.test(source);
-    const declaredClass = /^\s*class\b/.test(source);
-    if (declaredAsync || declaredGenerator || declaredClass){
-        fail('INVALID_PAYMENT_READ_CAPABILITIES', `${path} must be a directly callable synchronous non-generator function.`, { path });
     }
     return value;
 }
@@ -205,9 +192,9 @@ export function createPaymentReadCapabilities(rawCapabilities){
         'paymentReadCapabilities.resource',
         ['amount', 'available', 'capacity']
     );
-    const amount = assertSynchronousFunction(resourceFields.get('amount'), 'paymentReadCapabilities.resource.amount');
-    const available = assertSynchronousFunction(resourceFields.get('available'), 'paymentReadCapabilities.resource.available');
-    const capacity = assertSynchronousFunction(resourceFields.get('capacity'), 'paymentReadCapabilities.resource.capacity');
+    const amount = assertReadFunction(resourceFields.get('amount'), 'paymentReadCapabilities.resource.amount');
+    const available = assertReadFunction(resourceFields.get('available'), 'paymentReadCapabilities.resource.available');
+    const capacity = assertReadFunction(resourceFields.get('capacity'), 'paymentReadCapabilities.resource.capacity');
 
     return Object.freeze({
         resource: Object.freeze({
