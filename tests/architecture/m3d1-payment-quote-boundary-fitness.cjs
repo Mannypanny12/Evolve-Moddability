@@ -22,6 +22,13 @@ const FORBIDDEN_RUNTIME_PATTERNS = [
     ['dynamic code capability', /\b(?:eval|Function|WebAssembly)\b/],
 ];
 
+const FORBIDDEN_D1_SCOPE_PATTERNS = [
+    ['affordability semantics', /\b(?:afford(?:able|ability)?|canAfford|checkAffordable|checkCosts|maxAffordable)\b/i],
+    ['queue/capacity feasibility semantics', /\b(?:queue|capacity|feasib(?:le|ility))\b/i],
+    ['payment planning/execution semantics', /\b(?:paymentPlans?|executePayment|applyPayment|commitPayment|paymentExecutor|debit)\b/i],
+    ['cost calculation/modifier semantics', /\b(?:adjustCosts?|costModifier|priceModifier|modifierPipeline)\b/i],
+];
+
 const FORBIDDEN_AUTHORITY_PATTERN = /\b(?:mutationAuthority|createMutationScope|beginTransaction|commitTransaction|rollbackTransaction|modRes|setGlobal|payCosts)\b/;
 const FIRST_PARTY_NAMESPACE_PATTERN = /\bevolve\b/i;
 
@@ -35,7 +42,7 @@ function listSourceFiles(dir, root, violations){
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })){
         const full = path.join(dir, entry.name);
         if (entry.isSymbolicLink()){
-            violations.push(`${normalize(path.relative(root, full))}: M3D1 cost source may not be a symbolic link`);
+            violations.push(`${normalize(path.relative(root, full))}: M3D1 source traversal may not pass through a symbolic link`);
         }
         else if (entry.isDirectory()){
             files.push(...listSourceFiles(full, root, violations));
@@ -53,8 +60,19 @@ function resolveRelative(fromRelativePath, specifier){
     return target;
 }
 
+function analyzePaymentQuoteExports(source, relativePath){
+    if (relativePath !== PUBLIC_QUOTE_FILE) return [];
+    const code = maskNonCode(source);
+    const exportCount = (code.match(/\bexport\b/g) || []).length;
+    const hasReviewedEntry = /\bexport\s+function\s+createPaymentQuote\s*\(\s*[A-Za-z_$][A-Za-z0-9_$]*\s*\)/.test(code);
+    if (exportCount !== 1 || !hasReviewedEntry){
+        return [`${relativePath}: M3D1 production quote entry must export only synchronous one-argument createPaymentQuote()`];
+    }
+    return [];
+}
+
 function analyzeCostModule(source, relativePath){
-    const violations = [];
+    const violations = [...analyzePaymentQuoteExports(source, relativePath)];
     const code = maskNonCode(source);
 
     if (FORBIDDEN_AUTHORITY_PATTERN.test(code)){
@@ -63,6 +81,11 @@ function analyzeCostModule(source, relativePath){
     for (const [label, pattern] of FORBIDDEN_RUNTIME_PATTERNS){
         if (pattern.test(code)){
             violations.push(`${relativePath}: M3D1 quote construction may not access ${label}`);
+        }
+    }
+    for (const [label, pattern] of FORBIDDEN_D1_SCOPE_PATTERNS){
+        if (pattern.test(code)){
+            violations.push(`${relativePath}: M3D1 quote construction may not acquire ${label}`);
         }
     }
     if (FIRST_PARTY_NAMESPACE_PATTERN.test(source)){
@@ -117,6 +140,10 @@ function analyzeProductionConsumer(source, relativePath){
         if (!reference.specifier.startsWith('.')) continue;
         const target = resolveRelative(relativePath, reference.specifier);
         if (!target.startsWith(`${COST_ROOT}/`)) continue;
+        if (reference.kind !== 'import-statement'){
+            violations.push(`${relativePath}: M3D1 cost dependencies must use static ESM imports; found ${reference.kind} for ${target}`);
+            continue;
+        }
         if (target !== PUBLIC_QUOTE_FILE){
             violations.push(`${relativePath}: production code may consume M3D1 costs only through ${PUBLIC_QUOTE_FILE}`);
         }
@@ -143,6 +170,20 @@ function findViolations(root){
         }
     }
 
+    const publicQuotePath = path.join(root, ...PUBLIC_QUOTE_FILE.split('/'));
+    if (!fs.existsSync(publicQuotePath)){
+        violations.push('M3D1 public payment quote entry is missing');
+    }
+    else {
+        const publicQuoteStat = fs.lstatSync(publicQuotePath);
+        if (publicQuoteStat.isSymbolicLink()){
+            violations.push('M3D1 public payment quote entry may not be a symbolic link');
+        }
+        else if (!publicQuoteStat.isFile()){
+            violations.push('M3D1 public payment quote entry must be a regular file');
+        }
+    }
+
     const srcDir = path.join(root, 'src');
     for (const filename of listSourceFiles(srcDir, root, violations)){
         const relative = normalize(path.relative(root, filename));
@@ -164,6 +205,11 @@ function main(){
     console.log('M3D1 payment quote boundary fitness passed.');
 }
 
-module.exports = { analyzeCostModule, analyzeProductionConsumer, findViolations };
+module.exports = {
+    analyzePaymentQuoteExports,
+    analyzeCostModule,
+    analyzeProductionConsumer,
+    findViolations,
+};
 
 if (require.main === module) main();
