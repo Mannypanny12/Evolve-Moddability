@@ -8,6 +8,7 @@ import {
 export const MAX_EFFECT_DATA_NESTING_DEPTH = 128;
 export const MAX_EFFECT_COLLECTION_LENGTH = 4096;
 export const MAX_EFFECT_OBJECT_FIELDS = 4096;
+export const MAX_EFFECT_DATA_NODE_COUNT = 16384;
 
 const EFFECT_OPERATION_KIND_PATTERN = /^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/;
 
@@ -16,6 +17,15 @@ function fail(code, message, details){
 }
 
 function canonicalizeInternal(value, path, context, depth){
+    context.nodeCount++;
+    if (context.nodeCount > MAX_EFFECT_DATA_NODE_COUNT){
+        fail('INVALID_EFFECT_DATA', `${path} exceeds the total effect-data node limit.`, {
+            path,
+            nodeCount: context.nodeCount,
+            maxNodes: MAX_EFFECT_DATA_NODE_COUNT,
+        });
+    }
+
     if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
     if (typeof value === 'number'){
         if (!Number.isFinite(value)){
@@ -95,7 +105,11 @@ function canonicalizeInternal(value, path, context, depth){
 }
 
 export function canonicalizeEffectData(value, path = 'effectData'){
-    return canonicalizeInternal(value, path, { active: new WeakSet(), seen: new WeakMap() }, 0);
+    return canonicalizeInternal(value, path, {
+        active: new WeakSet(),
+        seen: new WeakMap(),
+        nodeCount: 0,
+    }, 0);
 }
 
 export function readClosedEffectObject(value, options){
