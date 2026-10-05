@@ -1,13 +1,10 @@
-import { EngineContractError } from '../identity.mjs';
 import {
     assertEffectOperationKind,
-    readClosedEffectObject,
     readDenseEffectArray,
+    readEffectObjectFields,
+    requireEffectField,
 } from './common.mjs';
-
-function fail(code, message, details){
-    throw new EngineContractError(code, message, details);
-}
+import { normalizeCoreEffectOperation } from './core-operations.mjs';
 
 export function createEffectPlan(operations){
     const input = readDenseEffectArray(
@@ -19,18 +16,16 @@ export function createEffectPlan(operations){
     const output = [];
     for (let index = 0; index < input.length; index++){
         const path = `effectPlan.operations[${index}]`;
-        const fields = readClosedEffectObject(input[index], {
+        const fields = readEffectObjectFields(
+            input[index],
             path,
-            allowed: ['kind'],
-            required: ['kind'],
-            code: 'INVALID_EFFECT_OPERATION',
-        });
-        const kind = assertEffectOperationKind(fields.get('kind'), `${path}.kind`);
-        fail(
-            'UNSUPPORTED_EFFECT_OPERATION_KIND',
-            `${path}.kind is not supported by the M3C1 effect-plan foundation.`,
-            { path: `${path}.kind`, kind }
+            'INVALID_EFFECT_OPERATION'
         );
+        const kind = assertEffectOperationKind(
+            requireEffectField(fields, 'kind', path, 'INVALID_EFFECT_OPERATION'),
+            `${path}.kind`
+        );
+        output.push(normalizeCoreEffectOperation(fields, kind, path));
     }
 
     return Object.freeze({
