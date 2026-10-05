@@ -74,14 +74,12 @@ test('M3D1 quote files remain sealed against later affordability, queue, payment
             [],
             label
         );
-        assert.deepEqual(
-            analyzeCostModule(source, 'src/engine/costs/payment-assessor.mjs'),
-            label === 'payment plan' || label === 'payment execution' || label === 'cost adjustment' || label === 'modifier pipeline'
-                ? analyzeCostModule(source, 'src/engine/costs/payment-assessor.mjs')
-                : [],
-            `D2 may own reviewed affordability/queue semantics: ${label}`
-        );
     }
+
+    assert.deepEqual(
+        analyzeCostModule('function assessCurrentAffordability(){} const queueCapacity = 1;', 'src/engine/costs/payment-assessor.mjs'),
+        []
+    );
 });
 
 test('M3D generic cost source rejects first-party namespace knowledge even in strings or comments', () => {
