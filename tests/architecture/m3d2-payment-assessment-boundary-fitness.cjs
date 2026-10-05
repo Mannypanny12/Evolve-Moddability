@@ -8,6 +8,7 @@ const SOURCE_EXTENSIONS = new Set(['.js', '.mjs', '.cjs']);
 const COST_ROOT = 'src/engine/costs';
 const PUBLIC_QUOTE = 'src/engine/costs/payment-quote.mjs';
 const PUBLIC_ASSESSOR = 'src/engine/costs/payment-assessor.mjs';
+const PUBLIC_PLAN = 'src/engine/costs/payment-plan.mjs';
 const PAYMENT_READS = 'src/engine/costs/payment-read-capabilities.mjs';
 const PAYMENT_RESULT = 'src/engine/costs/payment-assessment-result.mjs';
 const LEGACY_ADAPTER = 'src/legacy/bridge/evolve-payment-read-adapter.mjs';
@@ -29,10 +30,11 @@ const FORBIDDEN_RUNTIME = [
 ];
 
 const FORBIDDEN_LATER_SCOPE = [
-    ['payment planning/execution', /\b[A-Za-z0-9_$]*(?:paymentPlan|executePayment|applyPayment|commitPayment|paymentExecutor|debit|credit)[A-Za-z0-9_$]*\b/i],
+    ['payment execution', /\b[A-Za-z0-9_$]*(?:executePayment|applyPayment|commitPayment|paymentExecutor)[A-Za-z0-9_$]*\b/i],
     ['modifier/calculation pipeline', /\b[A-Za-z0-9_$]*(?:adjustCost|costModifier|priceModifier|modifierPipeline|calculationPipeline)[A-Za-z0-9_$]*\b/i],
     ['queue scheduling/work items', /\b[A-Za-z0-9_$]*(?:enqueue|dequeue|queueWorkItem|queueScheduler|scheduleQueue)[A-Za-z0-9_$]*\b/i],
 ];
+const PAYMENT_PLANNING = /\b[A-Za-z0-9_$]*(?:paymentPlan|debit|credit)[A-Za-z0-9_$]*\b/i;
 
 const FORBIDDEN_AUTHORITY = /\b(?:mutationAuthority|createMutationScope|beginTransaction|commitTransaction|rollbackTransaction|modRes|setGlobal|payCosts)\b/;
 const FORBIDDEN_LEGACY_COST_HELPERS = /\b(?:checkCosts|checkAffordable|checkMaxCosts|payCosts|adjustCosts)\b/;
@@ -81,6 +83,9 @@ function analyzeCostSource(source, relativePath){
     if (FORBIDDEN_LEGACY_COST_HELPERS.test(code)){
         violations.push(`${relativePath}: M3D2 cost source may not reproduce legacy cost-helper entry points`);
     }
+    if (relativePath !== PUBLIC_PLAN && PAYMENT_PLANNING.test(code)){
+        violations.push(`${relativePath}: M3D2-owned cost source may not acquire PaymentPlan/debit/credit scope`);
+    }
     for (const [label, pattern] of FORBIDDEN_RUNTIME){
         if (pattern.test(code)) violations.push(`${relativePath}: M3D2 cost source may not access ${label}`);
     }
@@ -126,7 +131,12 @@ function analyzeCostSource(source, relativePath){
 function analyzeAssessorInternalEdges(source, relativePath){
     const violations = [];
     if (relativePath === PUBLIC_ASSESSOR){
-        const allowed = new Set([IDENTITY, INERT_DATA, PUBLIC_QUOTE, PAYMENT_READS, PAYMENT_RESULT]);
+        const allowed = new Set([
+            IDENTITY,
+            'src/engine/costs/payment-quote-input.mjs',
+            PAYMENT_READS,
+            PAYMENT_RESULT,
+        ]);
         for (const reference of extractModuleReferences(source, relativePath)){
             if (!reference.specifier.startsWith('.')) continue;
             const target = resolveRelative(relativePath, reference.specifier);
@@ -191,7 +201,7 @@ function analyzeProductionConsumer(source, relativePath){
             violations.push(`${relativePath}: M3D2 cost dependencies must use static ESM imports; found ${reference.kind}`);
             continue;
         }
-        if (target !== PUBLIC_QUOTE && target !== PUBLIC_ASSESSOR){
+        if (target !== PUBLIC_QUOTE && target !== PUBLIC_ASSESSOR && target !== PUBLIC_PLAN){
             violations.push(`${relativePath}: production code may import only reviewed M3D public entries; found ${target}`);
         }
     }
