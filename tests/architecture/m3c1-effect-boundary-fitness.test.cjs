@@ -30,6 +30,8 @@ test('M3C1 effect fitness rejects state, runtime, legacy, command and external d
         `import x from '../commands/command-bus.mjs';`,
         `import x from 'some-package';`,
         `const x = import('./common.mjs');`,
+        `const x = require('./common.mjs');`,
+        `import data from './operations.json';`,
     ];
     for (const source of cases){
         assert.notEqual(analyzeEffectModule(source, EFFECT_FILE).length, 0, source);
@@ -51,19 +53,41 @@ test('M3C1 effect fitness rejects mutation authority and platform/runtime global
     }
 });
 
-test('M3C1 inert-data contract fitness allows only identity dependency', () => {
+test('M3C1 effect fitness rejects direct and indirect dynamic-code capabilities', () => {
+    const cases = [
+        `export const x = eval('1');`,
+        `export const x = (0, eval)('1');`,
+        `const Maker = Function; export const x = Maker('return 1')();`,
+        `export const x = WebAssembly.instantiate(bytes);`,
+    ];
+    for (const source of cases){
+        const violations = analyzeEffectModule(source, EFFECT_FILE);
+        assert.equal(
+            violations.some(item => item.includes('dynamic code capability')),
+            true,
+            `${source}: ${JSON.stringify(violations)}`
+        );
+    }
+
+    assert.deepEqual(
+        analyzeEffectModule(`export const text = 'eval Function WebAssembly'; // eval`, EFFECT_FILE),
+        []
+    );
+});
+
+test('M3C1 inert-data contract fitness allows only static identity dependency', () => {
     assert.deepEqual(
         analyzeInertDataContract(`import { EngineContractError } from '../identity.mjs';`),
         []
     );
-    assert.notEqual(
-        analyzeInertDataContract(`import x from '../state/common.mjs';`).length,
-        0
-    );
-    assert.notEqual(
-        analyzeInertDataContract(`export const x = Date.now();`).length,
-        0
-    );
+    for (const source of [
+        `import x from '../state/common.mjs';`,
+        `export const x = Date.now();`,
+        `export const x = (0, eval)('1');`,
+        `const x = require('../identity.mjs');`,
+    ]){
+        assert.notEqual(analyzeInertDataContract(source).length, 0, source);
+    }
 });
 
 test('M3C1 current repository satisfies effect boundary fitness', () => {
