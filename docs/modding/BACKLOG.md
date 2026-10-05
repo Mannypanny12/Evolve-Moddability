@@ -239,19 +239,34 @@ Established the pre-implementation evidence and design authority for M3:
 
 See [M3A0_COMMAND_BEHAVIOR_CONTRACT.md](M3A0_COMMAND_BEHAVIOR_CONTRACT.md).
 
-### M3A1 - Command contract and bus - next
+### M3A1 - Command contract and bus - complete
 
-Implement the first production command primitive from the M3A0 laws:
+Established the first production command primitive from the M3A0 laws:
 
-- canonical namespaced command IDs;
-- closed inert payload validation;
-- synchronous dispatch;
-- structured success/rejection results;
-- deterministic diagnostics;
-- no raw mutation authority or legacy/UI dependency;
-- explicit reentrancy policy.
+- canonical command IDs reuse the M1 content-ID grammar with required type `command`;
+- dispatch envelopes are closed `{ id, payload }` data;
+- payloads are detached, canonicalized, deeply frozen and hostile-input hardened before validation/execution;
+- each registration has one synchronous payload validator and one synchronous handler;
+- registrations are fixed at construction and duplicate/malformed registrations fail closed;
+- the public bus exposes only `dispatch`, `has`, and deterministic `ids`;
+- success/rejection results are normalized into one frozen structured result contract;
+- rejected results use machine-readable reason codes/details rather than localized strings;
+- legacy `false`/`0`/truthy callback results are rejected as invalid command results;
+- nested dispatch is prohibited through validation and execution, with lock recovery guaranteed through `finally`;
+- declared async functions and runtime Promise/thenable leakage fail closed;
+- contract failures carry deterministic command/phase context where possible;
+- the bus does not import GameState/state infrastructure and receives no raw mutation authority;
+- the inert M1 definition `Registry` is not repurposed as executable handler storage;
+- a dedicated M3A1 architecture gate is cumulative in `npm run test:architecture`;
+- no vanilla action, GameState schema, queue, persistence or UI path is cut over in this slice.
 
-M3A1 should establish command execution structure without prematurely implementing the full condition, cost, effect or queue engines.
+See [M3A1_COMMAND_BUS.md](M3A1_COMMAND_BUS.md).
+
+### M3B - Condition engine - next
+
+Implement reusable machine-readable conditions while preserving the M3A0 distinction between availability, execution conditions, current affordability, and queue/prediction eligibility.
+
+Initial primitives should cover technology/resource/structure/trait requirements without introducing payment or mutation behavior.
 
 ## Immediate sequence
 
@@ -264,14 +279,16 @@ M2A-M2E explicit state architecture - complete
    |
 M3A0 legacy command behavior/design authority - complete
    |
-M3A1 command contract/bus - next
+M3A1 command contract/bus - complete
+   |
+M3B condition engine - next
 ```
 
 Do not jump directly to mod loading, total conversions, or bulk content conversion. Those would lock in legacy assumptions before the engine is ready.
 
 ## Later milestones
 
-- M3A1-M3G commands/conditions/effects/costs and first vanilla cutover;
+- M3B-M3G conditions/effects/costs/queues and first vanilla cutover;
 - M4 calculation/modifier engine;
 - M5 deterministic simulation;
 - M6 vanilla migration waves;
