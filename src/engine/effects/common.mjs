@@ -112,13 +112,35 @@ export function canonicalizeEffectData(value, path = 'effectData'){
     }, 0);
 }
 
-export function readClosedEffectObject(value, options){
-    const { path, allowed, required = allowed, code = 'INVALID_EFFECT_CONTRACT' } = options;
-    const fields = inspectPlainInertObject(value, {
+export function readEffectObjectFields(
+    value,
+    path,
+    code = 'INVALID_EFFECT_CONTRACT'
+){
+    return inspectPlainInertObject(value, {
         path,
         code,
         maxFields: MAX_EFFECT_OBJECT_FIELDS,
     });
+}
+
+export function requireEffectField(
+    fields,
+    field,
+    path,
+    code = 'INVALID_EFFECT_CONTRACT'
+){
+    if (!fields.has(field)){
+        fail(code, `${path} is missing required field ${JSON.stringify(field)}.`, {
+            path: inertDataPath(path, field),
+            field,
+        });
+    }
+    return fields.get(field);
+}
+
+export function assertClosedEffectFields(fields, options){
+    const { path, allowed, required = allowed, code = 'INVALID_EFFECT_CONTRACT' } = options;
     const allowedSet = new Set(allowed);
     for (const key of fields.keys()){
         if (!allowedSet.has(key)){
@@ -129,14 +151,15 @@ export function readClosedEffectObject(value, options){
         }
     }
     for (const key of required){
-        if (!fields.has(key)){
-            fail(code, `${path} is missing required field ${JSON.stringify(key)}.`, {
-                path: inertDataPath(path, key),
-                field: key,
-            });
-        }
+        requireEffectField(fields, key, path, code);
     }
     return fields;
+}
+
+export function readClosedEffectObject(value, options){
+    const { path, code = 'INVALID_EFFECT_CONTRACT' } = options;
+    const fields = readEffectObjectFields(value, path, code);
+    return assertClosedEffectFields(fields, options);
 }
 
 export function readDenseEffectArray(
