@@ -29,9 +29,14 @@ async function expectCode(create, code, pathValue){
 }
 
 test('M3C2 creates detached frozen resource grant and consume operations', async () => {
-    const { createEffectPlan, CORE_EFFECT_OPERATION_KINDS } = await modules();
+    const {
+        createEffectPlan,
+        CORE_EFFECT_OPERATION_KINDS,
+        MAX_CORE_EFFECT_OPERATION_FIELDS,
+    } = await modules();
     assert.deepEqual(CORE_EFFECT_OPERATION_KINDS, ['resource.consume', 'resource.grant']);
     assert.equal(Object.isFrozen(CORE_EFFECT_OPERATION_KINDS), true);
+    assert.equal(MAX_CORE_EFFECT_OPERATION_FIELDS, 3);
 
     const grant = {
         kind: 'resource.grant',
@@ -94,6 +99,24 @@ test('M3C2 preserves operation order, duplicates and opposite resource operation
         { kind: 'resource.grant', resourceId, amount: 2 },
     ]);
     assert.equal(plan.operations.length, 4);
+});
+
+test('M3C2 permits duplicate operations to reuse the same input object identity', async () => {
+    const { createEffectPlan } = await modules();
+    const shared = {
+        kind: 'resource.grant',
+        resourceId: 'evolve:resource/dna',
+        amount: 1,
+    };
+    const plan = createEffectPlan([shared, shared]);
+
+    assert.deepEqual(plan.operations, [shared, shared]);
+    assert.equal(plan.operations.length, 2);
+    assert.notEqual(plan.operations[0], shared);
+    assert.notEqual(plan.operations[1], shared);
+    assert.notEqual(plan.operations[0], plan.operations[1]);
+    assert.equal(Object.isFrozen(plan.operations[0]), true);
+    assert.equal(Object.isFrozen(plan.operations[1]), true);
 });
 
 test('M3C2 requires canonical typed resource IDs without consulting a registry', async () => {
@@ -174,7 +197,7 @@ test('M3C2 resource operation schemas are closed and all fields are required', a
             allowOverflow: true,
         }]),
         'INVALID_EFFECT_OPERATION',
-        'effectPlan.operations[0].allowOverflow'
+        'effectPlan.operations[0]'
     );
 
     await expectCode(
@@ -185,8 +208,33 @@ test('M3C2 resource operation schemas are closed and all fields are required', a
             reason: 'cost',
         }]),
         'INVALID_EFFECT_OPERATION',
-        'effectPlan.operations[0].reason'
+        'effectPlan.operations[0]'
     );
+});
+
+test('M3C2 rejects oversized operation objects before inspecting field descriptors', async () => {
+    const { createEffectPlan, MAX_CORE_EFFECT_OPERATION_FIELDS } = await modules();
+    assert.equal(MAX_CORE_EFFECT_OPERATION_FIELDS, 3);
+
+    let descriptorCalls = 0;
+    const oversized = new Proxy({
+        kind: 'resource.grant',
+        resourceId: 'evolve:resource/dna',
+        amount: 1,
+        extra: true,
+    }, {
+        getOwnPropertyDescriptor(target, key){
+            descriptorCalls++;
+            return Reflect.getOwnPropertyDescriptor(target, key);
+        },
+    });
+
+    await expectCode(
+        () => createEffectPlan([oversized]),
+        'INVALID_EFFECT_OPERATION',
+        'effectPlan.operations[0]'
+    );
+    assert.equal(descriptorCalls, 0);
 });
 
 test('M3C2 distinguishes malformed operation kinds from unsupported well-formed kinds', async () => {
