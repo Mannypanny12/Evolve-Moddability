@@ -114,7 +114,7 @@ Declared async validators/handlers are rejected during registration. Promise/the
 
 ## Reentrancy
 
-Nested command dispatch is prohibited during both payload validation and handler execution.
+Nested command dispatch is prohibited during both payload validation and handler execution. The lock is module-wide, so dispatching through a second command-bus instance from inside an active command is also rejected.
 
 A nested attempt throws:
 
@@ -240,14 +240,15 @@ The existing M0/M1/M2 architecture gates remain cumulative and continue to prohi
 
 ## Review hardening
 
-The post-implementation M3A1 review tightened four areas before closure:
+The post-implementation M3A1 review tightened five areas before closure:
 
 - enriched `EngineContractError` diagnostics now retain the underlying structured fields instead of replacing them with only command/phase metadata;
 - validators and handlers are invoked with no implicit `this` context;
 - thenable detection no longer invokes a potentially hostile `then` getter;
-- result normalization itself requires a canonical command ID, rather than relying solely on the bus caller.
+- result normalization itself requires a canonical command ID, rather than relying solely on the bus caller;
+- the dispatch lock is module-wide, so multiple bus instances cannot be used to bypass the no-nested-command rule.
 
-Adversarial coverage was expanded for null-prototype data, hidden/symbol fields, array subclasses, shared array identity, excessive nesting, hostile inspection failures, unusual diagnostic paths, registration accessors, preserved cause diagnostics, accessor-based thenables, and reentrancy cause phases.
+Adversarial coverage was expanded for null-prototype data, hidden/symbol fields, array subclasses, shared array identity, excessive nesting, hostile inspection failures, unusual diagnostic paths, registration accessors, preserved cause diagnostics, accessor-based thenables, same-bus reentrancy cause phases, and cross-bus reentrancy.
 
 ## Production impact
 
@@ -279,7 +280,7 @@ M3A1 is complete when:
 6. duplicate/malformed registrations fail closed;
 7. public bus surface is only `dispatch`, `has`, and `ids`;
 8. dispatch is synchronous and handlers execute once without an implicit `this` context;
-9. nested dispatch is forbidden and the lock always recovers after failure;
+9. nested dispatch is forbidden across all bus instances and the lock always recovers after failure;
 10. Promise/thenable validators and handlers fail closed without invoking then accessors;
 11. success and rejection use one frozen structured result contract;
 12. rejected results contain machine-readable reasons rather than localized messages;
