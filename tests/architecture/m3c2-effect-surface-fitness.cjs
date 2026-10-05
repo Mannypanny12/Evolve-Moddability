@@ -2,7 +2,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { extractModuleReferences } = require('./architecture-fitness.cjs');
+const { extractModuleReferences, maskNonCode } = require('./architecture-fitness.cjs');
 
 const SOURCE_EXTENSIONS = new Set(['.js', '.mjs', '.cjs']);
 const SOURCE_ROOT = 'src';
@@ -36,9 +36,24 @@ function resolveRelative(fromRelativePath, specifier){
     return target;
 }
 
+function analyzeEffectPlanExports(source, relativePath){
+    if (relativePath !== EFFECT_PLAN) return [];
+    const code = maskNonCode(source);
+    const exportCount = (code.match(/\bexport\b/g) || []).length;
+    const hasReviewedEntry = /\bexport\s+function\s+createEffectPlan\s*\(/.test(code);
+    if (exportCount !== 1 || !hasReviewedEntry){
+        return [`${relativePath}: M3C2 production effect entry must export only synchronous createEffectPlan()`];
+    }
+    return [];
+}
+
 function analyzeSource(source, relativePath){
-    const violations = [];
+    const violations = [...analyzeEffectPlanExports(source, relativePath)];
     const sourceIsEffectModule = relativePath.startsWith(`${EFFECT_ROOT}/`);
+
+    // Outside the effect layer every relevant relative import necessarily names the effects directory.
+    // Avoid parsing the much larger legacy source tree when a file cannot reference this boundary.
+    if (!sourceIsEffectModule && !source.includes('effects')) return violations;
 
     for (const reference of extractModuleReferences(source, relativePath)){
         const specifier = reference.specifier;
@@ -93,6 +108,6 @@ function main(){
     console.log('M3C2 effect surface fitness passed.');
 }
 
-module.exports = { analyzeSource, findViolations };
+module.exports = { analyzeEffectPlanExports, analyzeSource, findViolations };
 
 if (require.main === module) main();
