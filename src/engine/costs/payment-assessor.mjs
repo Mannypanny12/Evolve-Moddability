@@ -11,7 +11,33 @@ function fail(code, message, details){
     throw new EngineContractError(code, message, details);
 }
 
+function assertPaymentQuoteContainer(value){
+    if (value === null || typeof value !== 'object'){
+        fail('INVALID_PAYMENT_QUOTE', 'paymentQuote must be a plain data object.', {
+            path: 'paymentQuote',
+            valueType: value === null ? 'null' : typeof value,
+        });
+    }
+
+    let isArray;
+    let prototype;
+    try {
+        isArray = Array.isArray(value);
+        prototype = Object.getPrototypeOf(value);
+    }
+    catch {
+        fail('INVALID_PAYMENT_QUOTE', 'paymentQuote could not be safely inspected.', { path: 'paymentQuote' });
+    }
+    if (isArray || (prototype !== Object.prototype && prototype !== null)){
+        fail('INVALID_PAYMENT_QUOTE', 'paymentQuote must be a plain data object.', {
+            path: 'paymentQuote',
+            containerType: isArray ? 'array' : 'object',
+        });
+    }
+}
+
 function normalizePaymentQuote(rawQuote){
+    assertPaymentQuoteContainer(rawQuote);
     const fields = inspectPlainInertObject(rawQuote, {
         path: 'paymentQuote',
         code: 'INVALID_PAYMENT_QUOTE',
@@ -78,7 +104,7 @@ function currentAssessment(quote, reads){
                     lineIndex,
                     resourceId: line.resourceId,
                     requiredAmount,
-                    availableAmount: resourceFacts.amount,
+                    currentAmount: resourceFacts.amount,
                 },
             });
         }
