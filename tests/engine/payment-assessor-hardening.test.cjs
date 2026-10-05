@@ -33,22 +33,45 @@ function validProvider(overrides = {}){
     };
 }
 
-test('M3D2 rejects malformed read capability containers and callable shapes', async () => {
+test('M3D2 rejects malformed read capability containers and non-callable members', async () => {
     const { createPaymentAssessor, EngineContractError } = await modules();
 
-    for (const bad of [null, [], {}, { resource: {} }, { resource: { amount(){}, available(){}, capacity(){}, extra: true } }]){
+    for (const bad of [
+        null,
+        [],
+        {},
+        { resource: {} },
+        { resource: { amount: 1, available(){}, capacity(){} } },
+        { resource: { amount(){}, available(){}, capacity(){}, extra: true } },
+    ]){
         assert.throws(
             () => createPaymentAssessor(bad),
             error => error instanceof EngineContractError && error.code === 'INVALID_PAYMENT_READ_CAPABILITIES'
         );
     }
+});
 
-    for (const amount of [async function(){ return 1; }, function*(){ yield 1; }, class Reader {}]){
-        assert.throws(
-            () => createPaymentAssessor(validProvider({ amount })),
-            error => error instanceof EngineContractError && error.code === 'INVALID_PAYMENT_READ_CAPABILITIES'
-        );
-    }
+test('M3D2 callable misuse still fails closed when a reader is invoked', async () => {
+    const { createPaymentAssessor, createPaymentQuote, EngineContractError } = await modules();
+    const quote = createPaymentQuote([line('example:resource/wood', 1)]);
+
+    const asyncAssessor = createPaymentAssessor(validProvider({ amount: async () => 1 }));
+    assert.throws(
+        () => asyncAssessor.assessCurrentAffordability(quote),
+        error => error instanceof EngineContractError && error.code === 'INVALID_PAYMENT_READ_RESULT'
+    );
+
+    const generatorAssessor = createPaymentAssessor(validProvider({ amount: function*(){ yield 1; } }));
+    assert.throws(
+        () => generatorAssessor.assessCurrentAffordability(quote),
+        error => error instanceof EngineContractError && error.code === 'INVALID_PAYMENT_READ_RESULT'
+    );
+
+    const classAssessor = createPaymentAssessor(validProvider({ amount: class Reader {} }));
+    assert.throws(
+        () => classAssessor.assessCurrentAffordability(quote),
+        error => error instanceof EngineContractError && error.code === 'PAYMENT_READ_FAILURE'
+    );
 });
 
 test('M3D2 rejects invalid reader results and hostile thenables without invoking accessors', async () => {
