@@ -115,12 +115,13 @@ export function canonicalizeEffectData(value, path = 'effectData'){
 export function readEffectObjectFields(
     value,
     path,
-    code = 'INVALID_EFFECT_CONTRACT'
+    code = 'INVALID_EFFECT_CONTRACT',
+    maxFields = MAX_EFFECT_OBJECT_FIELDS
 ){
     return inspectPlainInertObject(value, {
         path,
         code,
-        maxFields: MAX_EFFECT_OBJECT_FIELDS,
+        maxFields,
     });
 }
 
