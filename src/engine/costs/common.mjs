@@ -24,7 +24,63 @@ function isEngineContractError(value){
     }
 }
 
+function assertNormalArrayContainer(value, path, code){
+    let isArray;
+    try {
+        isArray = Array.isArray(value);
+    }
+    catch {
+        fail(code, `${path} could not be safely inspected.`, { path });
+    }
+    if (!isArray){
+        fail(code, `${path} must be an array.`, { path, valueType: typeof value });
+    }
+
+    let prototype;
+    try {
+        prototype = Object.getPrototypeOf(value);
+    }
+    catch {
+        fail(code, `${path} could not be safely inspected.`, { path });
+    }
+    if (prototype !== Array.prototype){
+        fail(code, `${path} must be a normal Array.`, { path, containerType: 'array' });
+    }
+}
+
+function assertPlainRecordContainer(value, path, code){
+    if (value === null || typeof value !== 'object'){
+        fail(code, `${path} must be a plain data object.`, {
+            path,
+            valueType: value === null ? 'null' : typeof value,
+        });
+    }
+
+    let isArray;
+    try {
+        isArray = Array.isArray(value);
+    }
+    catch {
+        fail(code, `${path} could not be safely inspected.`, { path });
+    }
+    if (isArray){
+        fail(code, `${path} must be a plain data object.`, { path, containerType: 'array' });
+    }
+
+    let prototype;
+    try {
+        prototype = Object.getPrototypeOf(value);
+    }
+    catch {
+        fail(code, `${path} could not be safely inspected.`, { path });
+    }
+    if (prototype !== Object.prototype && prototype !== null){
+        fail(code, `${path} must be a plain data object.`, { path, containerType: 'object' });
+    }
+}
+
 function readQuoteLineFields(value, path){
+    assertPlainRecordContainer(value, path, 'INVALID_PAYMENT_QUOTE_LINE');
     const fields = inspectPlainInertObject(value, {
         path,
         code: 'INVALID_PAYMENT_QUOTE_LINE',
@@ -126,6 +182,7 @@ function assertAmount(value, path){
 }
 
 export function readPaymentQuoteLines(value, path = 'paymentQuote.lines'){
+    assertNormalArrayContainer(value, path, 'INVALID_PAYMENT_QUOTE');
     return inspectDenseInertArray(value, {
         path,
         code: 'INVALID_PAYMENT_QUOTE',
