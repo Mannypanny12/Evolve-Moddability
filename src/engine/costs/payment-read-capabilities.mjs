@@ -28,7 +28,34 @@ function readOwnDataField(value, field){
         : undefined;
 }
 
+function assertPlainRecordContainer(value, path){
+    if (value === null || typeof value !== 'object'){
+        fail('INVALID_PAYMENT_READ_CAPABILITIES', `${path} must be a plain data object.`, {
+            path,
+            valueType: value === null ? 'null' : typeof value,
+        });
+    }
+
+    let isArray;
+    let prototype;
+    try {
+        isArray = Array.isArray(value);
+        prototype = Object.getPrototypeOf(value);
+    }
+    catch {
+        fail('INVALID_PAYMENT_READ_CAPABILITIES', `${path} could not be safely inspected.`, { path });
+    }
+
+    if (isArray || (prototype !== Object.prototype && prototype !== null)){
+        fail('INVALID_PAYMENT_READ_CAPABILITIES', `${path} must be a plain data object.`, {
+            path,
+            containerType: isArray ? 'array' : 'object',
+        });
+    }
+}
+
 function readClosedObject(value, path, allowed, required = allowed){
+    assertPlainRecordContainer(value, path);
     const fields = inspectPlainInertObject(value, {
         path,
         code: 'INVALID_PAYMENT_READ_CAPABILITIES',
