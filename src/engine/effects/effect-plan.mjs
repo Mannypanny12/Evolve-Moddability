@@ -4,7 +4,10 @@ import {
     readEffectObjectFields,
     requireEffectField,
 } from './common.mjs';
-import { normalizeCoreEffectOperation } from './core-operations.mjs';
+import {
+    MAX_CORE_EFFECT_OPERATION_FIELDS,
+    normalizeCoreEffectOperation,
+} from './core-operations.mjs';
 
 export function createEffectPlan(operations){
     const input = readDenseEffectArray(
@@ -19,7 +22,8 @@ export function createEffectPlan(operations){
         const fields = readEffectObjectFields(
             input[index],
             path,
-            'INVALID_EFFECT_OPERATION'
+            'INVALID_EFFECT_OPERATION',
+            MAX_CORE_EFFECT_OPERATION_FIELDS
         );
         const kind = assertEffectOperationKind(
             requireEffectField(fields, 'kind', path, 'INVALID_EFFECT_OPERATION'),
