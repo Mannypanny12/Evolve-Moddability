@@ -23,6 +23,8 @@ const FORBIDDEN_RUNTIME = [
     ['platform globals', /\b(?:process|Buffer)\b/],
     ['clock/random source', /\b(?:Date|performance|crypto)\b|\bMath\s*\.\s*(?:random|rand)\s*\(/],
     ['timers/schedulers', /\b(?:setTimeout|setInterval|setImmediate|queueMicrotask|requestAnimationFrame|cancelAnimationFrame)\s*\(/],
+    ['async/promise control flow', /\b(?:async|await)\b|\bnew\s+Promise\b|\bPromise\s*\./],
+    ['generator control flow', /\bfunction\s*\*/],
     ['dynamic code/loading', /\bimport\s*\(|\brequire\b|\b(?:eval|Function|WebAssembly)\b/],
 ];
 
@@ -33,7 +35,9 @@ const FORBIDDEN_LATER_SCOPE = [
 ];
 
 const FORBIDDEN_AUTHORITY = /\b(?:mutationAuthority|createMutationScope|beginTransaction|commitTransaction|rollbackTransaction|modRes|setGlobal|payCosts)\b/;
+const FORBIDDEN_LEGACY_COST_HELPERS = /\b(?:checkCosts|checkAffordable|checkMaxCosts|payCosts|adjustCosts)\b/;
 const FIRST_PARTY_NAMESPACE = /\bevolve:/i;
+const RNA_ONLY_MAPPING_LIST = /const\s+SUPPORTED_PAYMENT_MAPPING_IDS\s*=\s*Object\.freeze\(\s*\[\s*['"]evolve\.resource\.rna_state['"]\s*,?\s*\]\s*\)\s*;/;
 
 function normalize(value){
     return value.split(path.sep).join('/');
@@ -73,6 +77,9 @@ function analyzeCostSource(source, relativePath){
 
     if (FORBIDDEN_AUTHORITY.test(code)){
         violations.push(`${relativePath}: M3D2 cost source may not acquire mutation/payment authority`);
+    }
+    if (FORBIDDEN_LEGACY_COST_HELPERS.test(code)){
+        violations.push(`${relativePath}: M3D2 cost source may not reproduce legacy cost-helper entry points`);
     }
     for (const [label, pattern] of FORBIDDEN_RUNTIME){
         if (pattern.test(code)) violations.push(`${relativePath}: M3D2 cost source may not access ${label}`);
@@ -147,6 +154,14 @@ function analyzeAssessorInternalEdges(source, relativePath){
 function analyzeLegacyAdapter(source, relativePath = LEGACY_ADAPTER){
     const violations = [];
     const code = maskNonCode(source);
+    const exportCount = (code.match(/\bexport\b/g) || []).length;
+    const hasReviewedEntry = /\bexport\s+function\s+createEvolveLegacyPaymentReadProvider\s*\(\s*[A-Za-z_$][A-Za-z0-9_$]*\s*\)/.test(code);
+    if (relativePath === LEGACY_ADAPTER && (exportCount !== 1 || !hasReviewedEntry)){
+        violations.push(`${relativePath}: M3D2 legacy payment bridge must export only synchronous one-argument createEvolveLegacyPaymentReadProvider()`);
+    }
+    if (relativePath === LEGACY_ADAPTER && !RNA_ONLY_MAPPING_LIST.test(source)){
+        violations.push(`${relativePath}: M3D2 legacy payment bridge must remain pinned to the single reviewed RNA mapping`);
+    }
     if (/\b(?:global|globalThis|window|document|navigator|jQuery|Vue)\b|\$\s*\(/.test(code)){
         violations.push(`${relativePath}: M3D2 legacy payment adapter may not access globals/UI directly`);
     }
