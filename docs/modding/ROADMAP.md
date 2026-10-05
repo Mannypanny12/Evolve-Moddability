@@ -211,17 +211,21 @@ Freeze the legacy action lifecycle, requirement categories, cost/payment semanti
 
 M3A0 is an evidence/design-authority slice only. It does not add the command bus, condition engine, effect engine, cost engine, queue engine, a new GameState domain, or a public Mod API. See `M3A0_COMMAND_BEHAVIOR_CONTRACT.md`.
 
-### M3A1 Command contract and bus
+### M3A1 Command contract and bus - complete
 
-Create command execution with:
+The first production command primitive now provides:
 
-- typed command ID/payload;
-- validation;
-- structured success/rejection results;
-- atomic mutation boundary;
-- diagnostic context.
+- canonical namespaced `command` IDs using the M1 identity grammar;
+- closed inert `{ id, payload }` dispatch envelopes;
+- detached/canonical/frozen payload validation;
+- fixed synchronous runtime registrations;
+- structured success/rejection results instead of overloaded legacy callback values;
+- deterministic command/phase contract diagnostics;
+- fail-closed async/thenable and reentrancy handling;
+- a sealed bus surface (`dispatch`, `has`, `ids`);
+- architecture enforcement preventing GameState/state-infrastructure imports, raw mutation authority, dynamic loading, or use of the inert M1 Registry as executable handler storage.
 
-Legacy callback return values such as `false`, `0`, and arbitrary truthy values must not become the new command result contract.
+M3A1 does not cut over vanilla gameplay and does not implement conditions, costs, effects or queues. Atomic gameplay mutation remains owned by semantic capabilities/domain services rather than the bus. See `M3A1_COMMAND_BUS.md`.
 
 ### M3B Condition engine
 
