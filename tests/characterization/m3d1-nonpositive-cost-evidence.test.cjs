@@ -39,3 +39,15 @@ test('legacy negative resource cost is accepted and payment increases the resour
     assert.equal(legacy.pay({ Food: -5 }), true);
     assert.equal(state.resource.Food.amount, 15);
 });
+
+test('legacy adjustment can resolve a positive declared resource cost to zero', () => {
+    const state = legacy.pristineLegacyState();
+    state.civic.govern = state.civic.govern || { type: 'none' };
+    state.race.lone_survivor = 1;
+    legacy.installLegacyState(state);
+
+    assert.deepEqual(
+        legacy.adjustedSyntheticCosts({ Food: 1 }),
+        { Food: 0 }
+    );
+});
