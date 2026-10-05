@@ -203,27 +203,41 @@ Exit achieved: `GameState` is authoritative for one real domain, the migration p
 
 ## M3: Commands, conditions, effects, and costs
 
-### M3A Command bus
+M3 is deliberately split into small slices so legacy command semantics are characterized before new execution authority is introduced.
+
+### M3A0 Command behavior contract - complete
+
+Freeze the legacy action lifecycle, requirement categories, cost/payment semantics, queue distinctions, and first vanilla evidence before implementing production command code.
+
+M3A0 is an evidence/design-authority slice only. It does not add the command bus, condition engine, effect engine, cost engine, queue engine, a new GameState domain, or a public Mod API. See `M3A0_COMMAND_BEHAVIOR_CONTRACT.md`.
+
+### M3A1 Command contract and bus
 
 Create command execution with:
 
 - typed command ID/payload;
 - validation;
-- success/failure result;
+- structured success/rejection results;
 - atomic mutation boundary;
 - diagnostic context.
 
+Legacy callback return values such as `false`, `0`, and arbitrary truthy values must not become the new command result contract.
+
 ### M3B Condition engine
 
-Implement reusable conditions and structured failure reasons.
+Implement reusable conditions and machine-readable failure reasons.
+
+Keep availability, execution conditions, affordability, and queue/prediction eligibility semantically distinct even when they reuse lower-level condition primitives.
 
 Start with technology/resource/structure/trait requirements.
 
-### M3C Effect engine
+### M3C Effect/operation planning
 
-Implement reusable state effects.
+Implement reusable state effects/operations and separate gameplay mutation from presentation reactions.
 
-### M3D Cost engine
+Effects must plan or describe authoritative state changes without importing DOM/UI behavior into the engine.
+
+### M3D Quote/cost/payment engine
 
 Migrate affordability and payment semantics from helpers such as:
 
@@ -232,13 +246,23 @@ Migrate affordability and payment semantics from helpers such as:
 - `payCosts`;
 - max-affordable/queue quoting.
 
-Support prestige/special currencies explicitly rather than hidden branches.
+Support prestige/special currencies explicitly rather than hidden branches. Keep current affordability distinct from queue/capacity feasibility. M4 remains responsible for the general calculation/modifier pipeline.
 
-### M3E Queue command model
+### M3E Queue work-item model
 
-Represent queued work as commands/work items independent of DOM action objects.
+Represent queued work as commands/work items independent of DOM action objects and overloaded action callback returns.
 
-Exit: at least one real vanilla action can validate, quote, pay, mutate, and emit results without using a DOM element or directly changing legacy state.
+### M3F First real vanilla cutover
+
+Cut over one bounded vanilla action end to end through the new command architecture. `evolution.dna` is the first selected evidence vertical because its mutation is small while its legacy availability, execution, affordability, capacity, and return-value semantics are usefully distinct.
+
+The cutover must validate, quote/pay where applicable, mutate authoritative state, and return structured results without making UI code the gameplay authority.
+
+### M3G Hardening and closure
+
+Audit the complete M3 path for atomicity, failure semantics, boundary ownership, diagnostics, legacy compatibility, and architecture regressions. Extend CI/fitness guards where needed and record the M3 closure review.
+
+Exit: at least one real vanilla action can validate, quote, pay, mutate, and emit results through the new engine without using a DOM element as gameplay authority or directly mutating legacy state.
 
 ---
 
