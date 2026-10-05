@@ -121,3 +121,19 @@ test('M3D3 operation output never aliases caller quote lines, even when the same
     assert.equal(plan.operations[0].amount, 3);
     assert.equal(plan.operations[1].amount, 3);
 });
+
+test('M3D3 must be consciously updated when PaymentQuote later admits a new payment family', async () => {
+    const { createPaymentPlan, EngineContractError } = await modules();
+
+    assert.throws(
+        () => createPaymentPlan({
+            lines: [{
+                kind: 'prestige',
+                resourceId: 'example:resource/prestige_token',
+                amount: 1,
+            }],
+        }),
+        error => error instanceof EngineContractError &&
+            error.code === 'UNSUPPORTED_PAYMENT_QUOTE_LINE_KIND'
+    );
+});
