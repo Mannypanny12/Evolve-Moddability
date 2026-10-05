@@ -22,14 +22,73 @@ function readErrorField(error, field){
     }
 }
 
+function readDiagnosticDetail(details, field){
+    if (details === null || typeof details !== 'object') return undefined;
+    let descriptor;
+    try {
+        descriptor = Object.getOwnPropertyDescriptor(details, field);
+    }
+    catch {
+        return undefined;
+    }
+    return descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')
+        ? descriptor.value
+        : undefined;
+}
+
+function copyDiagnosticDetails(details, reserved){
+    const output = {};
+    if (details === null || typeof details !== 'object') return output;
+
+    let keys;
+    try {
+        keys = Reflect.ownKeys(details);
+    }
+    catch {
+        return { causeDetails: '<uninspectable>' };
+    }
+
+    for (const key of keys){
+        if (typeof key !== 'string' || reserved.has(key)) continue;
+        let descriptor;
+        try {
+            descriptor = Object.getOwnPropertyDescriptor(details, key);
+        }
+        catch {
+            return { causeDetails: '<uninspectable>' };
+        }
+        if (!descriptor || !descriptor.enumerable || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) continue;
+        Object.defineProperty(output, key, {
+            value: descriptor.value,
+            enumerable: true,
+            writable: true,
+            configurable: true,
+        });
+    }
+    return output;
+}
+
 function enrichError(error, commandId, phase){
     if (error instanceof EngineContractError){
         const causeCode = readErrorField(error, 'code');
         const message = readErrorField(error, 'message') || 'Command contract failed.';
+        const causeDetails = readErrorField(error, 'details');
+        const details = copyDiagnosticDetails(
+            causeDetails,
+            new Set(['commandId', 'phase', 'causeCode', 'causePhase', 'causeCommandId'])
+        );
+        const causePhase = readDiagnosticDetail(causeDetails, 'phase');
+        const causeCommandId = readDiagnosticDetail(causeDetails, 'commandId');
+        if (causePhase !== undefined && causePhase !== phase) details.causePhase = causePhase;
+        if (causeCommandId !== undefined && causeCommandId !== commandId) details.causeCommandId = causeCommandId;
+        details.commandId = commandId;
+        details.phase = phase;
+        details.causeCode = causeCode || null;
+
         return new EngineContractError(
             causeCode || 'COMMAND_CONTRACT_FAILURE',
             `${String(message)} [${commandId || '<unresolved>'} @ ${phase}]`,
-            { commandId, phase, causeCode: causeCode || null }
+            details
         );
     }
     return new EngineContractError(
@@ -118,7 +177,7 @@ export function createCommandBus(rawOptions){
             phase = 'validate';
             let validatedPayload;
             try {
-                validatedPayload = registration.validatePayload(detachedPayload);
+                validatedPayload = Reflect.apply(registration.validatePayload, undefined, [detachedPayload]);
             }
             catch (error){
                 throw enrichError(error, commandId, phase);
@@ -131,7 +190,7 @@ export function createCommandBus(rawOptions){
             phase = 'execute';
             let rawOutcome;
             try {
-                rawOutcome = registration.execute(payload);
+                rawOutcome = Reflect.apply(registration.execute, undefined, [payload]);
             }
             catch (error){
                 throw enrichError(error, commandId, phase);
@@ -145,7 +204,7 @@ export function createCommandBus(rawOptions){
         }
         catch (error){
             if (error instanceof EngineContractError){
-                const errorPhase = readErrorField(error, 'details')?.phase;
+                const errorPhase = readDiagnosticDetail(readErrorField(error, 'details'), 'phase');
                 if (errorPhase === phase) throw error;
                 throw enrichError(error, commandId, phase);
             }
