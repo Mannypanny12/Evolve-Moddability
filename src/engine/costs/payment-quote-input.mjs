@@ -1,5 +1,8 @@
 import { EngineContractError } from '../identity.mjs';
-import { inspectPlainInertObject } from '../contracts/inert-data.mjs';
+import {
+    inertDataPath,
+    inspectPlainInertObject,
+} from '../contracts/inert-data.mjs';
 import { createPaymentQuote } from './payment-quote.mjs';
 
 function fail(code, message, details){
@@ -40,8 +43,9 @@ export function normalizePaymentQuoteInput(rawQuote){
     });
     for (const key of fields.keys()){
         if (key !== 'lines'){
+            const path = inertDataPath('paymentQuote', key);
             fail('INVALID_PAYMENT_QUOTE', `paymentQuote contains unsupported field ${JSON.stringify(key)}.`, {
-                path: `paymentQuote.${key}`,
+                path,
                 field: key,
             });
         }
