@@ -119,14 +119,12 @@ export function inspectDenseInertArray(value, options){
         fail(code, `${path} must be a normal Array.`, { path, value });
     }
 
-    let keys;
     let lengthDescriptor;
     try {
-        keys = Reflect.ownKeys(value);
         lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
     }
     catch {
-        fail(code, `${path} could not be safely inspected.`, { path });
+        fail(code, `${path}.length could not be safely inspected.`, { path: `${path}.length` });
     }
     if (!lengthDescriptor || !Object.prototype.hasOwnProperty.call(lengthDescriptor, 'value')){
         fail(code, `${path}.length could not be safely inspected.`, { path: `${path}.length` });
@@ -145,6 +143,14 @@ export function inspectDenseInertArray(value, options){
             length,
             maxLength: lengthLimit,
         });
+    }
+
+    let keys;
+    try {
+        keys = Reflect.ownKeys(value);
+    }
+    catch {
+        fail(code, `${path} could not be safely inspected.`, { path });
     }
 
     const allowedKeys = new Set(['length']);
