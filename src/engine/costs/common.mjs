@@ -1,0 +1,106 @@
+import { EngineContractError, parseContentId } from '../identity.mjs';
+import {
+    inertDataPath,
+    inspectDenseInertArray,
+    inspectPlainInertObject,
+} from '../contracts/inert-data.mjs';
+
+export const MAX_PAYMENT_QUOTE_LINES = 4096;
+
+const QUOTE_LINE_FIELDS = Object.freeze(['kind', 'resourceId', 'amount']);
+const QUOTE_LINE_FIELD_SET = new Set(QUOTE_LINE_FIELDS);
+
+function fail(code, message, details){
+    throw new EngineContractError(code, message, details);
+}
+
+function readQuoteLineFields(value, path){
+    const fields = inspectPlainInertObject(value, {
+        path,
+        code: 'INVALID_PAYMENT_QUOTE_LINE',
+        maxFields: QUOTE_LINE_FIELDS.length,
+    });
+
+    for (const key of fields.keys()){
+        if (!QUOTE_LINE_FIELD_SET.has(key)){
+            fail(
+                'INVALID_PAYMENT_QUOTE_LINE',
+                `${path} contains unsupported field ${JSON.stringify(key)}.`,
+                { path: inertDataPath(path, key), field: key }
+            );
+        }
+    }
+    for (const key of QUOTE_LINE_FIELDS){
+        if (!fields.has(key)){
+            fail(
+                'INVALID_PAYMENT_QUOTE_LINE',
+                `${path} is missing required field ${JSON.stringify(key)}.`,
+                { path: inertDataPath(path, key), field: key }
+            );
+        }
+    }
+    return fields;
+}
+
+function assertResourceKind(value, path){
+    if (value !== 'resource'){
+        fail(
+            'UNSUPPORTED_PAYMENT_QUOTE_LINE_KIND',
+            `${path} must be the supported payment quote line kind "resource".`,
+            { path, kind: value }
+        );
+    }
+    return value;
+}
+
+function assertResourceId(value, path){
+    let parsed;
+    try {
+        parsed = parseContentId(value);
+    }
+    catch (error){
+        if (!(error instanceof EngineContractError)) throw error;
+        fail(
+            'INVALID_PAYMENT_QUOTE_RESOURCE_ID',
+            `${path} must be a canonical resource content ID.`,
+            { path, resourceId: value }
+        );
+    }
+    if (parsed.type !== 'resource'){
+        fail(
+            'INVALID_PAYMENT_QUOTE_RESOURCE_ID',
+            `${path} must identify content type resource.`,
+            { path, resourceId: value, actualType: parsed.type }
+        );
+    }
+    return parsed.canonical;
+}
+
+function assertAmount(value, path){
+    if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0){
+        fail(
+            'INVALID_PAYMENT_QUOTE_AMOUNT',
+            `${path} must be a positive finite number.`,
+            { path, amount: value }
+        );
+    }
+    return value;
+}
+
+export function readPaymentQuoteLines(value, path = 'paymentQuote.lines'){
+    return inspectDenseInertArray(value, {
+        path,
+        code: 'INVALID_PAYMENT_QUOTE',
+        maxLength: MAX_PAYMENT_QUOTE_LINES,
+    });
+}
+
+export function normalizePaymentQuoteLine(value, index){
+    const path = `paymentQuote.lines[${index}]`;
+    const fields = readQuoteLineFields(value, path);
+    const kind = assertResourceKind(fields.get('kind'), `${path}.kind`);
+    const resourceId = assertResourceId(fields.get('resourceId'), `${path}.resourceId`);
+    const amount = assertAmount(fields.get('amount'), `${path}.amount`);
+
+    return Object.freeze({ kind, resourceId, amount });
+}
