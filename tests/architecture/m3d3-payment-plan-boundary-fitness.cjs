@@ -13,7 +13,12 @@ const QUOTE_INPUT = 'src/engine/costs/payment-quote-input.mjs';
 const IDENTITY = 'src/engine/identity.mjs';
 const INERT_DATA = 'src/engine/contracts/inert-data.mjs';
 
-const FORBIDDEN_PLAN_RUNTIME = [
+const REVIEWED_PAYMENT_KINDS = new Set([
+    'payment.resource.debit',
+    'payment.prestige.debit',
+]);
+
+const FORBIDDEN_RUNTIME = [
     ['legacy/global objects', /\b(?:global|globalThis|self)\b/],
     ['browser/UI objects', /\b(?:document|window|navigator|jQuery|Vue)\b|\$\s*\(/],
     ['browser/platform services', /\b(?:localStorage|sessionStorage|indexedDB|fetch|XMLHttpRequest|WebSocket|process|Buffer)\b/],
@@ -26,23 +31,17 @@ const FORBIDDEN_PLAN_RUNTIME = [
 
 const FORBIDDEN_PLAN_AUTHORITY = /\b(?:mutationAuthority|createMutationScope|beginTransaction|commitTransaction|rollbackTransaction|modRes|setGlobal|payCosts|executePayment|applyPayment|commitPayment|paymentExecutor)\b/;
 const FORBIDDEN_PLAN_READS = /\b(?:assessCurrentAffordability|assessQueuePaymentFeasibility|currentAmount|capacity|available)\b/;
-const FORBIDDEN_SPECIAL_SCOPE = /\b(?:prestige|plasmid|antiplasmid|knowledge|supply|species)\b/i;
-const FORBIDDEN_SPECIAL_LITERAL = /['"](?:prestige|plasmid|antiplasmid|knowledge|supply|species)['"]/i;
+const FORBIDDEN_FIRST_PARTY_SCOPE = /\b(?:plasmid|antiplasmid|knowledge|supply|species)\b/i;
+const FORBIDDEN_FUTURE_PAYMENT_SCOPE = /\b(?:paymentId|payment\.special|specialPayment|poolId)\b/i;
 const FORBIDDEN_LATER_SCOPE = /\b(?:adjustCosts|costModifier|priceModifier|modifierPipeline|calculationPipeline|enqueue|dequeue|queueWorkItem|queueScheduler|scheduleQueue)\b/i;
 const FIRST_PARTY_NAMESPACE = /\bevolve:/i;
-const REVIEWED_PAYMENT_KIND = 'payment.resource.debit';
-const PAYMENT_KIND_LITERAL = /['"]payment\.[a-z0-9._-]+['"]/ig;
 
-function normalize(value){
-    return value.split(path.sep).join('/');
-}
-
+function normalize(value){ return value.split(path.sep).join('/'); }
 function resolveRelative(fromRelativePath, specifier){
     let target = path.posix.normalize(path.posix.join(path.posix.dirname(fromRelativePath), specifier));
     if (!path.posix.extname(target)) target += '.mjs';
     return target;
 }
-
 function listSourceFiles(dir){
     if (!fs.existsSync(dir)) return [];
     const files = [];
@@ -59,37 +58,32 @@ function analyzePlanExports(source, relativePath = PUBLIC_PLAN){
     const code = maskNonCode(source);
     const exportCount = (code.match(/\bexport\b/g) || []).length;
     const hasReviewedEntry = /\bexport\s+function\s+createPaymentPlan\s*\(\s*[A-Za-z_$][A-Za-z0-9_$]*\s*\)/.test(code);
-    if (exportCount !== 1 || !hasReviewedEntry){
-        return [`${relativePath}: M3D3 public plan surface must export only synchronous one-argument createPaymentPlan()`];
-    }
-    return [];
+    return exportCount === 1 && hasReviewedEntry
+        ? []
+        : [`${relativePath}: public plan surface must export only synchronous one-argument createPaymentPlan()`];
 }
 
 function analyzePlanOperationKinds(source, relativePath = PUBLIC_PLAN){
     if (relativePath !== PUBLIC_PLAN) return [];
-    const violations = [];
     const code = maskNonCode(source);
-    const kindTokens = [...code.matchAll(/\bkind\b/g)];
-    const kindProperties = [...code.matchAll(/\bkind\s*:/g)];
-
-    if (kindTokens.length !== 1 || kindProperties.length !== 1){
-        violations.push(`${relativePath}: M3D3 PaymentPlan must contain exactly one reviewed operation-kind construction`);
-        return violations;
+    const properties = [...code.matchAll(/\bkind\s*:/g)];
+    const found = [];
+    for (const property of properties){
+        const afterColon = source.slice(property.index + property[0].length);
+        const literal = afterColon.match(/^\s*(['"])([^'"\r\n]+)\1/);
+        if (!literal){
+            return [`${relativePath}: PaymentPlan operation kinds must be direct reviewed literals`];
+        }
+        found.push(literal[2]);
     }
-
-    const property = kindProperties[0];
-    const afterColon = source.slice(property.index + property[0].length);
-    const literal = afterColon.match(/^\s*(['"])([^'"\r\n]+)\1/);
-    if (!literal || literal[2] !== REVIEWED_PAYMENT_KIND){
-        violations.push(`${relativePath}: M3D3 PaymentPlan kind must be the literal ${REVIEWED_PAYMENT_KIND}`);
+    if (found.length !== REVIEWED_PAYMENT_KINDS.size || new Set(found).size !== found.length){
+        return [`${relativePath}: PaymentPlan must construct exactly the reviewed resource and prestige debit kinds`];
     }
-
-    const paymentKinds = (source.match(PAYMENT_KIND_LITERAL) || [])
-        .map(value => value.slice(1, -1).toLowerCase());
-    if (paymentKinds.some(kind => kind !== REVIEWED_PAYMENT_KIND)){
-        violations.push(`${relativePath}: M3D3 PaymentPlan may not introduce payment operation kinds beyond ${REVIEWED_PAYMENT_KIND}`);
+    if (found.some(kind => !REVIEWED_PAYMENT_KINDS.has(kind)) ||
+        [...REVIEWED_PAYMENT_KINDS].some(kind => !found.includes(kind))){
+        return [`${relativePath}: PaymentPlan operation kinds exceed the reviewed resource/prestige set`];
     }
-    return violations;
+    return [];
 }
 
 function analyzePlanSource(source, relativePath = PUBLIC_PLAN){
@@ -99,40 +93,27 @@ function analyzePlanSource(source, relativePath = PUBLIC_PLAN){
     ];
     if (relativePath !== PUBLIC_PLAN) return violations;
     const code = maskNonCode(source);
+    for (const [label, pattern] of FORBIDDEN_RUNTIME){
+        if (pattern.test(code)) violations.push(`${relativePath}: PaymentPlan may not access ${label}`);
+    }
+    if (FORBIDDEN_PLAN_AUTHORITY.test(code)) violations.push(`${relativePath}: PaymentPlan is inert and may not acquire payment/mutation authority`);
+    if (FORBIDDEN_PLAN_READS.test(code)) violations.push(`${relativePath}: PaymentPlan may not read affordability/capacity state`);
+    if (FORBIDDEN_FIRST_PARTY_SCOPE.test(source)) violations.push(`${relativePath}: generic PaymentPlan may not contain first-party payment names`);
+    if (FORBIDDEN_FUTURE_PAYMENT_SCOPE.test(code)) violations.push(`${relativePath}: M3D4B PaymentPlan may not acquire future special-payment semantics`);
+    if (FORBIDDEN_LATER_SCOPE.test(code)) violations.push(`${relativePath}: PaymentPlan may not acquire modifier or queue scope`);
+    if (FIRST_PARTY_NAMESPACE.test(source)) violations.push(`${relativePath}: generic PaymentPlan may not contain first-party Evolve IDs`);
 
-    for (const [label, pattern] of FORBIDDEN_PLAN_RUNTIME){
-        if (pattern.test(code)) violations.push(`${relativePath}: M3D3 PaymentPlan may not access ${label}`);
-    }
-    if (FORBIDDEN_PLAN_AUTHORITY.test(code)){
-        violations.push(`${relativePath}: M3D3 PaymentPlan is inert and may not acquire payment/mutation authority`);
-    }
-    if (FORBIDDEN_PLAN_READS.test(code)){
-        violations.push(`${relativePath}: M3D3 PaymentPlan may not read affordability/capacity state`);
-    }
-    if (FORBIDDEN_SPECIAL_SCOPE.test(code) || FORBIDDEN_SPECIAL_LITERAL.test(source)){
-        violations.push(`${relativePath}: M3D3 ordinary PaymentPlan may not acquire special payment-family semantics`);
-    }
-    if (FORBIDDEN_LATER_SCOPE.test(code)){
-        violations.push(`${relativePath}: M3D3 PaymentPlan may not acquire modifier or queue scope`);
-    }
-    if (FIRST_PARTY_NAMESPACE.test(source)){
-        violations.push(`${relativePath}: generic M3D3 PaymentPlan may not contain first-party Evolve IDs`);
-    }
-
-    const references = extractModuleReferences(source, relativePath);
-    for (const reference of references){
+    for (const reference of extractModuleReferences(source, relativePath)){
         if (reference.kind !== 'import-statement'){
-            violations.push(`${relativePath}: M3D3 PaymentPlan may use only static ESM imports; found ${reference.kind}`);
+            violations.push(`${relativePath}: PaymentPlan may use only static ESM imports; found ${reference.kind}`);
             continue;
         }
         if (!reference.specifier.startsWith('.')){
-            violations.push(`${relativePath}: M3D3 PaymentPlan may not import external packages: ${reference.specifier}`);
+            violations.push(`${relativePath}: PaymentPlan may not import external packages: ${reference.specifier}`);
             continue;
         }
         const target = resolveRelative(relativePath, reference.specifier);
-        if (target !== QUOTE_INPUT){
-            violations.push(`${relativePath}: M3D3 PaymentPlan may depend only on ${QUOTE_INPUT}; found ${target}`);
-        }
+        if (target !== QUOTE_INPUT) violations.push(`${relativePath}: PaymentPlan may depend only on ${QUOTE_INPUT}; found ${target}`);
     }
     return violations;
 }
@@ -142,47 +123,31 @@ function analyzeQuoteInputExports(source, relativePath = QUOTE_INPUT){
     const code = maskNonCode(source);
     const exportCount = (code.match(/\bexport\b/g) || []).length;
     const hasReviewedEntry = /\bexport\s+function\s+normalizePaymentQuoteInput\s*\(\s*[A-Za-z_$][A-Za-z0-9_$]*\s*\)/.test(code);
-    if (exportCount !== 1 || !hasReviewedEntry){
-        return [`${relativePath}: shared quote-input helper must export only synchronous one-argument normalizePaymentQuoteInput()`];
-    }
-    return [];
+    return exportCount === 1 && hasReviewedEntry
+        ? []
+        : [`${relativePath}: shared quote-input helper must export only synchronous one-argument normalizePaymentQuoteInput()`];
 }
 
 function analyzeQuoteInputSource(source, relativePath = QUOTE_INPUT){
     const violations = [...analyzeQuoteInputExports(source, relativePath)];
     if (relativePath !== QUOTE_INPUT) return violations;
     const code = maskNonCode(source);
-    for (const [label, pattern] of FORBIDDEN_PLAN_RUNTIME){
+    for (const [label, pattern] of FORBIDDEN_RUNTIME){
         if (pattern.test(code)) violations.push(`${relativePath}: shared quote input normalization may not access ${label}`);
     }
-    if (FORBIDDEN_PLAN_AUTHORITY.test(code)){
-        violations.push(`${relativePath}: shared quote input normalization may not acquire payment/mutation authority`);
-    }
-    if (FORBIDDEN_PLAN_READS.test(code)){
-        violations.push(`${relativePath}: shared quote input normalization must remain state-independent validation`);
-    }
-    if (FORBIDDEN_SPECIAL_SCOPE.test(code) || FORBIDDEN_SPECIAL_LITERAL.test(source)){
-        violations.push(`${relativePath}: shared quote input normalization may not acquire special payment-family semantics`);
-    }
-    if (FORBIDDEN_LATER_SCOPE.test(code)){
-        violations.push(`${relativePath}: shared quote input normalization may not acquire modifier or queue scope`);
-    }
-    if (FIRST_PARTY_NAMESPACE.test(source)){
-        violations.push(`${relativePath}: shared quote input normalization may not contain first-party Evolve IDs`);
-    }
-    if (/\bkind\s*:/.test(code) || (source.match(PAYMENT_KIND_LITERAL) || []).length > 0){
-        violations.push(`${relativePath}: shared quote input normalization may validate quotes but may not construct payment operations`);
-    }
+    if (FORBIDDEN_PLAN_AUTHORITY.test(code)) violations.push(`${relativePath}: shared quote input normalization may not acquire payment/mutation authority`);
+    if (FORBIDDEN_PLAN_READS.test(code)) violations.push(`${relativePath}: shared quote input normalization must remain state-independent validation`);
+    if (FORBIDDEN_FIRST_PARTY_SCOPE.test(source) || FORBIDDEN_FUTURE_PAYMENT_SCOPE.test(code)) violations.push(`${relativePath}: shared quote input normalization may not acquire payment-family semantics`);
+    if (FORBIDDEN_LATER_SCOPE.test(code)) violations.push(`${relativePath}: shared quote input normalization may not acquire modifier or queue scope`);
+    if (FIRST_PARTY_NAMESPACE.test(source)) violations.push(`${relativePath}: shared quote input normalization may not contain first-party Evolve IDs`);
+    if (/\bkind\s*:/.test(code) || /['"]payment\.[a-z0-9._-]+['"]/i.test(source)) violations.push(`${relativePath}: shared quote input normalization may validate quotes but may not construct payment operations`);
 
     const allowed = new Set([IDENTITY, INERT_DATA, PUBLIC_QUOTE]);
     for (const reference of extractModuleReferences(source, relativePath)){
-        if (reference.kind !== 'import-statement'){
-            violations.push(`${relativePath}: shared quote input normalization may use only static ESM imports`);
-            continue;
-        }
-        const target = resolveRelative(relativePath, reference.specifier);
-        if (!allowed.has(target)){
-            violations.push(`${relativePath}: unsupported shared quote-input dependency ${target}`);
+        if (reference.kind !== 'import-statement') violations.push(`${relativePath}: shared quote input normalization may use only static ESM imports`);
+        else if (reference.specifier.startsWith('.')){
+            const target = resolveRelative(relativePath, reference.specifier);
+            if (!allowed.has(target)) violations.push(`${relativePath}: unsupported shared quote-input dependency ${target}`);
         }
     }
     return violations;
@@ -198,9 +163,6 @@ function analyzeCostInternalConsumer(source, relativePath){
             violations.push(`${relativePath}: only PaymentAssessor and PaymentPlan may consume the shared quote-input normalizer`);
         }
     }
-    if (relativePath !== PUBLIC_PLAN && source.includes(REVIEWED_PAYMENT_KIND)){
-        violations.push(`${relativePath}: payment.resource.debit semantics are owned by the M3D3 PaymentPlan module`);
-    }
     return violations;
 }
 
@@ -210,13 +172,8 @@ function analyzeProductionConsumer(source, relativePath){
         if (!reference.specifier.startsWith('.')) continue;
         const target = resolveRelative(relativePath, reference.specifier);
         if (!target.startsWith(`${COST_ROOT}/`)) continue;
-        if (reference.kind !== 'import-statement'){
-            violations.push(`${relativePath}: M3D public cost dependencies must use static ESM imports; found ${reference.kind}`);
-            continue;
-        }
-        if (![PUBLIC_QUOTE, PUBLIC_ASSESSOR, PUBLIC_PLAN].includes(target)){
-            violations.push(`${relativePath}: production code may import only reviewed M3D public entries; found ${target}`);
-        }
+        if (reference.kind !== 'import-statement') violations.push(`${relativePath}: M3D public cost dependencies must use static ESM imports; found ${reference.kind}`);
+        else if (![PUBLIC_QUOTE, PUBLIC_ASSESSOR, PUBLIC_PLAN].includes(target)) violations.push(`${relativePath}: production code may import only reviewed M3D public entries; found ${target}`);
     }
     return violations;
 }
@@ -231,7 +188,6 @@ function findViolations(root){
         violations.push(...analyzeQuoteInputSource(source, relative));
         violations.push(...analyzeCostInternalConsumer(source, relative));
     }
-
     const srcDir = path.join(root, 'src');
     for (const filename of listSourceFiles(srcDir)){
         const relative = normalize(path.relative(root, filename));
@@ -245,12 +201,12 @@ function main(){
     const root = path.resolve(__dirname, '../..');
     const violations = findViolations(root);
     if (violations.length){
-        console.error('M3D3 PaymentPlan boundary fitness failed:');
+        console.error('M3D3/M3D4B PaymentPlan boundary fitness failed:');
         for (const violation of violations) console.error(`- ${violation}`);
         process.exitCode = 1;
         return;
     }
-    console.log('M3D3 PaymentPlan boundary fitness passed.');
+    console.log('M3D3/M3D4B PaymentPlan boundary fitness passed.');
 }
 
 module.exports = {
