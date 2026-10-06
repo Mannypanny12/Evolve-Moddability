@@ -66,6 +66,30 @@ export function createEvolveLegacyMappingCatalog(){
         sourceLocations: ['src/actions.js', 'src/resources.js', 'src/vars.js'],
     });
 
+    registerDirect(catalog, {
+        id: 'evolve.prestige.plasmid_state',
+        domain: 'prestige',
+        family: 'prestige',
+        legacyPath: 'global.prestige.Plasmid',
+        canonicalId: 'evolve:prestige/plasmid',
+        introducedIn: 'M3D4B',
+        removeBy: 'M6B',
+        stateSemantics: 'Legacy Plasmid prestige holdings used by the bounded M3D4B payment compatibility bridge.',
+        sourceLocations: ['src/actions.js', 'src/vars.js'],
+    });
+
+    registerDirect(catalog, {
+        id: 'evolve.prestige.anti_plasmid_state',
+        domain: 'prestige',
+        family: 'prestige',
+        legacyPath: 'global.prestige.AntiPlasmid',
+        canonicalId: 'evolve:prestige/anti_plasmid',
+        introducedIn: 'M3D4B',
+        removeBy: 'M6B',
+        stateSemantics: 'Legacy AntiPlasmid prestige holdings used as the resolved antimatter payment source for Plasmid costs.',
+        sourceLocations: ['src/actions.js', 'src/vars.js'],
+    });
+
     catalog.register({
         id: 'evolve.technology.primitive_progression',
         domain: 'technologies',
