@@ -8,6 +8,13 @@ const SOURCE_EXTENSIONS = new Set(['.js', '.mjs', '.cjs']);
 const QUEUE_ROOT = 'src/engine/queue';
 const WORK_QUEUE_FILE = `${QUEUE_ROOT}/work-queue.mjs`;
 const INTERNAL_WORK_ITEM_CONTRACT = `${QUEUE_ROOT}/work-item-contract.mjs`;
+const IDENTITY_FILE = 'src/engine/identity.mjs';
+const INERT_DATA_CONTRACT_FILE = 'src/engine/contracts/inert-data.mjs';
+const ALLOWED_WORK_QUEUE_IMPORTS = new Set([
+    IDENTITY_FILE,
+    INERT_DATA_CONTRACT_FILE,
+    INTERNAL_WORK_ITEM_CONTRACT,
+]);
 const FORBIDDEN_IDENTIFIERS = Object.freeze([
     'dispatch',
     'execute',
@@ -67,6 +74,23 @@ function analyzeWorkQueueModule(source, relativePath = WORK_QUEUE_FILE){
         if (identifierPattern(identifier).test(code)){
             violations.push(
                 `${relativePath}: M3E2 WorkQueue must remain pure list/capacity logic and may not reference ${identifier}`
+            );
+        }
+    }
+
+    for (const reference of extractModuleReferences(source, relativePath)){
+        if (reference.kind === 'dynamic-import'){
+            violations.push(`${relativePath}: M3E2 WorkQueue may not use dynamic import`);
+        }
+        const specifier = reference.specifier;
+        if (!specifier.startsWith('.')){
+            violations.push(`${relativePath}: M3E2 WorkQueue may not import external packages: ${specifier}`);
+            continue;
+        }
+        const target = resolveRelative(relativePath, specifier);
+        if (!ALLOWED_WORK_QUEUE_IMPORTS.has(target)){
+            violations.push(
+                `${relativePath}: M3E2 WorkQueue dependency set is closed; unsupported import ${target}`
             );
         }
     }

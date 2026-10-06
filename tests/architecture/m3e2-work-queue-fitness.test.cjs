@@ -41,6 +41,34 @@ test('M3E2 WorkQueue architecture guard rejects scheduling, execution, payment a
     }
 });
 
+test('M3E2 WorkQueue architecture guard pins its dependency closure', () => {
+    const allowed = `
+        import { EngineContractError } from '../identity.mjs';
+        import { inspectDenseInertArray } from '../contracts/inert-data.mjs';
+        import { assertQueuedWorkItem } from './work-item-contract.mjs';
+        const capacity = 3;
+        const slotUsage = Math.ceil(7 / capacity);
+    `;
+    assert.deepEqual(
+        analyzeWorkQueueModule(allowed, 'src/engine/queue/work-queue.mjs'),
+        []
+    );
+
+    const rejected = [
+        "import { evaluate } from './readiness.mjs';",
+        "import { helper } from './work-queue-helper.mjs';",
+        "import scheduler from 'queue-scheduler';",
+        "const helper = import('./work-queue-helper.mjs');",
+    ];
+    for (const source of rejected){
+        assert.notDeepEqual(
+            analyzeWorkQueueModule(source, 'src/engine/queue/work-queue.mjs'),
+            [],
+            source
+        );
+    }
+});
+
 test('M3E2 WorkQueue architecture guard does not reject ordinary pure list vocabulary', () => {
     const source = `
         const capacity = 3;
