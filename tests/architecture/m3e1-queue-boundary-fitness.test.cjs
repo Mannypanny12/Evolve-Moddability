@@ -99,7 +99,7 @@ test('M3E1 queue boundary reserves legacy/cache names even when used as object f
         [`export function bad(work){ return work.label; }`, 'label'],
         [`export function bad(work){ return work.affordable; }`, 'affordable'],
         [`export const bad = { requirementsMet: false };`, 'requirementsMet'],
-        [`import const bad = { q: 1, qs: 1 };`, 'q'],
+        [`export const bad = { q: 1, qs: 1 };`, 'q'],
     ];
 
     for (const [source, expected] of cases){
