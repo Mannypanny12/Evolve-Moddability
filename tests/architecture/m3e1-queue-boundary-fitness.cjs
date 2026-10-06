@@ -15,6 +15,18 @@ const FORBIDDEN_IDENTIFIERS = [
     'q_merge',
     'qAny',
     'qAny_res',
+    'timeCheck',
+    'payCosts',
+    'modRes',
+    'callback_queue',
+    'mutationAuthority',
+    'createMutationScope',
+    'PaymentPlan',
+    'PaymentQuote',
+    'EffectPlan',
+];
+
+const FORBIDDEN_DATA_FIELDS = [
     'q',
     'qs',
     'queue_size',
@@ -29,17 +41,8 @@ const FORBIDDEN_IDENTIFIERS = [
     'quote',
     'affordable',
     'requirementsMet',
-    'timeCheck',
-    'payCosts',
-    'modRes',
-    'callback_queue',
-    'mutationAuthority',
-    'createMutationScope',
     'paymentPlan',
-    'PaymentPlan',
-    'PaymentQuote',
     'effectPlan',
-    'EffectPlan',
     'handler',
     'callback',
 ];
@@ -65,8 +68,21 @@ function resolveRelative(fromRelativePath, specifier){
     return target;
 }
 
+function escapeRegex(value){
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function identifierPattern(identifier){
-    return new RegExp(`\\b${identifier.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
+    return new RegExp(`\\b${escapeRegex(identifier)}\\b`);
+}
+
+function dataFieldPatterns(field){
+    const escaped = escapeRegex(field);
+    return [
+        new RegExp(`\\.\\s*${escaped}\\b`),
+        new RegExp(`(?:^|[,{])\\s*${escaped}\\s*:`, 'm'),
+        new RegExp(`(?:^|[,{])\\s*${escaped}\\s*(?=[,}])`, 'm'),
+    ];
 }
 
 function analyzeQueueModule(source, relativePath){
@@ -76,6 +92,12 @@ function analyzeQueueModule(source, relativePath){
     for (const identifier of FORBIDDEN_IDENTIFIERS){
         if (identifierPattern(identifier).test(code)){
             violations.push(`${relativePath}: M3E1 queue modules may not reference ${identifier}`);
+        }
+    }
+
+    for (const field of FORBIDDEN_DATA_FIELDS){
+        if (dataFieldPatterns(field).some(pattern => pattern.test(code))){
+            violations.push(`${relativePath}: M3E1 queue data may not expose legacy/cache field ${field}`);
         }
     }
 
