@@ -283,11 +283,11 @@ Adds non-executing `CommandBus.prepare()` and one closed inert `{ command, remai
 
 Adds the frozen dense WorkQueue representation, safe slot accounting, explicit `never` / `adjacent` / `matching` merge policies, post-merge capacity checks, explicit normalization, whole-record and slot-chunk removal, pure reordering, and prefix-preserving capacity trimming. Review hardening pins the WorkQueue dependency closure, keeps the shared WorkItem contract queue-internal, and adds adversarial/result-shape/overflow coverage. No scheduler, readiness, payment, execution, persistence, or vanilla cutover authority is introduced. See `M3E2_WORK_QUEUE.md`.
 
-#### M3E3 Readiness and selection - next
+#### M3E3 Readiness and selection - complete
 
-Add scheduler-independent structured readiness plus ordered/first-ready selection through runtime evaluator capabilities, without caching readiness on WorkItems or reproducing legacy production/time prediction.
+Adds the frozen `createWorkQueueSelector()` readiness/selection boundary with transient `ready` / `waiting` / `bypass` results, explicit `ordered` / `first-ready` policies, deterministic short-circuit evaluation traces, synchronous evaluator hardening and a closed dependency set. Review hardening adds prototype-safe readiness-detail canonicalization, hostile-diagnostic sanitization, shared-identity/cycle rejection and adversarial tests. No readiness state is cached on WorkItems or WorkQueues, and no scheduler, prediction, payment, condition, execution, persistence or vanilla-cutover authority is introduced. See `M3E3_READINESS_SELECTION.md` and `M3E3_REVIEW_HARDENING.md`.
 
-#### M3E4 Evidence, hardening and closure
+#### M3E4 Evidence, hardening and closure - next
 
 Characterize the remaining legacy build/research queue semantics, pin queueable/non-queueable evidence, add adversarial architecture coverage, and close M3E without cutting over vanilla queues prematurely.
 
