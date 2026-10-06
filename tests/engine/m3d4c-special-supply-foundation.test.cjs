@@ -45,7 +45,7 @@ test('M3D4C PaymentQuote accepts detached frozen pool-backed special lines', asy
     assert.equal(quote.lines[0].amount, 2.5);
 });
 
-test('M3D4C special quote lines require typed payment and pool identities and keep resource-backed specials deferred', async () => {
+test('M3D4C pool-backed special quote invariants survive later source-family widening', async () => {
     const [{ createPaymentQuote }, { EngineContractError }] = await Promise.all([quotePromise, identityPromise]);
 
     assert.throws(
@@ -60,10 +60,10 @@ test('M3D4C special quote lines require typed payment and pool identities and ke
         () => createPaymentQuote([{
             kind: 'special',
             paymentId: 'example:payment/test',
-            source: { kind: 'resource', resourceId: 'example:resource/wood' },
+            source: { kind: 'pool', resourceId: 'example:resource/wood' },
             amount: 1,
         }]),
-        error => error instanceof EngineContractError && error.code === 'UNSUPPORTED_PAYMENT_QUOTE_SPECIAL_SOURCE_KIND'
+        error => error instanceof EngineContractError && error.code === 'INVALID_PAYMENT_QUOTE_SPECIAL_SOURCE'
     );
 });
 

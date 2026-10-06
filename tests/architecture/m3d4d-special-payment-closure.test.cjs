@@ -89,6 +89,10 @@ test('M3D4D resource adapter stays bounded to RNA, Knowledge and the active revi
         )),
         []
     );
+    assert.deepEqual(
+        analyzeResourceAdapter(validAdapter() + "\n/* 'evolve.resource.food_state' must not widen live scope. */"),
+        []
+    );
     assert.notDeepEqual(
         analyzeResourceAdapter(validAdapter().replace('SPECIES_LOCAL_IDS.has(parsed.localId)', 'true')),
         []

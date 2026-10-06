@@ -30,7 +30,7 @@ const EXPECTED_STATIC_RESOURCE_MAPPINGS = Object.freeze([
 
 const PAYMENT_ID_LITERAL = /['"](evolve:payment\/[a-z0-9_/-]+)['"]/g;
 const POOL_ID_LITERAL = /['"](evolve:payment-pool\/[a-z0-9_/-]+)['"]/g;
-const STATIC_MAPPING_ID_LITERAL = /['"](evolve\.resource\.(?:rna_state|knowledge_payment_state))['"]/g;
+const STATIC_MAPPING_ID_LITERAL = /['"](evolve\.resource\.[a-z0-9_.-]+)['"]/g;
 const FORBIDDEN_SETTLEMENT_DETAIL = /\b(?:defaultJobId|default_job|d_job|workerReduction|workers|stats\.know|civic)\b/i;
 const FORBIDDEN_EXECUTION = /\b(?:executePayment|applyPayment|commitPayment|paymentExecutor|mutationAuthority|createMutationScope|beginTransaction|commitTransaction|rollbackTransaction|modRes|payCosts|setGlobal)\b/;
 
