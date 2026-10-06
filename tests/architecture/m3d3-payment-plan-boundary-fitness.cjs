@@ -16,6 +16,7 @@ const INERT_DATA = 'src/engine/contracts/inert-data.mjs';
 const REVIEWED_PAYMENT_KINDS = new Set([
     'payment.resource.debit',
     'payment.prestige.debit',
+    'payment.special.settle',
 ]);
 
 const FORBIDDEN_RUNTIME = [
@@ -31,8 +32,8 @@ const FORBIDDEN_RUNTIME = [
 
 const FORBIDDEN_PLAN_AUTHORITY = /\b(?:mutationAuthority|createMutationScope|beginTransaction|commitTransaction|rollbackTransaction|modRes|setGlobal|payCosts|executePayment|applyPayment|commitPayment|paymentExecutor)\b/;
 const FORBIDDEN_PLAN_READS = /\b(?:assessCurrentAffordability|assessQueuePaymentFeasibility|currentAmount|capacity|available)\b/;
-const FORBIDDEN_FIRST_PARTY_SCOPE = /\b(?:plasmid|antiplasmid|knowledge|supply|species)\b/i;
-const FORBIDDEN_FUTURE_PAYMENT_SCOPE = /\b(?:paymentId|payment\.special|specialPayment|poolId)\b/i;
+const FORBIDDEN_FIRST_PARTY_SCOPE = /\b(?:plasmid|antiplasmid|knowledge|supply|species|purifier)\b/i;
+const FORBIDDEN_QUOTE_INPUT_PAYMENT_SCOPE = /\b(?:paymentId|payment\.special|specialPayment|poolId)\b/i;
 const FORBIDDEN_LATER_SCOPE = /\b(?:adjustCosts|costModifier|priceModifier|modifierPipeline|calculationPipeline|enqueue|dequeue|queueWorkItem|queueScheduler|scheduleQueue)\b/i;
 const FIRST_PARTY_NAMESPACE = /\bevolve:/i;
 
@@ -66,22 +67,17 @@ function analyzePlanExports(source, relativePath = PUBLIC_PLAN){
 function analyzePlanOperationKinds(source, relativePath = PUBLIC_PLAN){
     if (relativePath !== PUBLIC_PLAN) return [];
     const code = maskNonCode(source);
-    const properties = [...code.matchAll(/\bkind\s*:/g)];
-    const found = [];
-    for (const property of properties){
-        const afterColon = source.slice(property.index + property[0].length);
-        const literal = afterColon.match(/^\s*(['"])([^'"\r\n]+)\1/);
-        if (!literal){
-            return [`${relativePath}: PaymentPlan operation kinds must be direct reviewed literals`];
-        }
-        found.push(literal[2]);
+    if (/\bkind\s*:\s*(?!['"])[A-Za-z_$]/.test(code)){
+        return [`${relativePath}: PaymentPlan operation/source kinds must be direct reviewed literals`];
     }
+    const found = [...source.matchAll(/\bkind\s*:\s*(['"])(payment\.[^'"\r\n]+)\1/g)]
+        .map(match => match[2]);
     if (found.length !== REVIEWED_PAYMENT_KINDS.size || new Set(found).size !== found.length){
-        return [`${relativePath}: PaymentPlan must construct exactly the reviewed resource and prestige debit kinds`];
+        return [`${relativePath}: PaymentPlan must construct exactly the reviewed resource, prestige and special operation kinds`];
     }
     if (found.some(kind => !REVIEWED_PAYMENT_KINDS.has(kind)) ||
         [...REVIEWED_PAYMENT_KINDS].some(kind => !found.includes(kind))){
-        return [`${relativePath}: PaymentPlan operation kinds exceed the reviewed resource/prestige set`];
+        return [`${relativePath}: PaymentPlan operation kinds exceed the reviewed M3D4C set`];
     }
     return [];
 }
@@ -99,7 +95,6 @@ function analyzePlanSource(source, relativePath = PUBLIC_PLAN){
     if (FORBIDDEN_PLAN_AUTHORITY.test(code)) violations.push(`${relativePath}: PaymentPlan is inert and may not acquire payment/mutation authority`);
     if (FORBIDDEN_PLAN_READS.test(code)) violations.push(`${relativePath}: PaymentPlan may not read affordability/capacity state`);
     if (FORBIDDEN_FIRST_PARTY_SCOPE.test(source)) violations.push(`${relativePath}: generic PaymentPlan may not contain first-party payment names`);
-    if (FORBIDDEN_FUTURE_PAYMENT_SCOPE.test(code)) violations.push(`${relativePath}: M3D4B PaymentPlan may not acquire future special-payment semantics`);
     if (FORBIDDEN_LATER_SCOPE.test(code)) violations.push(`${relativePath}: PaymentPlan may not acquire modifier or queue scope`);
     if (FIRST_PARTY_NAMESPACE.test(source)) violations.push(`${relativePath}: generic PaymentPlan may not contain first-party Evolve IDs`);
 
@@ -137,7 +132,7 @@ function analyzeQuoteInputSource(source, relativePath = QUOTE_INPUT){
     }
     if (FORBIDDEN_PLAN_AUTHORITY.test(code)) violations.push(`${relativePath}: shared quote input normalization may not acquire payment/mutation authority`);
     if (FORBIDDEN_PLAN_READS.test(code)) violations.push(`${relativePath}: shared quote input normalization must remain state-independent validation`);
-    if (FORBIDDEN_FIRST_PARTY_SCOPE.test(source) || FORBIDDEN_FUTURE_PAYMENT_SCOPE.test(code)) violations.push(`${relativePath}: shared quote input normalization may not acquire payment-family semantics`);
+    if (FORBIDDEN_FIRST_PARTY_SCOPE.test(source) || FORBIDDEN_QUOTE_INPUT_PAYMENT_SCOPE.test(code)) violations.push(`${relativePath}: shared quote input normalization may not acquire payment-family semantics`);
     if (FORBIDDEN_LATER_SCOPE.test(code)) violations.push(`${relativePath}: shared quote input normalization may not acquire modifier or queue scope`);
     if (FIRST_PARTY_NAMESPACE.test(source)) violations.push(`${relativePath}: shared quote input normalization may not contain first-party Evolve IDs`);
     if (/\bkind\s*:/.test(code) || /['"]payment\.[a-z0-9._-]+['"]/i.test(source)) violations.push(`${relativePath}: shared quote input normalization may validate quotes but may not construct payment operations`);
@@ -201,12 +196,12 @@ function main(){
     const root = path.resolve(__dirname, '../..');
     const violations = findViolations(root);
     if (violations.length){
-        console.error('M3D3/M3D4B PaymentPlan boundary fitness failed:');
+        console.error('M3D3-M3D4C PaymentPlan boundary fitness failed:');
         for (const violation of violations) console.error(`- ${violation}`);
         process.exitCode = 1;
         return;
     }
-    console.log('M3D3/M3D4B PaymentPlan boundary fitness passed.');
+    console.log('M3D3-M3D4C PaymentPlan boundary fitness passed.');
 }
 
 module.exports = {
