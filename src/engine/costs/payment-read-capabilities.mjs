@@ -124,6 +124,12 @@ function assertTypedId(value, path, expectedType){
     return parsed.canonical;
 }
 
+function subjectDetail(subjectType, canonicalId){
+    return subjectType === 'resource'
+        ? { resourceId: canonicalId }
+        : { prestigeId: canonicalId };
+}
+
 function invoke(read, family, operation, subjectId, subjectType){
     const canonicalId = assertTypedId(subjectId, `paymentReadCapabilities.${family}.${operation}.${subjectType}Id`, subjectType);
     let value;
@@ -134,7 +140,7 @@ function invoke(read, family, operation, subjectId, subjectType){
         fail('PAYMENT_READ_FAILURE', `Payment ${family}.${operation} read failed.`, {
             readFamily: family,
             readOperation: operation,
-            subjectId: canonicalId,
+            ...subjectDetail(subjectType, canonicalId),
             readerCauseCode: causeCode,
         });
     }
@@ -142,7 +148,7 @@ function invoke(read, family, operation, subjectId, subjectType){
         fail('INVALID_PAYMENT_READ_RESULT', `Payment ${family}.${operation} read must be synchronous.`, {
             readFamily: family,
             readOperation: operation,
-            subjectId: canonicalId,
+            ...subjectDetail(subjectType, canonicalId),
         });
     }
     return { canonicalId, value };
@@ -154,7 +160,7 @@ function readFiniteAmount(read, family, subjectId, subjectType){
         fail('INVALID_PAYMENT_READ_RESULT', `Payment ${family}.amount read must return a finite number.`, {
             readFamily: family,
             readOperation: 'amount',
-            subjectId: canonicalId,
+            ...subjectDetail(subjectType, canonicalId),
             valueType: typeof value,
         });
     }
