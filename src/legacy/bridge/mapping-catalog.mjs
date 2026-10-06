@@ -8,9 +8,9 @@ import {
 const MAPPING_ID_PATTERN = /^[a-z][a-z0-9_-]*(?:\.[a-z0-9_-]+)*$/;
 const DOMAIN_PATTERN = /^[a-z][a-z0-9_-]*$/;
 const LEGACY_PATH_PATTERN = /^global(?:\.[A-Za-z_$][A-Za-z0-9_$]*)+$/;
-const MILESTONE_PATTERN = /^M([0-9]+)([A-Z])?([0-9]+)?$/;
+const MILESTONE_PATTERN = /^M([0-9]+)(?:([A-Z])(?:([0-9]+)([A-Z])?)?)?$/;
 const MODES = new Set(['direct', 'contextual', 'composite']);
-const BRIDGE_REMOVAL_BACKSTOP = Object.freeze({ value: 'M9C', major: 9, phase: 3, slice: 0 });
+const BRIDGE_REMOVAL_BACKSTOP = Object.freeze({ value: 'M9C', major: 9, phase: 3, slice: 0, subSlice: 0 });
 
 function fail(code, message, details){
     throw new EngineContractError(code, message, details);
@@ -182,25 +182,27 @@ function validateCanonicalIds(value, family){
 
 function parseMilestone(value, label){
     if (typeof value !== 'string'){
-        fail('INVALID_LEGACY_MAPPING_FIELD', `${label} must be a milestone ID such as M1D or M6B.`, { label, value });
+        fail('INVALID_LEGACY_MAPPING_FIELD', `${label} must be a milestone ID such as M1D, M3D4B, or M6B.`, { label, value });
     }
     const match = MILESTONE_PATTERN.exec(value);
     if (!match){
-        fail('INVALID_LEGACY_MAPPING_FIELD', `${label} must be a milestone ID such as M1D or M6B.`, { label, value });
+        fail('INVALID_LEGACY_MAPPING_FIELD', `${label} must be a milestone ID such as M1D, M3D4B, or M6B.`, { label, value });
     }
     const major = Number(match[1]);
     const phase = match[2] ? match[2].charCodeAt(0) - 64 : 0;
     const slice = match[3] ? Number(match[3]) : 0;
+    const subSlice = match[4] ? match[4].charCodeAt(0) - 64 : 0;
     if (!Number.isSafeInteger(major) || !Number.isSafeInteger(slice)){
         fail('INVALID_LEGACY_MAPPING_FIELD', `${label} contains an unsupported milestone number.`, { label, value });
     }
-    return Object.freeze({ value, major, phase, slice });
+    return Object.freeze({ value, major, phase, slice, subSlice });
 }
 
 function compareMilestones(a, b){
     if (a.major !== b.major) return a.major - b.major;
     if (a.phase !== b.phase) return a.phase - b.phase;
-    return a.slice - b.slice;
+    if (a.slice !== b.slice) return a.slice - b.slice;
+    return a.subSlice - b.subSlice;
 }
 
 function validateLifecycle(introducedIn, removeBy){
