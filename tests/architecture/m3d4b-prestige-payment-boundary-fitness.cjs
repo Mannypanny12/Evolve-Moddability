@@ -12,10 +12,6 @@ const INERT_DATA = 'src/engine/contracts/inert-data.mjs';
 const MAPPINGS = 'src/legacy/bridge/evolve-mappings.mjs';
 const SOURCE_EXTENSIONS = new Set(['.js', '.mjs', '.cjs']);
 
-const FORBIDDEN_ENGINE_FUTURE_SCOPE_CODE = /\b(?:paymentId|poolId|paymentPool|specialPayment)\b/i;
-// Future payment-family vocabulary is an architectural scope tripwire, so literal text is
-// intentionally checked as well as executable identifiers. M3D4C must consciously relax it.
-const FORBIDDEN_ENGINE_FUTURE_SCOPE_LITERAL = /['"`](?:special|pool|paymentId|poolId|payment\.(?:special|pool)[^'"`]*)['"`]/i;
 const FORBIDDEN_ENGINE_EXECUTION = /\b(?:executePayment|applyPayment|commitPayment|paymentExecutor|mutationAuthority|createMutationScope|beginTransaction|commitTransaction|rollbackTransaction|modRes|setGlobal|payCosts)\b/;
 const FORBIDDEN_ENGINE_EXECUTION_LITERAL = /['"`](?:executePayment|applyPayment|commitPayment|paymentExecutor|mutationAuthority|createMutationScope|beginTransaction|commitTransaction|rollbackTransaction|modRes|setGlobal|payCosts)['"`]/;
 const FORBIDDEN_PRESTIGE_CAPACITY = /\bprestige\s*\.\s*(?:capacity|available)\b|\breads\s*\.\s*prestige\s*\.\s*(?:capacity|available)\b/;
@@ -43,19 +39,13 @@ function analyzeCostSource(source, relativePath){
     const violations = [];
     const code = maskNonCode(source);
     if (FIRST_PARTY_ENGINE_NAMES.test(source)){
-        violations.push(`${relativePath}: generic M3D4B cost engine may not contain first-party payment names`);
-    }
-    if (
-        FORBIDDEN_ENGINE_FUTURE_SCOPE_CODE.test(code) ||
-        FORBIDDEN_ENGINE_FUTURE_SCOPE_LITERAL.test(source)
-    ){
-        violations.push(`${relativePath}: M3D4B cost engine may not acquire later special/pool payment scope`);
+        violations.push(`${relativePath}: generic M3D4 cost engine may not contain first-party payment names`);
     }
     if (
         FORBIDDEN_ENGINE_EXECUTION.test(code) ||
         FORBIDDEN_ENGINE_EXECUTION_LITERAL.test(source)
     ){
-        violations.push(`${relativePath}: M3D4B cost engine remains inert/read-only and may not execute payment`);
+        violations.push(`${relativePath}: M3D4 cost engine remains inert/read-only and may not execute payment`);
     }
     if (
         FORBIDDEN_PRESTIGE_CAPACITY.test(code) ||
