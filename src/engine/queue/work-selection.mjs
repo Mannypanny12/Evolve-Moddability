@@ -11,6 +11,7 @@ const READINESS_STATUSES = Object.freeze(['ready', 'waiting', 'bypass']);
 const SELECTION_POLICIES = Object.freeze(['ordered', 'first-ready']);
 const REASON_CODE_PATTERN = /^[a-z][a-z0-9_.-]*$/;
 const MAX_READINESS_DETAIL_DEPTH = 128;
+let workSelectionOperationActive = false;
 
 function fail(code, message, details){
     throw new EngineContractError(code, message, details);
@@ -254,8 +255,6 @@ export function createWorkQueueSelector(evaluateReadiness){
         });
     }
 
-    let operationActive = false;
-
     function evaluateOne(item, path){
         assertQueuedWorkItem(item, path);
         let rawResult;
@@ -276,12 +275,12 @@ export function createWorkQueueSelector(evaluateReadiness){
     }
 
     function run(operation){
-        if (operationActive){
+        if (workSelectionOperationActive){
             fail('WORK_SELECTION_REENTRANCY', 'Work readiness evaluation and selection may not be nested.');
         }
-        operationActive = true;
+        workSelectionOperationActive = true;
         try { return operation(); }
-        finally { operationActive = false; }
+        finally { workSelectionOperationActive = false; }
     }
 
     const selector = {

@@ -8,6 +8,7 @@ import {
 const WORK_ITEM_FIELDS = Object.freeze(['command', 'remaining', 'unitsPerSlot']);
 const PREPARED_COMMAND_FIELDS = Object.freeze(['id', 'payload']);
 const MAX_PREPARED_COMMAND_VALIDATION_DEPTH = 128;
+const CONSTRUCTED_WORK_ITEMS = new WeakSet();
 
 function fail(code, message, details){
     throw new EngineContractError(code, message, details);
@@ -76,6 +77,21 @@ function assertFrozen(value, path, code){
     }
     if (!frozen){
         fail(code, `${path} must be frozen.`, { path });
+    }
+}
+
+function assertCanonicalPlainObject(value, path, code){
+    let prototype;
+    try {
+        prototype = Object.getPrototypeOf(value);
+    }
+    catch {
+        fail(code, `${path} could not be safely inspected.`, { path });
+    }
+    if (prototype !== Object.prototype){
+        fail(code, `${path} must already use the canonical plain-object prototype.`, {
+            path,
+        });
     }
 }
 
@@ -160,6 +176,7 @@ function assertFrozenInertData(value, path, context, depth){
             return;
         }
 
+        assertCanonicalPlainObject(value, path, 'INVALID_PREPARED_COMMAND');
         const fields = inspectPlainInertObject(value, {
             path,
             code: 'INVALID_PREPARED_COMMAND',
@@ -182,6 +199,7 @@ function assertPreparedCommand(value, path){
             { path, valueType: typeof value }
         );
     }
+    assertCanonicalPlainObject(value, path, 'INVALID_PREPARED_COMMAND');
     assertFrozen(value, path, 'INVALID_PREPARED_COMMAND');
 
     const fields = readClosedObject(value, {
@@ -211,11 +229,13 @@ export function createQueuedWorkItemRecord(preparedCommand, remaining, unitsPerS
     const checkedRemaining = assertPositiveSafeInteger(remaining, 'workItem.remaining');
     const checkedUnitsPerSlot = assertPositiveSafeInteger(unitsPerSlot, 'workItem.unitsPerSlot');
 
-    return Object.freeze({
+    const record = Object.freeze({
         command,
         remaining: checkedRemaining,
         unitsPerSlot: checkedUnitsPerSlot,
     });
+    CONSTRUCTED_WORK_ITEMS.add(record);
+    return record;
 }
 
 export function assertQueuedWorkItem(value, path = 'workItem'){
@@ -225,12 +245,20 @@ export function assertQueuedWorkItem(value, path = 'workItem'){
             valueType: typeof value,
         });
     }
+    assertCanonicalPlainObject(value, path, 'INVALID_QUEUED_WORK_ITEM');
     assertFrozen(value, path, 'INVALID_QUEUED_WORK_ITEM');
     const fields = readClosedObject(value, {
         path,
         allowed: WORK_ITEM_FIELDS,
         code: 'INVALID_QUEUED_WORK_ITEM',
     });
+    if (!CONSTRUCTED_WORK_ITEMS.has(value)){
+        fail(
+            'INVALID_QUEUED_WORK_ITEM',
+            `${path} must originate from the reviewed queued-work construction path.`,
+            { path, reason: 'unverified-construction' }
+        );
+    }
 
     assertPreparedCommand(fields.get('command'), `${path}.command`);
     assertPositiveSafeInteger(fields.get('remaining'), `${path}.remaining`);
