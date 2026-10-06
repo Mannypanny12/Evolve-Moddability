@@ -54,9 +54,12 @@ function reason(code, details = null){
     return { code, details };
 }
 
-test('M3E3 work-selection module exposes only the selector factory', async () => {
+test('M3E3 work-selection module and selector facade expose only the reviewed surface', async () => {
     const selection = await selectionPromise;
     assert.deepEqual(Object.keys(selection), ['createWorkQueueSelector']);
+    const selector = selection.createWorkQueueSelector(() => ({ status: 'ready', reasons: [] }));
+    assert.deepEqual(Object.keys(selector).sort(), ['evaluate', 'select']);
+    assert.equal(Object.isFrozen(selector), true);
 });
 
 test('M3E3 evaluate normalizes, detaches and deeply freezes transient readiness data', async () => {
@@ -224,6 +227,51 @@ test('M3E3 rejects malformed readiness status/reason combinations and hostile de
     );
 });
 
+test('M3E3 readiness detail canonicalization is prototype-safe and rejects shared identity/cycles', async () => {
+    const { createWorkQueueSelector, item, EngineContractError } = await harness();
+    const workItem = item('a');
+
+    const protoDetails = {};
+    Object.defineProperty(protoDetails, '__proto__', {
+        value: { marker: 1 },
+        enumerable: true,
+        writable: true,
+        configurable: true,
+    });
+    const safeSelector = createWorkQueueSelector(() => ({
+        status: 'waiting',
+        reasons: [reason('queue.readiness.waiting', protoDetails)],
+    }));
+    const safe = safeSelector.evaluate(workItem);
+    assert.equal(Object.getPrototypeOf(safe.reasons[0].details), Object.prototype);
+    assert.equal(Object.prototype.hasOwnProperty.call(safe.reasons[0].details, '__proto__'), true);
+    assert.deepEqual(safe.reasons[0].details.__proto__, { marker: 1 });
+
+    const shared = { value: 1 };
+    const sharedSelector = createWorkQueueSelector(() => ({
+        status: 'waiting',
+        reasons: [
+            reason('queue.readiness.one', shared),
+            reason('queue.readiness.two', shared),
+        ],
+    }));
+    assert.throws(
+        () => sharedSelector.evaluate(workItem),
+        error => error instanceof EngineContractError && error.code === 'INVALID_WORK_READINESS_RESULT'
+    );
+
+    const cyclic = {};
+    cyclic.self = cyclic;
+    const cycleSelector = createWorkQueueSelector(() => ({
+        status: 'waiting',
+        reasons: [reason('queue.readiness.cycle', cyclic)],
+    }));
+    assert.throws(
+        () => cycleSelector.evaluate(workItem),
+        error => error instanceof EngineContractError && error.code === 'INVALID_WORK_READINESS_RESULT'
+    );
+});
+
 test('M3E3 rejects thenables synchronously without invoking accessor-based then properties', async () => {
     const { createWorkQueueSelector, item, EngineContractError } = await harness();
     const workItem = item('a');
@@ -313,5 +361,16 @@ test('M3E3 validates evaluator, WorkItem, WorkQueue and policy contracts before 
     assert.throws(
         () => selector.select(createWorkQueue([workItem]), 'random'),
         error => error instanceof EngineContractError && error.code === 'INVALID_WORK_SELECTION_POLICY'
+    );
+    const hostilePolicy = { secret: true };
+    assert.throws(
+        () => selector.select(createWorkQueue([workItem]), hostilePolicy),
+        error => {
+            assert.equal(error instanceof EngineContractError, true);
+            assert.equal(error.code, 'INVALID_WORK_SELECTION_POLICY');
+            assert.equal(error.details.valueType, 'object');
+            assert.equal(Object.values(error.details).includes(hostilePolicy), false);
+            return true;
+        }
     );
 });

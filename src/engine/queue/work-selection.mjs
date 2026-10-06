@@ -129,28 +129,46 @@ function canonicalizeDetailValue(value, path, depth, seen){
     });
     const output = {};
     for (const key of [...fields.keys()].sort()){
-        output[key] = canonicalizeDetailValue(
+        const child = canonicalizeDetailValue(
             fields.get(key),
             inertDataPath(path, key),
             depth + 1,
             seen
         );
+        Object.defineProperty(output, key, {
+            value: child,
+            enumerable: true,
+            writable: false,
+            configurable: false,
+        });
     }
     return Object.freeze(output);
 }
 
-function normalizeReason(rawReason, index){
+function diagnosticValue(value){
+    const valueType = value === null ? 'null' : typeof value;
+    if (valueType === 'string' || valueType === 'number' || valueType === 'boolean') {
+        return { valueType, value };
+    }
+    return { valueType };
+}
+
+function normalizeReason(rawReason, index, seen){
     const path = `readiness.reasons[${index}]`;
     const fields = readClosedObject(rawReason, {
         path,
         allowed: ['code', 'details'],
         code: 'INVALID_WORK_READINESS_RESULT',
     });
+    if (seen.has(rawReason)){
+        fail('INVALID_WORK_READINESS_RESULT', `${path} must not repeat object identity within one readiness result.`, { path });
+    }
+    seen.add(rawReason);
     const code = fields.get('code');
     if (typeof code !== 'string' || !REASON_CODE_PATTERN.test(code)){
         fail('INVALID_WORK_READINESS_RESULT', `${path}.code must be a stable lowercase reason code.`, {
             path: `${path}.code`,
-            value: code,
+            ...diagnosticValue(code),
         });
     }
     const rawDetails = fields.get('details');
@@ -162,7 +180,7 @@ function normalizeReason(rawReason, index){
                 valueType: typeof rawDetails,
             });
         }
-        details = canonicalizeDetailValue(rawDetails, `${path}.details`, 0, new WeakSet());
+        details = canonicalizeDetailValue(rawDetails, `${path}.details`, 0, seen);
         if (Array.isArray(details)){
             fail('INVALID_WORK_READINESS_RESULT', `${path}.details must be null or a plain inert data object.`, {
                 path: `${path}.details`,
@@ -185,14 +203,15 @@ function normalizeReadinessResult(rawResult){
     if (!READINESS_STATUSES.includes(status)){
         fail('INVALID_WORK_READINESS_RESULT', `readiness.status must be one of: ${READINESS_STATUSES.join(', ')}.`, {
             path: 'readiness.status',
-            value: status,
+            ...diagnosticValue(status),
         });
     }
     const rawReasons = inspectDenseInertArray(fields.get('reasons'), {
         path: 'readiness.reasons',
         code: 'INVALID_WORK_READINESS_RESULT',
     });
-    const reasons = Object.freeze(rawReasons.map((reason, index) => normalizeReason(reason, index)));
+    const seen = new WeakSet();
+    const reasons = Object.freeze(rawReasons.map((reason, index) => normalizeReason(reason, index, seen)));
     if (status === 'ready' && reasons.length !== 0){
         fail('INVALID_WORK_READINESS_RESULT', 'Ready readiness results may not contain reasons.', {
             path: 'readiness.reasons',
@@ -212,7 +231,7 @@ function assertSelectionPolicy(value){
     if (!SELECTION_POLICIES.includes(value)){
         fail('INVALID_WORK_SELECTION_POLICY', `policy must be one of: ${SELECTION_POLICIES.join(', ')}.`, {
             path: 'policy',
-            value,
+            ...diagnosticValue(value),
         });
     }
     return value;
