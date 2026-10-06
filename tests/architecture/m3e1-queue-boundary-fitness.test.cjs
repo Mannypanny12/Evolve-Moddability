@@ -45,39 +45,22 @@ test('M3E1 queue boundary rejects command internals, state, costs, effects and e
     }
 });
 
-test('M3E1 queue boundary rejects legacy lookup, policy, UI/cache, readiness, payment/effect and mutation identifiers', () => {
+test('M3E1 queue boundary rejects legacy policy, scheduler/payment helpers and execution authority identifiers', () => {
     const identifiers = [
+        'global',
         'qKey',
         'q_merge',
         'qAny',
         'qAny_res',
-        'q',
-        'qs',
-        'queue_size',
-        'action',
-        'label',
-        'cna',
-        'time',
-        't_max',
-        'bres',
-        'req',
-        'qa',
-        'quote',
-        'affordable',
-        'requirementsMet',
         'timeCheck',
         'payCosts',
         'modRes',
         'callback_queue',
         'mutationAuthority',
         'createMutationScope',
-        'paymentPlan',
         'PaymentPlan',
         'PaymentQuote',
-        'effectPlan',
         'EffectPlan',
-        'handler',
-        'callback',
     ];
 
     for (const identifier of identifiers){
@@ -93,23 +76,85 @@ test('M3E1 queue boundary rejects legacy lookup, policy, UI/cache, readiness, pa
     }
 });
 
-test('M3E1 queue boundary reserves legacy/cache names even when used as object fields', () => {
-    const cases = [
-        [`export const bad = { action: 1 };`, 'action'],
-        [`export function bad(work){ return work.label; }`, 'label'],
-        [`export function bad(work){ return work.affordable; }`, 'affordable'],
-        [`export const bad = { requirementsMet: false };`, 'requirementsMet'],
-        [`export const bad = { q: 1, qs: 1 };`, 'q'],
+test('M3E1 queue boundary rejects legacy/cache/readiness concepts when exposed as queue data fields', () => {
+    const fields = [
+        'q',
+        'qs',
+        'queue_size',
+        'action',
+        'label',
+        'cna',
+        'time',
+        't_max',
+        'bres',
+        'req',
+        'qa',
+        'quote',
+        'affordable',
+        'requirementsMet',
+        'paymentPlan',
+        'effectPlan',
+        'handler',
+        'callback',
     ];
 
-    for (const [source, expected] of cases){
-        const violations = analyzeQueueModule(source, 'src/engine/queue/example.mjs');
+    for (const field of fields){
+        const objectViolations = analyzeQueueModule(
+            `export const bad = { ${field}: 1 };`,
+            'src/engine/queue/example.mjs'
+        );
         assert.equal(
-            violations.some(item => item.includes(expected)),
+            objectViolations.some(item => item.includes(field)),
             true,
-            `${expected}: ${JSON.stringify(violations)}`
+            `object ${field}: ${JSON.stringify(objectViolations)}`
+        );
+
+        const memberViolations = analyzeQueueModule(
+            `export function bad(work){ return work.${field}; }`,
+            'src/engine/queue/example.mjs'
+        );
+        assert.equal(
+            memberViolations.some(item => item.includes(field)),
+            true,
+            `member ${field}: ${JSON.stringify(memberViolations)}`
+        );
+
+        const shorthandViolations = analyzeQueueModule(
+            `export function bad(${field}){ return { ${field} }; }`,
+            'src/engine/queue/example.mjs'
+        );
+        assert.equal(
+            shorthandViolations.some(item => item.includes(field)),
+            true,
+            `shorthand ${field}: ${JSON.stringify(shorthandViolations)}`
         );
     }
+});
+
+test('M3E1 queue boundary does not reserve harmless local variable vocabulary', () => {
+    const source = `
+        export function ok(){
+            const q = 1;
+            const qs = 2;
+            const action = q + qs;
+            const label = action;
+            const time = label;
+            const req = time;
+            const qa = req;
+            const quote = qa;
+            const affordable = quote > 0;
+            const requirementsMet = affordable;
+            const paymentPlan = requirementsMet;
+            const effectPlan = paymentPlan;
+            const handler = effectPlan;
+            const callback = handler;
+            return callback;
+        }
+    `;
+    assert.deepEqual(
+        analyzeQueueModule(source, 'src/engine/queue/example.mjs'),
+        []
+    );
 });
 
 test('M3E1 current repository satisfies queue boundary fitness', () => {
