@@ -3,7 +3,11 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const path = require('node:path');
-const { analyzeWorkQueueModule, findViolations } = require('./m3e2-work-queue-fitness.cjs');
+const {
+    analyzeInternalContractReference,
+    analyzeWorkQueueModule,
+    findViolations,
+} = require('./m3e2-work-queue-fitness.cjs');
 
 const root = path.resolve(__dirname, '../..');
 
@@ -48,6 +52,24 @@ test('M3E2 WorkQueue architecture guard does not reject ordinary pure list vocab
     `;
     assert.deepEqual(
         analyzeWorkQueueModule(source, 'src/engine/queue/work-queue.mjs'),
+        []
+    );
+});
+
+test('M3E2 keeps the shared WorkItem contract internal to the queue package', () => {
+    assert.notDeepEqual(
+        analyzeInternalContractReference(
+            "import { assertQueuedWorkItem } from './engine/queue/work-item-contract.mjs';",
+            'src/example.mjs'
+        ),
+        []
+    );
+
+    assert.deepEqual(
+        analyzeInternalContractReference(
+            "import { assertQueuedWorkItem } from './work-item-contract.mjs';",
+            'src/engine/queue/work-queue.mjs'
+        ),
         []
     );
 });
