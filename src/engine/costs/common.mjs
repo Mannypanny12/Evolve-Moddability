@@ -199,7 +199,6 @@ export function normalizePaymentQuoteLine(value, index){
     const path = `paymentQuote.lines[${index}]`;
     const fields = readQuoteLineFields(value, path);
     const kind = readLineKind(fields, path);
-    const amount = assertAmount(fields.get('amount'), `${path}.amount`);
 
     if (kind === 'resource'){
         assertClosedFields(fields, path, RESOURCE_LINE_FIELDS);
@@ -209,6 +208,7 @@ export function normalizePaymentQuoteLine(value, index){
             'resource',
             'INVALID_PAYMENT_QUOTE_RESOURCE_ID'
         );
+        const amount = assertAmount(fields.get('amount'), `${path}.amount`);
         return Object.freeze({ kind, resourceId, amount });
     }
 
@@ -219,5 +219,6 @@ export function normalizePaymentQuoteLine(value, index){
         'prestige',
         'INVALID_PAYMENT_QUOTE_PRESTIGE_ID'
     );
+    const amount = assertAmount(fields.get('amount'), `${path}.amount`);
     return Object.freeze({ kind, prestigeId, amount });
 }
