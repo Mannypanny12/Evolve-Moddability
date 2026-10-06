@@ -271,7 +271,7 @@ The completed payment milestone covers:
 
 Payment quotes and plans are contextual and must be recomputed when execution conditions change. M4 remains responsible for the broader calculation/modifier pipeline.
 
-### M3E Queue work-item model
+### M3E Queue work-item model - complete
 
 Represent queued work as commands/work items independent of DOM action objects and overloaded action callback returns.
 
@@ -287,9 +287,11 @@ Adds the frozen dense WorkQueue representation, safe slot accounting, explicit `
 
 Adds the frozen `createWorkQueueSelector()` readiness/selection boundary with transient `ready` / `waiting` / `bypass` results, explicit `ordered` / `first-ready` policies, deterministic short-circuit evaluation traces, synchronous evaluator hardening and a closed dependency set. Review hardening adds prototype-safe readiness-detail canonicalization, hostile-diagnostic sanitization, shared-identity/cycle rejection and adversarial tests. No readiness state is cached on WorkItems or WorkQueues, and no scheduler, prediction, payment, condition, execution, persistence or vanilla-cutover authority is introduced. See `M3E3_READINESS_SELECTION.md` and `M3E3_REVIEW_HARDENING.md`.
 
-#### M3E4 Evidence, hardening and closure - next
+#### M3E4 Evidence, hardening and closure - complete
 
-Characterize the remaining legacy build/research queue semantics, pin queueable/non-queueable evidence, add adversarial architecture coverage, and close M3E without cutting over vanilla queues prematurely.
+Closes M3E with executable legacy build/research queue evidence, a zero-execution `prepare -> WorkItem -> WorkQueue -> selection` integration proof, and a cumulative architecture gate that pins the four-file generic queue package, keeps it first-party-neutral, and prevents any production consumer before reviewed cutover. Command-specific admission, execution progress, reconciliation, prediction, scheduling and persistence remain deferred to their owning later milestones. See `M3E4_QUEUE_CLOSURE.md`.
+
+M3E is closed without modifying vanilla build/research gameplay. M3F is next.
 
 ### M3F First real vanilla cutover
 
