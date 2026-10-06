@@ -279,11 +279,11 @@ Represent queued work as commands/work items independent of DOM action objects a
 
 Adds non-executing `CommandBus.prepare()` and one closed inert `{ command, remaining, unitsPerSlot }` WorkItem contract. No queue list behavior, readiness, scheduling, persistence, or vanilla cutover is introduced. See `M3E1_WORK_ITEM_FOUNDATION.md`.
 
-#### M3E2 Pure WorkQueue/list operations - next
+#### M3E2 Pure WorkQueue/list operations - complete
 
-Add immutable queue-list operations, slot accounting, explicit merge policies, capacity as an explicit input, removal and reordering. No scheduler or execution authority.
+Adds the frozen dense WorkQueue representation, safe slot accounting, explicit `never` / `adjacent` / `matching` merge policies, post-merge capacity checks, explicit normalization, whole-record and slot-chunk removal, pure reordering, and prefix-preserving capacity trimming. Review hardening pins the WorkQueue dependency closure, keeps the shared WorkItem contract queue-internal, and adds adversarial/result-shape/overflow coverage. No scheduler, readiness, payment, execution, persistence, or vanilla cutover authority is introduced. See `M3E2_WORK_QUEUE.md`.
 
-#### M3E3 Readiness and selection
+#### M3E3 Readiness and selection - next
 
 Add scheduler-independent structured readiness plus ordered/first-ready selection through runtime evaluator capabilities, without caching readiness on WorkItems or reproducing legacy production/time prediction.
 
