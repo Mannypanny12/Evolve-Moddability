@@ -150,12 +150,62 @@ The next M3F slice owns the concrete `evolve:command/evolution/dna` registration
 
 `tests/architecture/m3f1-resource-commit-fitness.cjs` pins the new boundary:
 
-- `src/engine/execution/**` contains exactly the reviewed resource commit module at this slice;
+- `src/engine/execution/**` contains exactly the reviewed resource commit module at this slice, checked recursively so nested side doors cannot bypass the package law;
 - the generic executor imports only engine identity and inert-data contracts;
 - engine execution code contains no first-party Evolve knowledge, legacy state, DOM/UI, raw GameState mutation authority, platform services, queue authority, or persistence authority;
 - the bounded adapter imports only engine contracts plus the reviewed mapping catalog;
 - the adapter is limited to RNA/DNA mappings and does not call legacy gameplay helpers;
-- no production consumer may use the new commit authority before the reviewed DNA cutover changes that rule.
+- no production consumer may use the new commit authority before the reviewed DNA cutover changes that rule;
+- the gate is part of the cumulative `npm run test:architecture` chain.
+
+## Review hardening
+
+The post-implementation review found three justified hardening issues and fixed all three before closure.
+
+### Hostile thrown-value classification
+
+The first executor draft used a direct `error instanceof EngineContractError` test when a supplied semantic capability threw. A hostile thrown Proxy can itself throw during prototype inspection, allowing error classification to mask the intended commit failure.
+
+M3F1 now uses a guarded classification helper. Hostile thrown values normalize to `RESOURCE_COMMIT_CAPABILITY_FAILURE`, and regression coverage proves the module-wide commit lock still recovers afterward.
+
+### Architecture scanner false positive
+
+The first M3F1 architecture rule rejected every executable reference to the `Function` identifier. The executor legitimately uses `Function.prototype.toString` only to inspect supplied function declarations and reject async/generator capabilities.
+
+The guard now rejects actual dynamic code construction (`new Function(...)` / `Function(...)`) while allowing safe intrinsic inspection.
+
+### Recursive execution-package closure
+
+The initial exact-file guard checked only immediate files in `src/engine/execution/**`. A nested directory could therefore have introduced an unreviewed side channel without violating the intended one-file package law.
+
+The guard now walks the execution package recursively and allows exactly the reviewed `resource-commit.mjs` file.
+
+The review also removed a mutable nested array from one contract-error detail shape so error diagnostics remain simple detached values under the existing shallow diagnostic-freezing contract.
+
+## Verification
+
+Production implementation commit:
+
+```text
+377aa67654f3c62b4c7985d984eafa157b94a398
+```
+
+Review/hardening commit:
+
+```text
+56636f60e04c71a61a17e7680fc817de607a3bb8
+```
+
+GitHub Actions run `37528764762` passed the complete repository safety net on the hardening head:
+
+- full test suite;
+- cumulative architecture fitness including the new M3F1 gate;
+- game/wiki build;
+- generated-output cleanliness check;
+- real-browser startup-exception negative control;
+- real-browser smoke test.
+
+A final documentation-only closure run is still required on the branch head after this verification record is committed.
 
 ## Definition of done
 
