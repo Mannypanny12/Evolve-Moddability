@@ -67,6 +67,18 @@ export function createEvolveLegacyMappingCatalog(){
     });
 
     registerDirect(catalog, {
+        id: 'evolve.resource.knowledge_payment_state',
+        domain: 'resources',
+        family: 'resource',
+        legacyPath: 'global.resource.Knowledge',
+        canonicalId: 'evolve:resource/knowledge',
+        introducedIn: 'M3D4D',
+        removeBy: 'M6B',
+        stateSemantics: 'Legacy Knowledge resource used as the assessment source for the bounded M3D4D semantic Knowledge payment.',
+        sourceLocations: ['src/actions.js', 'src/resources.js', 'src/vars.js'],
+    });
+
+    registerDirect(catalog, {
         id: 'evolve.prestige.plasmid_state',
         domain: 'prestige',
         family: 'prestige',

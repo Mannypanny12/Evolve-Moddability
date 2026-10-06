@@ -12,6 +12,7 @@ const ASSESSOR = 'src/engine/costs/payment-assessor.mjs';
 const PLAN = 'src/engine/costs/payment-plan.mjs';
 const POOL_ADAPTER = 'src/legacy/bridge/evolve-special-payment-pool-read-adapter.mjs';
 const SOURCE_RESOLVER = 'src/legacy/bridge/evolve-special-payment-source-resolver.mjs';
+const SPECIES_CATALOG = 'src/legacy/bridge/evolve-species-payment-catalog.mjs';
 const IDENTITY = 'src/engine/identity.mjs';
 const INERT_DATA = 'src/engine/contracts/inert-data.mjs';
 const MAPPINGS = 'src/legacy/bridge/evolve-mappings.mjs';
@@ -19,8 +20,7 @@ const SOURCE_EXTENSIONS = new Set(['.js', '.mjs', '.cjs']);
 
 const FORBIDDEN_EXECUTION = /\b(?:executePayment|applyPayment|commitPayment|paymentExecutor|mutationAuthority|createMutationScope|beginTransaction|commitTransaction|rollbackTransaction|modRes|setGlobal|payCosts)\b/;
 const FORBIDDEN_LATER_SCOPE = /\b(?:adjustCosts|costModifier|priceModifier|modifierPipeline|calculationPipeline|enqueue|dequeue|queueWorkItem|queueScheduler|scheduleQueue)\b/i;
-const FIRST_PARTY_ENGINE_TERMS = /\b(?:Plasmid|AntiPlasmid|Supply|Knowledge|Species|purifier|sup_max)\b/i;
-const DEFERRED_SPECIAL_TERMS = /\b(?:Knowledge|Species|defaultJob|default_job|stats\.know)\b/i;
+const FIRST_PARTY_ENGINE_TERMS = /\b(?:Plasmid|AntiPlasmid|Supply|Knowledge|Species|purifier|sup_max|defaultJob|default_job|stats\.know)\b/i;
 const POOL_MAPPING_LIST = /const\s+SUPPORTED_POOL_MAPPING_IDS\s*=\s*Object\.freeze\(\s*\[\s*['"]evolve\.payment_pool\.purifier_supply_state['"]\s*,?\s*\]\s*\)\s*;/;
 const EXACT_QUOTE_KIND_GUARD = /\bif\s*\(\s*value\s*!==\s*['"]resource['"]\s*&&\s*value\s*!==\s*['"]prestige['"]\s*&&\s*value\s*!==\s*['"]special['"]\s*\)\s*\{/g;
 const EXACT_SPECIAL_SOURCE_GUARD = /\bif\s*\(\s*kind\s*!==\s*['"]resource['"]\s*&&\s*kind\s*!==\s*['"]pool['"]\s*\)\s*\{/g;
@@ -150,16 +150,13 @@ function analyzeBridgeSource(source, relativePath){
     if (FORBIDDEN_LATER_SCOPE.test(code)){
         violations.push(`${relativePath}: M3D4 compatibility bridge may not acquire M4/queue scope`);
     }
-    if (DEFERRED_SPECIAL_TERMS.test(source)){
-        violations.push(`${relativePath}: Knowledge/Species bridge semantics require the explicit M3D4D review gate`);
-    }
     if (relativePath === POOL_ADAPTER && !POOL_MAPPING_LIST.test(source)){
         violations.push(`${relativePath}: pool adapter must remain pinned to the single purifier supply mapping`);
     }
 
     const allowed = relativePath === POOL_ADAPTER
         ? new Set([IDENTITY, INERT_DATA, MAPPINGS])
-        : new Set([IDENTITY]);
+        : new Set([IDENTITY, INERT_DATA, SPECIES_CATALOG]);
     for (const reference of extractModuleReferences(source, relativePath)){
         if (reference.kind !== 'import-statement'){
             violations.push(`${relativePath}: M3D4 bridge may use only static ESM imports`);

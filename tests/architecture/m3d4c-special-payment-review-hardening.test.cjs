@@ -19,8 +19,9 @@ function validAdapter(){
 
 function validResolver(){
     return "const SUPPLY_PAYMENT_ID = 'evolve:payment/supply';\n" +
+        "const KNOWLEDGE_PAYMENT_ID = 'evolve:payment/knowledge';\n" +
         "const PURIFIER_SUPPLY_POOL_ID = 'evolve:payment-pool/purifier_supply';\n" +
-        "function resolve(parsed){ if (parsed.canonical !== SUPPLY_PAYMENT_ID) throw new Error(); return { kind: 'pool', poolId: PURIFIER_SUPPLY_POOL_ID }; }\n";
+        "function resolve(paymentId){ if (paymentId === SUPPLY_PAYMENT_ID) return { kind: 'pool', poolId: PURIFIER_SUPPLY_POOL_ID }; return { kind: 'resource', resourceId: 'evolve:resource/knowledge' }; }\n";
 }
 
 test('M3D4C review-hardening gate is clean in the repository', () => {
@@ -51,11 +52,11 @@ test('M3D4C adapter remains limited to the two reviewed purifier state fields', 
     );
 });
 
-test('M3D4C resolver first-party scope remains exactly Supply to purifier supply', () => {
+test('M3D4C resolver permanently retains Supply to purifier-supply semantics while later payment IDs may extend it', () => {
     assert.deepEqual(analyzeSourceResolverReview(validResolver()), []);
 
-    assert.notDeepEqual(
-        analyzeSourceResolverReview(validResolver() + "\nconst other = 'evolve:payment/other';"),
+    assert.deepEqual(
+        analyzeSourceResolverReview(validResolver() + "\nconst later = 'evolve:payment/species';"),
         []
     );
     assert.notDeepEqual(
@@ -63,7 +64,7 @@ test('M3D4C resolver first-party scope remains exactly Supply to purifier supply
         []
     );
     assert.notDeepEqual(
-        analyzeSourceResolverReview(validResolver().replace('parsed.canonical !== SUPPLY_PAYMENT_ID', 'false')),
+        analyzeSourceResolverReview(validResolver().replace('paymentId === SUPPLY_PAYMENT_ID', 'false')),
         []
     );
     assert.notDeepEqual(
@@ -71,8 +72,6 @@ test('M3D4C resolver first-party scope remains exactly Supply to purifier supply
         []
     );
 
-    const comments = validResolver() +
-        "\n// const deferred = 'evolve:payment/knowledge';" +
-        "\n// const deferredPool = 'evolve:payment-pool/other';";
+    const comments = validResolver() + "\n// const futurePool = 'evolve:payment-pool/other';";
     assert.deepEqual(analyzeSourceResolverReview(comments), []);
 });

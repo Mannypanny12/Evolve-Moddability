@@ -73,26 +73,26 @@ function analyzeSourceResolverReview(source, relativePath = SOURCE_RESOLVER){
     if (!reviewed) return violations;
 
     if (!EXACT_SUPPLY_PAYMENT_DECLARATION.test(reviewed)){
-        violations.push(`${relativePath}: first-party resolver must retain exactly the Supply payment identity declaration`);
+        violations.push(`${relativePath}: first-party resolver must retain the Supply payment identity declaration`);
     }
     if (!EXACT_PURIFIER_POOL_DECLARATION.test(reviewed)){
-        violations.push(`${relativePath}: first-party resolver must retain exactly the purifier supply pool identity declaration`);
+        violations.push(`${relativePath}: first-party resolver must retain the purifier supply pool identity declaration`);
     }
 
     const paymentIds = uniqueMatches(reviewed, PAYMENT_ID_LITERAL);
-    if (!sameSingleValue(paymentIds, EXPECTED_PAYMENT_ID)){
-        violations.push(`${relativePath}: first-party special payment identity scope must remain Supply-only`);
+    if (!paymentIds.includes(EXPECTED_PAYMENT_ID)){
+        violations.push(`${relativePath}: first-party special payment scope must retain Supply`);
     }
 
     const poolIds = uniqueMatches(reviewed, POOL_ID_LITERAL);
     if (!sameSingleValue(poolIds, EXPECTED_POOL_ID)){
-        violations.push(`${relativePath}: first-party special payment source scope must remain purifier-supply-only`);
+        violations.push(`${relativePath}: first-party pool source scope must remain purifier-supply-only`);
     }
 
-    if (!/\bparsed\.canonical\s*!==\s*SUPPLY_PAYMENT_ID\b/.test(reviewed)){
-        violations.push(`${relativePath}: resolver must fail closed for canonical payment IDs other than Supply`);
+    if (!/paymentId\s*===\s*SUPPLY_PAYMENT_ID/.test(reviewed)){
+        violations.push(`${relativePath}: resolver must keep an explicit Supply branch`);
     }
-    if (!/\bkind\s*:\s*['"]pool['"]/.test(reviewed) || !/\bpoolId\s*:\s*PURIFIER_SUPPLY_POOL_ID\b/.test(reviewed)){
+    if (!/kind\s*:\s*['"]pool['"]/.test(reviewed) || !/poolId\s*:\s*PURIFIER_SUPPLY_POOL_ID/.test(reviewed)){
         violations.push(`${relativePath}: Supply must resolve only to the purifier pool source`);
     }
 

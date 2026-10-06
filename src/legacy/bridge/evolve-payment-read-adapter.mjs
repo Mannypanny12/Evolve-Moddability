@@ -1,11 +1,14 @@
 import { EngineContractError, parseContentId } from '../../engine/identity.mjs';
 import { inspectPlainInertObject } from '../../engine/contracts/inert-data.mjs';
 import { createEvolveLegacyMappingCatalog } from './evolve-mappings.mjs';
+import { EVOLVE_SPECIES_PAYMENT_LOCAL_IDS } from './evolve-species-payment-catalog.mjs';
 
 const MISSING = Symbol('missing-legacy-payment-state');
 const SUPPORTED_PAYMENT_MAPPING_IDS = Object.freeze([
     'evolve.resource.rna_state',
+    'evolve.resource.knowledge_payment_state',
 ]);
+const SPECIES_LOCAL_IDS = new Set(EVOLVE_SPECIES_PAYMENT_LOCAL_IDS);
 
 function fail(code, message, details){
     throw new EngineContractError(code, message, details);
@@ -92,9 +95,7 @@ function isPromiseLike(value, path){
         }
         seen.add(cursor);
         let descriptor;
-        try {
-            descriptor = Object.getOwnPropertyDescriptor(cursor, 'then');
-        }
+        try { descriptor = Object.getOwnPropertyDescriptor(cursor, 'then'); }
         catch {
             fail('INVALID_LEGACY_PAYMENT_ROOT_PROVIDER', `${path} thenable state could not be safely inspected.`, { path });
         }
@@ -104,9 +105,7 @@ function isPromiseLike(value, path){
             }
             return typeof descriptor.value === 'function';
         }
-        try {
-            cursor = Object.getPrototypeOf(cursor);
-        }
+        try { cursor = Object.getPrototypeOf(cursor); }
         catch {
             fail('INVALID_LEGACY_PAYMENT_ROOT_PROVIDER', `${path} thenable state could not be safely inspected.`, { path });
         }
@@ -135,9 +134,7 @@ function assertPlainRecord(value, path){
 
 function readDataField(record, field, path){
     let descriptor;
-    try {
-        descriptor = Object.getOwnPropertyDescriptor(record, field);
-    }
+    try { descriptor = Object.getOwnPropertyDescriptor(record, field); }
     catch {
         fail('INVALID_LEGACY_PAYMENT_STATE', `${path}.${field} could not be inspected.`, { path: `${path}.${field}` });
     }
@@ -180,18 +177,15 @@ function mappingIndex(){
     return index;
 }
 
-function canonicalResourceId(value){
+function canonicalResourceIdentity(value){
     if (typeof value !== 'string'){
         fail('INVALID_LEGACY_PAYMENT_SUBJECT_ID', 'Legacy payment resource subject must be a canonical resource content ID.', {
             expectedType: 'resource',
             valueType: typeof value,
         });
     }
-
     let parsed;
-    try {
-        parsed = parseContentId(value);
-    }
+    try { parsed = parseContentId(value); }
     catch {
         fail('INVALID_LEGACY_PAYMENT_SUBJECT_ID', 'Legacy payment resource subject must be a canonical resource content ID.', {
             expectedType: 'resource',
@@ -204,26 +198,37 @@ function canonicalResourceId(value){
             actualType: parsed.type,
         });
     }
-    return parsed.canonical;
+    return parsed;
 }
 
-function requireMapping(index, rawResourceId){
-    const resourceId = canonicalResourceId(rawResourceId);
-    const mapping = index.get(resourceId);
-    if (!mapping){
-        fail('UNSUPPORTED_LEGACY_PAYMENT_SUBJECT', 'Legacy payment compatibility does not support this resource.', {
-            resourceId,
-        });
+function requireSubject(index, rawResourceId){
+    const parsed = canonicalResourceIdentity(rawResourceId);
+    const mapping = index.get(parsed.canonical);
+    if (mapping){
+        return {
+            kind: 'mapping',
+            mapping,
+            resourceId: parsed.canonical,
+            statePath: mapping.legacyPath,
+        };
     }
-    return { mapping, resourceId };
+    if (parsed.namespace === 'evolve' && SPECIES_LOCAL_IDS.has(parsed.localId)){
+        return {
+            kind: 'active-species',
+            resourceId: parsed.canonical,
+            localId: parsed.localId,
+            statePath: `global.resource.${parsed.localId}`,
+        };
+    }
+    fail('UNSUPPORTED_LEGACY_PAYMENT_SUBJECT', 'Legacy payment compatibility does not support this resource.', {
+        resourceId: parsed.canonical,
+    });
 }
 
 function createRootReader(readLegacyRoot){
     return function currentRoot(){
         let root;
-        try {
-            root = Reflect.apply(readLegacyRoot, undefined, []);
-        }
+        try { root = Reflect.apply(readLegacyRoot, undefined, []); }
         catch {
             fail('LEGACY_PAYMENT_ROOT_READ_FAILURE', 'Legacy payment root provider threw while reading current state.');
         }
@@ -234,10 +239,47 @@ function createRootReader(readLegacyRoot){
     };
 }
 
-function resourceRecord(currentRoot, mapping, resourceId){
-    const value = readLegacyPath(currentRoot(), mapping.legacyPath);
+function mappedResourceRecord(currentRoot, subject){
+    const value = readLegacyPath(currentRoot(), subject.mapping.legacyPath);
     if (value === MISSING) return MISSING;
-    return assertPlainRecord(value, `legacy payment resource ${resourceId}`);
+    return assertPlainRecord(value, `legacy payment resource ${subject.resourceId}`);
+}
+
+function activeSpeciesRecord(currentRoot, subject){
+    const root = currentRoot();
+    const raceValue = readDataField(root, 'race', 'legacyPaymentRoot');
+    if (raceValue === MISSING){
+        fail('INVALID_LEGACY_PAYMENT_SPECIES_STATE', 'Legacy race state is required for active Species payment reads.');
+    }
+    const race = assertPlainRecord(raceValue, 'legacyPaymentRoot.race');
+    const species = readDataField(race, 'species', 'legacyPaymentRoot.race');
+    if (species === MISSING || typeof species !== 'string'){
+        fail('INVALID_LEGACY_PAYMENT_SPECIES_STATE', 'Legacy race.species must be a reviewed first-party species string.');
+    }
+    if (species !== subject.localId){
+        fail('LEGACY_PAYMENT_SPECIES_CONTEXT_DRIFT', 'Resolved Species payment source no longer matches the active legacy species.', {
+            expectedSpecies: subject.localId,
+            activeSpecies: species,
+        });
+    }
+    const resourcesValue = readDataField(root, 'resource', 'legacyPaymentRoot');
+    if (resourcesValue === MISSING){
+        fail('INVALID_LEGACY_PAYMENT_SPECIES_STATE', 'Legacy resource state is required for Species payment reads.');
+    }
+    const resources = assertPlainRecord(resourcesValue, 'legacyPaymentRoot.resource');
+    const record = readDataField(resources, subject.localId, 'legacyPaymentRoot.resource');
+    if (record === MISSING){
+        fail('INVALID_LEGACY_PAYMENT_SPECIES_STATE', 'Active legacy species resource is missing.', {
+            resourceId: subject.resourceId,
+        });
+    }
+    return assertPlainRecord(record, `legacy payment species resource ${subject.resourceId}`);
+}
+
+function resourceRecord(currentRoot, subject){
+    return subject.kind === 'mapping'
+        ? mappedResourceRecord(currentRoot, subject)
+        : activeSpeciesRecord(currentRoot, subject);
 }
 
 function finiteNumber(value, path){
@@ -269,41 +311,41 @@ export function createEvolveLegacyPaymentReadProvider(rawOptions){
     return Object.freeze({
         resource: Object.freeze({
             amount(rawResourceId){
-                const { mapping, resourceId } = requireMapping(index, rawResourceId);
-                const record = resourceRecord(currentRoot, mapping, resourceId);
+                const subject = requireSubject(index, rawResourceId);
+                const record = resourceRecord(currentRoot, subject);
                 if (record === MISSING) return 0;
-                const value = readDataField(record, 'amount', `legacy payment resource ${resourceId}`);
+                const value = readDataField(record, 'amount', `legacy payment resource ${subject.resourceId}`);
                 if (value === MISSING){
                     fail('INVALID_LEGACY_PAYMENT_STATE', 'Legacy payment resource amount is required.', {
-                        path: `${mapping.legacyPath}.amount`,
+                        path: `${subject.statePath}.amount`,
                     });
                 }
-                return finiteNumber(value, `${mapping.legacyPath}.amount`);
+                return finiteNumber(value, `${subject.statePath}.amount`);
             },
             available(rawResourceId){
-                const { mapping, resourceId } = requireMapping(index, rawResourceId);
-                const record = resourceRecord(currentRoot, mapping, resourceId);
+                const subject = requireSubject(index, rawResourceId);
+                const record = resourceRecord(currentRoot, subject);
                 if (record === MISSING) return false;
                 return availability(
-                    readDataField(record, 'display', `legacy payment resource ${resourceId}`),
-                    `${mapping.legacyPath}.display`
+                    readDataField(record, 'display', `legacy payment resource ${subject.resourceId}`),
+                    `${subject.statePath}.display`
                 );
             },
             capacity(rawResourceId){
-                const { mapping, resourceId } = requireMapping(index, rawResourceId);
-                const record = resourceRecord(currentRoot, mapping, resourceId);
+                const subject = requireSubject(index, rawResourceId);
+                const record = resourceRecord(currentRoot, subject);
                 if (record === MISSING) return 0;
-                const value = readDataField(record, 'max', `legacy payment resource ${resourceId}`);
+                const value = readDataField(record, 'max', `legacy payment resource ${subject.resourceId}`);
                 if (value === MISSING){
                     fail('INVALID_LEGACY_PAYMENT_STATE', 'Legacy payment resource capacity is required.', {
-                        path: `${mapping.legacyPath}.max`,
+                        path: `${subject.statePath}.max`,
                     });
                 }
-                const capacity = finiteNumber(value, `${mapping.legacyPath}.max`);
+                const capacity = finiteNumber(value, `${subject.statePath}.max`);
                 if (capacity === -1) return null;
                 if (capacity < 0){
                     fail('INVALID_LEGACY_PAYMENT_STATE', 'Legacy payment resource max must be -1 or non-negative.', {
-                        path: `${mapping.legacyPath}.max`,
+                        path: `${subject.statePath}.max`,
                         value: capacity,
                     });
                 }

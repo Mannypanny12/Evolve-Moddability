@@ -17,7 +17,8 @@ function validLegacyAdapterSource(){
     return "import { EngineContractError } from '../../engine/identity.mjs';\n" +
         "import { inspectPlainInertObject } from '../../engine/contracts/inert-data.mjs';\n" +
         "import { createEvolveLegacyMappingCatalog } from './evolve-mappings.mjs';\n" +
-        "const SUPPORTED_PAYMENT_MAPPING_IDS = Object.freeze(['evolve.resource.rna_state']);\n" +
+        "import { EVOLVE_SPECIES_PAYMENT_LOCAL_IDS } from './evolve-species-payment-catalog.mjs';\n" +
+        "const SUPPORTED_PAYMENT_MAPPING_IDS = Object.freeze(['evolve.resource.rna_state', 'evolve.resource.knowledge_payment_state']);\n" +
         'export function createEvolveLegacyPaymentReadProvider(options){ return options; }';
 }
 
@@ -82,13 +83,13 @@ test('M3D2 cost source rejects hidden async, Promise and generator control flow'
     }
 });
 
-test('M3D2 legacy adapter remains one RNA-only read provider with narrow dependencies', () => {
+test('legacy resource-payment adapter remains explicitly bounded to RNA, Knowledge and active Species', () => {
     assert.deepEqual(analyzeLegacyAdapter(validLegacyAdapterSource()), []);
 
     assert.notDeepEqual(
         analyzeLegacyAdapter(validLegacyAdapterSource().replace(
-            "['evolve.resource.rna_state']",
-            "['evolve.resource.rna_state', 'evolve.resource.dna_state']"
+            "['evolve.resource.rna_state', 'evolve.resource.knowledge_payment_state']",
+            "['evolve.resource.rna_state', 'evolve.resource.knowledge_payment_state', 'evolve.resource.dna_state']"
         )),
         []
     );
