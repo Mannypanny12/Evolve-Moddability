@@ -45,12 +45,26 @@ test('M3E1 queue boundary rejects command internals, state, costs, effects and e
     }
 });
 
-test('M3E1 queue boundary rejects legacy policy, scheduling, payment/effect storage and mutation authority identifiers', () => {
+test('M3E1 queue boundary rejects legacy lookup, policy, UI/cache, readiness, payment/effect and mutation identifiers', () => {
     const identifiers = [
         'qKey',
         'q_merge',
         'qAny',
         'qAny_res',
+        'q',
+        'qs',
+        'queue_size',
+        'action',
+        'label',
+        'cna',
+        'time',
+        't_max',
+        'bres',
+        'req',
+        'qa',
+        'quote',
+        'affordable',
+        'requirementsMet',
         'timeCheck',
         'payCosts',
         'modRes',
@@ -75,6 +89,25 @@ test('M3E1 queue boundary rejects legacy policy, scheduling, payment/effect stor
             violations.some(item => item.includes(identifier)),
             true,
             `${identifier}: ${JSON.stringify(violations)}`
+        );
+    }
+});
+
+test('M3E1 queue boundary reserves legacy/cache names even when used as object fields', () => {
+    const cases = [
+        [`export const bad = { action: 1 };`, 'action'],
+        [`export function bad(work){ return work.label; }`, 'label'],
+        [`export function bad(work){ return work.affordable; }`, 'affordable'],
+        [`export const bad = { requirementsMet: false };`, 'requirementsMet'],
+        [`import const bad = { q: 1, qs: 1 };`, 'q'],
+    ];
+
+    for (const [source, expected] of cases){
+        const violations = analyzeQueueModule(source, 'src/engine/queue/example.mjs');
+        assert.equal(
+            violations.some(item => item.includes(expected)),
+            true,
+            `${expected}: ${JSON.stringify(violations)}`
         );
     }
 });

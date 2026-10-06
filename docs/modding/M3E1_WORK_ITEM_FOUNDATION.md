@@ -57,6 +57,23 @@ The result and its payload tree are detached and frozen.
 
 `dispatch()` reuses the same internal preparation path and then performs handler execution and result normalization. There is therefore still one payload-validation path, not a queue-specific copy of command validators.
 
+## Payload-validator boundary
+
+`validatePayload()` is a structural and canonicalizing command-data boundary, not a gameplay-readiness hook.
+
+A validator may validate and normalize only from the supplied payload. It must not derive its accepted payload from current GameState, current resources, conditions, affordability, queue readiness, clocks, RNG, payment state, or other mutable runtime context.
+
+In particular, validators must not turn:
+
+```text
+current world state
+  -> permanently stored queued intent
+```
+
+State-dependent availability, requirements, affordability, payment and queue readiness remain separate concerns and are re-evaluated at the appropriate execution/readiness boundary. This rule is essential because queued commands are prepared when enqueued and prepared again when eventually dispatched.
+
+The current command package architecture already prevents command modules from importing GameState/state infrastructure directly. Future first-party command-registration locations must preserve the same law rather than bypassing it through captured mutable state.
+
 ## Reentrancy
 
 Preparation participates in the existing module-wide command-operation lock.
@@ -120,6 +137,8 @@ The prepare capability is invoked but never stored in the item.
 
 This keeps `src/engine/queue/**` independent of `commands/common.mjs` and avoids duplicating command-specific validation in the queue package.
 
+`CommandBus.prepare()` remains the authority that canonicalizes and command-specifically validates payloads. The queue-side verification is deliberately defensive only: it rejects a broken replacement capability that returns mutable, non-inert, non-canonical, cyclic/shared, negative-zero, incorrectly ordered, or non-command prepared data. It does not introduce a second command-specific validator pipeline.
+
 ## What is intentionally absent
 
 The WorkItem shape is closed. It does not contain legacy lookup, UI/cache, readiness, payment, callback, or scheduling state.
@@ -165,6 +184,8 @@ Queued intent is represented only as a canonical command:
 }
 ```
 
+Generic command payload vocabulary is not globally blacklisted. Instead, real production command validators must use closed semantic payload schemas and must never accept a disguised legacy `action/type` lookup descriptor as their command contract.
+
 ## Payments and conditions
 
 M3E1 stores neither `PaymentQuote` nor `PaymentPlan`.
@@ -209,7 +230,9 @@ M5 remains responsible for scheduler cadence and offline progression.
 
 It does not import command internals, GameState/state infrastructure, cost/payment modules, effect modules, legacy source modules, or external packages.
 
-The M3E1 fitness gate also rejects direct references to legacy queue preferences/helpers, raw mutation authority, payment/effect-plan storage, callbacks/handlers, and other executable queue state.
+The M3E1 fitness gate rejects direct references to legacy queue policy/progress vocabulary, legacy action/UI/cache fields, cached readiness/affordability fields, raw mutation authority, payment/effect-plan storage, callbacks/handlers, and scheduling/payment helpers. This protects future M3E2/M3E3 queue modules as well as today's WorkItem implementation.
+
+Canonical `command.id` and the identity parser's `parsed.type` remain legitimate internal uses; the queue layer still may not reconstruct legacy top-level action lookup records.
 
 The cumulative engine architecture gate continues to reject browser/DOM/UI globals, storage, wall-clock access, direct RNG, CommonJS `require`, and imports escaping `src/engine/**`.
 
@@ -231,6 +254,21 @@ It does not change:
 
 M3E1 only establishes the architecture later slices can use.
 
+## Review hardening
+
+The post-implementation review hardened M3E1 before M3E2 begins:
+
+- queue-package architecture guards now reserve legacy `q/qs/queue_size`, action lookup, UI/cache and cached-readiness vocabulary rather than guarding only payment/callback imports;
+- the command payload-validator contract is explicitly structural/context-independent, preventing enqueue-time world state from being baked into durable queued intent;
+- defensive prepared-command verification now pins canonical numeric/object ordering in addition to frozen inert shape, cycles/shared identity and command identity;
+- hostile raw WorkItem coverage pins accessors, hidden fields, symbols and null-prototype inert input;
+- broken-preparer coverage pins mutable descendants, negative zero, unsorted object keys, shared/cyclic identity and hostile accessors;
+- the work-item module export surface is pinned to the single construction capability;
+- the prepare/dispatch reentrancy matrix is exercised across bus instances, including validation and execution phases;
+- the central roadmap records completed M3D and the M3E1-E4 slice structure.
+
+No queue list behavior, readiness selection, scheduler behavior, persistence or vanilla cutover is introduced by this hardening pass.
+
 ## Definition of done
 
 M3E1 is complete when:
@@ -239,13 +277,14 @@ M3E1 is complete when:
 2. `prepare()` performs the same envelope/ID/payload/command-specific validation used by dispatch;
 3. `prepare()` returns detached deeply frozen `{ id, payload }` data and never executes a handler;
 4. `dispatch()` reuses the shared preparation path rather than maintaining a second validator pipeline;
-5. preparation obeys the module-wide no-nested-command rule and always releases the lock;
-6. `QueuedWorkItem` is closed to `{ command, remaining, unitsPerSlot }`;
-7. `remaining` and `unitsPerSlot` are positive safe integers;
-8. WorkItem construction uses `CommandBus.prepare` so malformed command-specific payloads cannot enter queued work through the production path;
-9. queued work contains no callback, handler, legacy action lookup, UI/cache, readiness, PaymentQuote, PaymentPlan, EffectPlan, scheduler, persistence, or mutation-authority state;
-10. work items are detached/frozen inert data;
-11. the queue package has a dedicated architecture fitness gate;
-12. M3A1's public-surface tests/docs are ratcheted forward rather than weakened;
-13. all cumulative tests, architecture checks, build checks, and browser smoke checks remain green;
-14. no vanilla gameplay path is cut over.
+5. payload validators are structural/context-independent and do not bake current gameplay state into queued intent;
+6. preparation obeys the module-wide no-nested-command rule and always releases the lock;
+7. `QueuedWorkItem` is closed to `{ command, remaining, unitsPerSlot }`;
+8. `remaining` and `unitsPerSlot` are positive safe integers;
+9. WorkItem construction uses `CommandBus.prepare` so malformed command-specific payloads cannot enter queued work through the production path;
+10. queued work contains no callback, handler, legacy action lookup, UI/cache, readiness, PaymentQuote, PaymentPlan, EffectPlan, scheduler, persistence, or mutation-authority state;
+11. work items are detached/frozen inert data and reject non-canonical replacement-preparer output;
+12. the queue package has a dedicated architecture fitness gate protecting future queue modules from legacy/cache/readiness vocabulary;
+13. M3A1's public-surface tests/docs are ratcheted forward rather than weakened;
+14. all cumulative tests, architecture checks, build checks, and browser smoke checks remain green;
+15. no vanilla gameplay path is cut over.

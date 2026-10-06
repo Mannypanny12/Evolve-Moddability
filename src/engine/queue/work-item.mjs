@@ -7,7 +7,7 @@ import {
 
 const WORK_ITEM_FIELDS = Object.freeze(['command', 'remaining', 'unitsPerSlot']);
 const PREPARED_COMMAND_FIELDS = Object.freeze(['id', 'payload']);
-const MAX_WORK_ITEM_DATA_NESTING_DEPTH = 128;
+const MAX_PREPARED_COMMAND_VALIDATION_DEPTH = 128;
 
 function fail(code, message, details){
     throw new EngineContractError(code, message, details);
@@ -81,11 +81,39 @@ function assertFrozen(value, path){
     }
 }
 
+function assertCanonicalObjectKeyOrder(fields, path){
+    const keys = [...fields.keys()];
+    const canonicalProbe = {};
+    for (const key of [...keys].sort()){
+        Object.defineProperty(canonicalProbe, key, {
+            value: null,
+            enumerable: true,
+            writable: false,
+            configurable: false,
+        });
+    }
+    const expected = Reflect.ownKeys(canonicalProbe);
+    for (let index = 0; index < keys.length; index++){
+        if (keys[index] !== expected[index]){
+            fail(
+                'INVALID_PREPARED_COMMAND',
+                `${path} must already use canonical object-key order.`,
+                { path, key: keys[index], expectedKey: expected[index] }
+            );
+        }
+    }
+}
+
 function assertFrozenInertData(value, path, context, depth){
     if (value === null || typeof value === 'string' || typeof value === 'boolean') return;
     if (typeof value === 'number'){
         if (!Number.isFinite(value)){
             fail('INVALID_PREPARED_COMMAND', `${path} must be a finite number.`, { path, value });
+        }
+        if (Object.is(value, -0)){
+            fail('INVALID_PREPARED_COMMAND', `${path} must already be canonical and may not contain negative zero.`, {
+                path,
+            });
         }
         return;
     }
@@ -95,10 +123,10 @@ function assertFrozenInertData(value, path, context, depth){
             valueType: typeof value,
         });
     }
-    if (depth > MAX_WORK_ITEM_DATA_NESTING_DEPTH){
-        fail('INVALID_PREPARED_COMMAND', `${path} exceeds the prepared-command nesting limit.`, {
+    if (depth > MAX_PREPARED_COMMAND_VALIDATION_DEPTH){
+        fail('INVALID_PREPARED_COMMAND', `${path} exceeds the prepared-command validation nesting limit.`, {
             path,
-            maxDepth: MAX_WORK_ITEM_DATA_NESTING_DEPTH,
+            maxDepth: MAX_PREPARED_COMMAND_VALIDATION_DEPTH,
         });
     }
     if (context.active.has(value)){
@@ -138,6 +166,7 @@ function assertFrozenInertData(value, path, context, depth){
             path,
             code: 'INVALID_PREPARED_COMMAND',
         });
+        assertCanonicalObjectKeyOrder(fields, path);
         for (const [key, child] of fields){
             assertFrozenInertData(child, inertDataPath(path, key), context, depth + 1);
         }

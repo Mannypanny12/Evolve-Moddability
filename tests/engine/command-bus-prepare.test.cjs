@@ -205,3 +205,72 @@ test('M3E1 preparation participates in the module-wide no-nesting rule', async (
         'evolve:command/inner'
     );
 });
+
+test('M3E1 no-nesting covers prepare and dispatch combinations across bus instances', async () => {
+    const { createCommandBus, commandSucceeded, EngineContractError } = await modules();
+
+    const inner = createCommandBus({
+        registrations: [{
+            id: 'evolve:command/inner',
+            validatePayload: payload => payload,
+            execute: () => commandSucceeded(null),
+        }],
+    });
+
+    let nestedOperation = null;
+    const outer = createCommandBus({
+        registrations: [{
+            id: 'evolve:command/outer',
+            validatePayload(payload){
+                if (nestedOperation === 'prepare-during-validate'){
+                    inner.prepare({ id: 'evolve:command/inner', payload: {} });
+                }
+                if (nestedOperation === 'dispatch-during-validate'){
+                    inner.dispatch({ id: 'evolve:command/inner', payload: {} });
+                }
+                return payload;
+            },
+            execute(){
+                if (nestedOperation === 'prepare-during-execute'){
+                    inner.prepare({ id: 'evolve:command/inner', payload: {} });
+                }
+                return commandSucceeded(null);
+            },
+        }],
+    });
+
+    function expectNestedFailure(call, phase, causePhase){
+        assert.throws(
+            call,
+            error => error instanceof EngineContractError &&
+                error.code === 'COMMAND_DISPATCH_REENTRANCY' &&
+                error.details?.phase === phase &&
+                error.details?.causePhase === causePhase
+        );
+    }
+
+    nestedOperation = 'dispatch-during-validate';
+    expectNestedFailure(
+        () => outer.prepare({ id: 'evolve:command/outer', payload: {} }),
+        'validate',
+        'dispatch'
+    );
+
+    nestedOperation = 'prepare-during-validate';
+    expectNestedFailure(
+        () => outer.dispatch({ id: 'evolve:command/outer', payload: {} }),
+        'validate',
+        'prepare'
+    );
+
+    nestedOperation = 'prepare-during-execute';
+    expectNestedFailure(
+        () => outer.dispatch({ id: 'evolve:command/outer', payload: {} }),
+        'execute',
+        'prepare'
+    );
+
+    nestedOperation = null;
+    assert.equal(outer.dispatch({ id: 'evolve:command/outer', payload: {} }).status, 'succeeded');
+    assert.equal(inner.dispatch({ id: 'evolve:command/inner', payload: {} }).status, 'succeeded');
+});
