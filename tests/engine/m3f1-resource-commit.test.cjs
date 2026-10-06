@@ -72,6 +72,30 @@ test('M3F1 atomically commits the DNA payment then effect through canonical reso
     assert.equal(state.resource.DNA.amount, 3);
 });
 
+test('M3F1 passes a detached frozen payment-first change batch to the semantic capability', async () => {
+    const { createResourceCommitExecutor, createPaymentQuote, createPaymentPlan, createEffectPlan } = await modules();
+    const plans = dnaPlans(createPaymentQuote, createPaymentPlan, createEffectPlan);
+    let observed = null;
+    const executor = createResourceCommitExecutor({
+        commitResourceChanges(changes){
+            assert.equal(this, undefined);
+            observed = changes;
+            assert.equal(Object.isFrozen(changes), true);
+            assert.equal(Object.isFrozen(changes[0]), true);
+            assert.equal(Object.isFrozen(changes[1]), true);
+            return { status: 'committed', reason: null };
+        },
+    });
+
+    assert.equal(executor.commit(plans.paymentPlan, plans.effectPlan).status, 'committed');
+    assert.deepEqual(observed, [
+        { kind: 'resource.debit', resourceId: 'evolve:resource/rna', amount: 2 },
+        { kind: 'resource.credit', resourceId: 'evolve:resource/dna', amount: 1 },
+    ]);
+    assert.notEqual(observed[0], plans.paymentPlan.operations[0]);
+    assert.notEqual(observed[1], plans.effectPlan.operations[0]);
+});
+
 test('M3F1 preserves payment-before-effect ordering instead of allowing net-delta cancellation to bypass affordability', async () => {
     const { createResourceCommitExecutor, createEvolveLegacyResourceCommitCapability, createPaymentQuote, createPaymentPlan, createEffectPlan } = await modules();
     const state = legacyRoot({ rna: 2, dna: 0 });
@@ -221,6 +245,27 @@ test('M3F1 detaches capability result diagnostics and rejects async/thenable lea
     sourceDetails.required = 99;
     assert.equal(result.reason.details.required, 2);
     assert.equal(Object.isFrozen(result.reason.details), true);
+});
+
+test('M3F1 hostile thrown values cannot break error classification or leave the module lock stuck', async () => {
+    const { createResourceCommitExecutor, EngineContractError } = await modules();
+    const emptyPayment = { operations: [] };
+    const emptyEffect = { operations: [] };
+    const hostile = new Proxy({}, {
+        getPrototypeOf(){ throw new Error('hostile prototype'); },
+    });
+    const failing = createResourceCommitExecutor({
+        commitResourceChanges(){ throw hostile; },
+    });
+    const healthy = createResourceCommitExecutor({
+        commitResourceChanges(){ return { status: 'committed', reason: null }; },
+    });
+
+    assert.throws(
+        () => failing.commit(emptyPayment, emptyEffect),
+        error => error instanceof EngineContractError && error.code === 'RESOURCE_COMMIT_CAPABILITY_FAILURE'
+    );
+    assert.deepEqual(healthy.commit(emptyPayment, emptyEffect), { status: 'committed', reason: null });
 });
 
 test('M3F1 resource commit reentrancy is module-wide and the lock recovers after failure', async () => {

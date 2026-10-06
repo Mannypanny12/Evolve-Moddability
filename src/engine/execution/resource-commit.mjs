@@ -13,12 +13,20 @@ function fail(code, message, details){
     throw new EngineContractError(code, message, details);
 }
 
+function isEngineContractError(value){
+    try {
+        return value instanceof EngineContractError;
+    }
+    catch {
+        return false;
+    }
+}
+
 function requireFields(fields, required, path, code){
     if (fields.size !== required.length){
         fail(code, `${path} must contain exactly ${required.length} fields.`, {
             path,
             fieldCount: fields.size,
-            requiredFields: required,
         });
     }
     for (const field of required){
@@ -336,7 +344,7 @@ export function createResourceCommitExecutor(rawOptions){
                 rawResult = Reflect.apply(commitResourceChanges, undefined, [changes]);
             }
             catch (error){
-                if (error instanceof EngineContractError) throw error;
+                if (isEngineContractError(error)) throw error;
                 fail('RESOURCE_COMMIT_CAPABILITY_FAILURE', 'Resource commit capability threw unexpectedly.');
             }
             return normalizeCommitResult(rawResult);

@@ -28,13 +28,22 @@ function listSourceFiles(dir){
     }
     return files.sort();
 }
+function listAllFiles(dir){
+    if (!fs.existsSync(dir)) return [];
+    const files = [];
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })){
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) files.push(...listAllFiles(full));
+        else if (entry.isFile()) files.push(full);
+    }
+    return files.sort();
+}
 
 function analyzeExecutionPackage(root){
     const dir = path.join(root, ...EXECUTION_ROOT.split('/'));
     if (!fs.existsSync(dir)) return [`${EXECUTION_ROOT}: M3F1 execution package is missing`];
-    const files = fs.readdirSync(dir, { withFileTypes: true })
-        .filter(entry => entry.isFile())
-        .map(entry => `${EXECUTION_ROOT}/${entry.name}`)
+    const files = listAllFiles(dir)
+        .map(filename => normalize(path.relative(root, filename)))
         .sort();
     return files.length === 1 && files[0] === RESOURCE_COMMIT
         ? []
@@ -57,7 +66,7 @@ function analyzeExecutorSource(source){
         ['platform/storage', /\b(?:localStorage|sessionStorage|indexedDB|fetch|XMLHttpRequest|WebSocket)\b/],
         ['time/random/scheduler', /\b(?:Date|performance|crypto|setTimeout|setInterval|requestAnimationFrame)\b|\bMath\s*\.\s*random\s*\(/],
         ['async control flow', /\b(?:async|await)\b|\bnew\s+Promise\b/],
-        ['dynamic loading', /\bimport\s*\(|\brequire\s*\(|\b(?:eval|Function|WebAssembly)\b/],
+        ['dynamic loading/code construction', /\bimport\s*\(|\brequire\s*\(|\beval\b|\bWebAssembly\b|\bnew\s+Function\b|\bFunction\s*\(/],
         ['queue/persistence scope', /\b(?:WorkQueue|WorkItem|enqueue|dequeue|serialize|deserialize)\b/],
     ];
     for (const [label, pattern] of forbidden){
