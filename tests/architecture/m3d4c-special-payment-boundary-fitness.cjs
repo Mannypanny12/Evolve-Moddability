@@ -56,12 +56,11 @@ function analyzeGenericCostSource(source, relativePath){
 
 function analyzeReviewedContractShape(source, relativePath){
     const violations = [];
-    const code = maskNonCode(source);
     if (relativePath === COMMON){
-        if (!/\bvalue\s*!==\s*['"]resource['"]\s*&&\s*value\s*!==\s*['"]prestige['"]\s*&&\s*value\s*!==\s*['"]special['"]/.test(code)){
+        if (!/\bvalue\s*!==\s*['"]resource['"]\s*&&\s*value\s*!==\s*['"]prestige['"]\s*&&\s*value\s*!==\s*['"]special['"]/.test(source)){
             violations.push(`${relativePath}: quote kind union must remain exactly resource | prestige | special`);
         }
-        if (!/\bkind\s*!==\s*['"]pool['"]/.test(code)){
+        if (!/\bkind\s*!==\s*['"]pool['"]/.test(source)){
             violations.push(`${relativePath}: M3D4C special source union must remain pool-only`);
         }
         if (!/['"]payment-pool['"]/.test(source) || !/['"]payment['"]/.test(source)){
