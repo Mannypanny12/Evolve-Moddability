@@ -90,6 +90,18 @@ export function createEvolveLegacyMappingCatalog(){
         sourceLocations: ['src/actions.js', 'src/vars.js'],
     });
 
+    registerDirect(catalog, {
+        id: 'evolve.payment_pool.purifier_supply_state',
+        domain: 'payment-pools',
+        family: 'payment-pool',
+        legacyPath: 'global.portal.purifier',
+        canonicalId: 'evolve:payment-pool/purifier_supply',
+        introducedIn: 'M3D4C',
+        removeBy: 'M6K',
+        stateSemantics: 'Legacy purifier supply/sup_max state used as the bounded M3D4C pool-backed Supply payment source.',
+        sourceLocations: ['src/actions.js', 'src/vars.js'],
+    });
+
     catalog.register({
         id: 'evolve.technology.primitive_progression',
         domain: 'technologies',
