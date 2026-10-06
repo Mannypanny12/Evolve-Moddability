@@ -7,8 +7,8 @@ import {
 
 export const MAX_PAYMENT_QUOTE_LINES = 4096;
 
-const QUOTE_LINE_FIELDS = Object.freeze(['kind', 'resourceId', 'amount']);
-const QUOTE_LINE_FIELD_SET = new Set(QUOTE_LINE_FIELDS);
+const RESOURCE_LINE_FIELDS = Object.freeze(['kind', 'resourceId', 'amount']);
+const PRESTIGE_LINE_FIELDS = Object.freeze(['kind', 'prestigeId', 'amount']);
 const PAYMENT_QUOTE_LINE_KIND_PATTERN = /^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/;
 
 function fail(code, message, details){
@@ -81,14 +81,46 @@ function assertPlainRecordContainer(value, path, code){
 
 function readQuoteLineFields(value, path){
     assertPlainRecordContainer(value, path, 'INVALID_PAYMENT_QUOTE_LINE');
-    const fields = inspectPlainInertObject(value, {
+    return inspectPlainInertObject(value, {
         path,
         code: 'INVALID_PAYMENT_QUOTE_LINE',
-        maxFields: QUOTE_LINE_FIELDS.length,
+        maxFields: 3,
     });
+}
 
+function readLineKind(fields, path){
+    if (!fields.has('kind')){
+        fail('INVALID_PAYMENT_QUOTE_LINE', `${path} is missing required field "kind".`, {
+            path: inertDataPath(path, 'kind'),
+            field: 'kind',
+        });
+    }
+    const value = fields.get('kind');
+    if (typeof value !== 'string' || !PAYMENT_QUOTE_LINE_KIND_PATTERN.test(value)){
+        fail(
+            'INVALID_PAYMENT_QUOTE_LINE_KIND',
+            `${path}.kind must be a stable lowercase payment quote line kind.`,
+            {
+                path: `${path}.kind`,
+                valueType: typeof value,
+                value: typeof value === 'string' ? value : undefined,
+            }
+        );
+    }
+    if (value !== 'resource' && value !== 'prestige'){
+        fail(
+            'UNSUPPORTED_PAYMENT_QUOTE_LINE_KIND',
+            `${path}.kind is not a supported payment quote line kind.`,
+            { path: `${path}.kind`, kind: value }
+        );
+    }
+    return value;
+}
+
+function assertClosedFields(fields, path, expected){
+    const expectedSet = new Set(expected);
     for (const key of fields.keys()){
-        if (!QUOTE_LINE_FIELD_SET.has(key)){
+        if (!expectedSet.has(key)){
             fail(
                 'INVALID_PAYMENT_QUOTE_LINE',
                 `${path} contains unsupported field ${JSON.stringify(key)}.`,
@@ -96,7 +128,7 @@ function readQuoteLineFields(value, path){
             );
         }
     }
-    for (const key of QUOTE_LINE_FIELDS){
+    for (const key of expected){
         if (!fields.has(key)){
             fail(
                 'INVALID_PAYMENT_QUOTE_LINE',
@@ -105,38 +137,15 @@ function readQuoteLineFields(value, path){
             );
         }
     }
-    return fields;
 }
 
-function assertResourceKind(value, path){
-    if (typeof value !== 'string' || !PAYMENT_QUOTE_LINE_KIND_PATTERN.test(value)){
-        fail(
-            'INVALID_PAYMENT_QUOTE_LINE_KIND',
-            `${path} must be a stable lowercase payment quote line kind.`,
-            {
-                path,
-                valueType: typeof value,
-                value: typeof value === 'string' ? value : undefined,
-            }
-        );
-    }
-    if (value !== 'resource'){
-        fail(
-            'UNSUPPORTED_PAYMENT_QUOTE_LINE_KIND',
-            `${path} is not a supported payment quote line kind.`,
-            { path, kind: value }
-        );
-    }
-    return value;
-}
-
-function assertResourceId(value, path){
+function assertTypedId(value, path, expectedType, code){
     if (typeof value !== 'string'){
-        fail(
-            'INVALID_PAYMENT_QUOTE_RESOURCE_ID',
-            `${path} must be a canonical resource content ID string.`,
-            { path, expectedType: 'resource', valueType: typeof value }
-        );
+        fail(code, `${path} must be a canonical ${expectedType} content ID string.`, {
+            path,
+            expectedType,
+            valueType: typeof value,
+        });
     }
 
     let parsed;
@@ -145,23 +154,19 @@ function assertResourceId(value, path){
     }
     catch (error){
         if (!isEngineContractError(error)) throw error;
-        fail(
-            'INVALID_PAYMENT_QUOTE_RESOURCE_ID',
-            `${path} must be a canonical resource content ID.`,
-            { path, expectedType: 'resource', value }
-        );
+        fail(code, `${path} must be a canonical ${expectedType} content ID.`, {
+            path,
+            expectedType,
+            value,
+        });
     }
-    if (parsed.type !== 'resource'){
-        fail(
-            'INVALID_PAYMENT_QUOTE_RESOURCE_ID',
-            `${path} must identify content type resource.`,
-            {
-                path,
-                expectedType: 'resource',
-                actualType: parsed.type,
-                value,
-            }
-        );
+    if (parsed.type !== expectedType){
+        fail(code, `${path} must identify content type ${expectedType}.`, {
+            path,
+            expectedType,
+            actualType: parsed.type,
+            value,
+        });
     }
     return parsed.canonical;
 }
@@ -193,9 +198,26 @@ export function readPaymentQuoteLines(value, path = 'paymentQuote.lines'){
 export function normalizePaymentQuoteLine(value, index){
     const path = `paymentQuote.lines[${index}]`;
     const fields = readQuoteLineFields(value, path);
-    const kind = assertResourceKind(fields.get('kind'), `${path}.kind`);
-    const resourceId = assertResourceId(fields.get('resourceId'), `${path}.resourceId`);
+    const kind = readLineKind(fields, path);
     const amount = assertAmount(fields.get('amount'), `${path}.amount`);
 
-    return Object.freeze({ kind, resourceId, amount });
+    if (kind === 'resource'){
+        assertClosedFields(fields, path, RESOURCE_LINE_FIELDS);
+        const resourceId = assertTypedId(
+            fields.get('resourceId'),
+            `${path}.resourceId`,
+            'resource',
+            'INVALID_PAYMENT_QUOTE_RESOURCE_ID'
+        );
+        return Object.freeze({ kind, resourceId, amount });
+    }
+
+    assertClosedFields(fields, path, PRESTIGE_LINE_FIELDS);
+    const prestigeId = assertTypedId(
+        fields.get('prestigeId'),
+        `${path}.prestigeId`,
+        'prestige',
+        'INVALID_PAYMENT_QUOTE_PRESTIGE_ID'
+    );
+    return Object.freeze({ kind, prestigeId, amount });
 }
