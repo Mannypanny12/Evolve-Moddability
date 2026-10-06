@@ -18,7 +18,7 @@ const root = path.resolve(__dirname, '../..');
 
 function validPlanSource(){
     return "import { normalizePaymentQuoteInput } from './payment-quote-input.mjs';\n" +
-        "function operationFor(line){ if(line.kind === 'prestige'){ return { kind: 'payment.prestige.debit', prestigeId: line.prestigeId, amount: line.amount }; } return { kind: 'payment.resource.debit', resourceId: line.resourceId, amount: line.amount }; }\n" +
+        "function operationFor(line){ if(line.kind === 'prestige'){ return { kind: 'payment.prestige.debit', prestigeId: line.prestigeId, amount: line.amount }; } if(line.kind === 'special'){ return { kind: 'payment.special.settle', paymentId: line.paymentId, source: { kind: 'pool', poolId: line.source.poolId }, amount: line.amount }; } return { kind: 'payment.resource.debit', resourceId: line.resourceId, amount: line.amount }; }\n" +
         "export function createPaymentPlan(q){ const quote = normalizePaymentQuoteInput(q); return { operations: quote.lines.map(operationFor) }; }";
 }
 
@@ -29,7 +29,7 @@ function validQuoteInputSource(){
         'export function normalizePaymentQuoteInput(q){ return createPaymentQuote(q.lines); }';
 }
 
-test('M3D3/M3D4B PaymentPlan boundary is clean in the repository', () => {
+test('M3D3-M3D4C PaymentPlan boundary is clean in the repository', () => {
     assert.deepEqual(findViolations(root), []);
 });
 
@@ -43,14 +43,14 @@ test('PaymentPlan exposes exactly one synchronous one-argument factory', () => {
     ]) assert.notDeepEqual(analyzePlanExports(source), []);
 });
 
-test('PaymentPlan constructs exactly the reviewed resource and prestige debit kinds', () => {
+test('PaymentPlan constructs exactly the reviewed resource, prestige and special operation kinds', () => {
     assert.deepEqual(analyzePlanOperationKinds(validPlanSource()), []);
-    assert.notDeepEqual(analyzePlanOperationKinds(validPlanSource().replace("kind: 'payment.prestige.debit', ", '')), []);
-    assert.notDeepEqual(analyzePlanOperationKinds(validPlanSource().replace("kind: 'payment.prestige.debit'", "kind: 'payment.special.debit'")), []);
+    assert.notDeepEqual(analyzePlanOperationKinds(validPlanSource().replace("kind: 'payment.special.settle', ", '')), []);
+    assert.notDeepEqual(analyzePlanOperationKinds(validPlanSource().replace("kind: 'payment.special.settle'", "kind: 'payment.special.execute'")), []);
     assert.notDeepEqual(analyzePlanOperationKinds(validPlanSource().replace("kind: 'payment.resource.debit'", 'kind: operationKind')), []);
 });
 
-test('PaymentPlan rejects state reads, execution authority, first-party names, future special scope and unrelated dependencies', () => {
+test('PaymentPlan rejects state reads, execution authority, first-party names and unrelated dependencies', () => {
     const prefix = "import { normalizePaymentQuoteInput } from './payment-quote-input.mjs';\n";
     const cases = [
         'mutationAuthority.beginTransaction();',
@@ -58,9 +58,9 @@ test('PaymentPlan rejects state reads, execution authority, first-party names, f
         'assessCurrentAffordability();',
         'const capacity = 10;',
         'const Plasmid = true;',
-        "const paymentId = 'example:payment/test';",
+        'const purifier = true;',
         'adjustCosts();',
-        "const id = 'evolve:prestige/test';",
+        "const id = 'evolve:payment/test';",
         "import '../effects/effect-plan.mjs';",
         'async function helper(){}',
         'Promise.resolve(1);',
