@@ -9,6 +9,8 @@ export const MAX_PAYMENT_QUOTE_LINES = 4096;
 
 const RESOURCE_LINE_FIELDS = Object.freeze(['kind', 'resourceId', 'amount']);
 const PRESTIGE_LINE_FIELDS = Object.freeze(['kind', 'prestigeId', 'amount']);
+const SPECIAL_LINE_FIELDS = Object.freeze(['kind', 'paymentId', 'source', 'amount']);
+const SPECIAL_POOL_SOURCE_FIELDS = Object.freeze(['kind', 'poolId']);
 const PAYMENT_QUOTE_LINE_KIND_PATTERN = /^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/;
 
 function fail(code, message, details){
@@ -84,7 +86,16 @@ function readQuoteLineFields(value, path){
     return inspectPlainInertObject(value, {
         path,
         code: 'INVALID_PAYMENT_QUOTE_LINE',
-        maxFields: 3,
+        maxFields: 4,
+    });
+}
+
+function readSpecialSourceFields(value, path){
+    assertPlainRecordContainer(value, path, 'INVALID_PAYMENT_QUOTE_SPECIAL_SOURCE');
+    return inspectPlainInertObject(value, {
+        path,
+        code: 'INVALID_PAYMENT_QUOTE_SPECIAL_SOURCE',
+        maxFields: 2,
     });
 }
 
@@ -107,7 +118,7 @@ function readLineKind(fields, path){
             }
         );
     }
-    if (value !== 'resource' && value !== 'prestige'){
+    if (value !== 'resource' && value !== 'prestige' && value !== 'special'){
         fail(
             'UNSUPPORTED_PAYMENT_QUOTE_LINE_KIND',
             `${path}.kind is not a supported payment quote line kind.`,
@@ -117,12 +128,12 @@ function readLineKind(fields, path){
     return value;
 }
 
-function assertClosedFields(fields, path, expected){
+function assertClosedFields(fields, path, expected, code = 'INVALID_PAYMENT_QUOTE_LINE'){
     const expectedSet = new Set(expected);
     for (const key of fields.keys()){
         if (!expectedSet.has(key)){
             fail(
-                'INVALID_PAYMENT_QUOTE_LINE',
+                code,
                 `${path} contains unsupported field ${JSON.stringify(key)}.`,
                 { path: inertDataPath(path, key), field: key }
             );
@@ -131,7 +142,7 @@ function assertClosedFields(fields, path, expected){
     for (const key of expected){
         if (!fields.has(key)){
             fail(
-                'INVALID_PAYMENT_QUOTE_LINE',
+                code,
                 `${path} is missing required field ${JSON.stringify(key)}.`,
                 { path: inertDataPath(path, key), field: key }
             );
@@ -186,6 +197,31 @@ function assertAmount(value, path){
     return value;
 }
 
+function normalizeSpecialSource(value, path){
+    const fields = readSpecialSourceFields(value, path);
+    if (!fields.has('kind')){
+        fail('INVALID_PAYMENT_QUOTE_SPECIAL_SOURCE', `${path} is missing required field "kind".`, {
+            path: inertDataPath(path, 'kind'),
+            field: 'kind',
+        });
+    }
+    const kind = fields.get('kind');
+    if (kind !== 'pool'){
+        fail('UNSUPPORTED_PAYMENT_QUOTE_SPECIAL_SOURCE_KIND', `${path}.kind is not a supported special payment source kind.`, {
+            path: `${path}.kind`,
+            kind,
+        });
+    }
+    assertClosedFields(fields, path, SPECIAL_POOL_SOURCE_FIELDS, 'INVALID_PAYMENT_QUOTE_SPECIAL_SOURCE');
+    const poolId = assertTypedId(
+        fields.get('poolId'),
+        `${path}.poolId`,
+        'payment-pool',
+        'INVALID_PAYMENT_QUOTE_POOL_ID'
+    );
+    return Object.freeze({ kind, poolId });
+}
+
 export function readPaymentQuoteLines(value, path = 'paymentQuote.lines'){
     assertNormalArrayContainer(value, path, 'INVALID_PAYMENT_QUOTE');
     return inspectDenseInertArray(value, {
@@ -212,13 +248,26 @@ export function normalizePaymentQuoteLine(value, index){
         return Object.freeze({ kind, resourceId, amount });
     }
 
-    assertClosedFields(fields, path, PRESTIGE_LINE_FIELDS);
-    const prestigeId = assertTypedId(
-        fields.get('prestigeId'),
-        `${path}.prestigeId`,
-        'prestige',
-        'INVALID_PAYMENT_QUOTE_PRESTIGE_ID'
+    if (kind === 'prestige'){
+        assertClosedFields(fields, path, PRESTIGE_LINE_FIELDS);
+        const prestigeId = assertTypedId(
+            fields.get('prestigeId'),
+            `${path}.prestigeId`,
+            'prestige',
+            'INVALID_PAYMENT_QUOTE_PRESTIGE_ID'
+        );
+        const amount = assertAmount(fields.get('amount'), `${path}.amount`);
+        return Object.freeze({ kind, prestigeId, amount });
+    }
+
+    assertClosedFields(fields, path, SPECIAL_LINE_FIELDS);
+    const paymentId = assertTypedId(
+        fields.get('paymentId'),
+        `${path}.paymentId`,
+        'payment',
+        'INVALID_PAYMENT_QUOTE_PAYMENT_ID'
     );
+    const source = normalizeSpecialSource(fields.get('source'), `${path}.source`);
     const amount = assertAmount(fields.get('amount'), `${path}.amount`);
-    return Object.freeze({ kind, prestigeId, amount });
+    return Object.freeze({ kind, paymentId, source, amount });
 }
