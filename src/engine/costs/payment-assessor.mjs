@@ -11,9 +11,13 @@ function fail(code, message, details){
 }
 
 function lineSubject(line){
-    return line.kind === 'resource'
-        ? { family: 'resource', id: line.resourceId, detailKey: 'resourceId' }
-        : { family: 'prestige', id: line.prestigeId, detailKey: 'prestigeId' };
+    if (line.kind === 'resource'){
+        return { family: 'resource', id: line.resourceId, detailKey: 'resourceId' };
+    }
+    if (line.kind === 'prestige'){
+        return { family: 'prestige', id: line.prestigeId, detailKey: 'prestigeId' };
+    }
+    return { family: 'pool', id: line.source.poolId, detailKey: 'poolId' };
 }
 
 function accumulateRequirement(cumulative, line, lineIndex){
@@ -43,12 +47,23 @@ function requirePrestigeReads(reads){
     return reads.prestige;
 }
 
+function requirePoolReads(reads){
+    if (!reads.pool){
+        fail('MISSING_PAYMENT_READ_FAMILY', 'Pool-backed special payment assessment requires a pool read capability.', {
+            readFamily: 'pool',
+        });
+    }
+    return reads.pool;
+}
+
 function currentAssessment(quote, reads){
     const cumulative = new Map();
     const resourceFacts = new Map();
     const prestigeFacts = new Map();
+    const poolFacts = new Map();
     const amountFailed = new Set();
     const capacityFailed = new Set();
+    const missingPoolFailed = new Set();
     const reasons = [];
 
     function resourceFactsFor(resourceId){
@@ -68,6 +83,18 @@ function currentAssessment(quote, reads){
         return prestigeFacts.get(prestigeId);
     }
 
+    function poolFactsFor(poolId){
+        if (!poolFacts.has(poolId)){
+            const pool = requirePoolReads(reads);
+            const present = pool.present(poolId);
+            poolFacts.set(poolId, Object.freeze({
+                present,
+                amount: present ? pool.amount(poolId) : null,
+            }));
+        }
+        return poolFacts.get(poolId);
+    }
+
     quote.lines.forEach((line, lineIndex) => {
         const { subject, key, requiredAmount } = accumulateRequirement(cumulative, line, lineIndex);
 
@@ -82,6 +109,33 @@ function currentAssessment(quote, reads){
                         prestigeId: subject.id,
                         requiredAmount,
                         currentAmount,
+                    },
+                });
+            }
+            return;
+        }
+
+        if (subject.family === 'pool'){
+            const facts = poolFactsFor(subject.id);
+            if (!facts.present){
+                if (!missingPoolFailed.has(key)){
+                    missingPoolFailed.add(key);
+                    reasons.push({
+                        code: 'payment.current.pool.missing',
+                        details: { lineIndex, poolId: subject.id },
+                    });
+                }
+                return;
+            }
+            if (!amountFailed.has(key) && requiredAmount > facts.amount){
+                amountFailed.add(key);
+                reasons.push({
+                    code: 'payment.current.pool.amount_insufficient',
+                    details: {
+                        lineIndex,
+                        poolId: subject.id,
+                        requiredAmount,
+                        currentAmount: facts.amount,
                     },
                 });
             }
@@ -124,9 +178,11 @@ function queueAssessment(quote, reads){
     const cumulative = new Map();
     const resourceFacts = new Map();
     const prestigeFacts = new Map();
+    const poolFacts = new Map();
     const unavailableFailed = new Set();
     const capacityFailed = new Set();
     const prestigeFailed = new Set();
+    const missingPoolFailed = new Set();
     const reasons = [];
 
     function resourceFactsFor(resourceId){
@@ -146,6 +202,18 @@ function queueAssessment(quote, reads){
         return prestigeFacts.get(prestigeId);
     }
 
+    function poolFactsFor(poolId){
+        if (!poolFacts.has(poolId)){
+            const pool = requirePoolReads(reads);
+            const present = pool.present(poolId);
+            poolFacts.set(poolId, Object.freeze({
+                present,
+                capacity: present ? pool.capacity(poolId) : null,
+            }));
+        }
+        return poolFacts.get(poolId);
+    }
+
     quote.lines.forEach((line, lineIndex) => {
         const { subject, key, requiredAmount } = accumulateRequirement(cumulative, line, lineIndex);
 
@@ -160,6 +228,33 @@ function queueAssessment(quote, reads){
                         prestigeId: subject.id,
                         requiredAmount,
                         currentAmount,
+                    },
+                });
+            }
+            return;
+        }
+
+        if (subject.family === 'pool'){
+            const facts = poolFactsFor(subject.id);
+            if (!facts.present){
+                if (!missingPoolFailed.has(key)){
+                    missingPoolFailed.add(key);
+                    reasons.push({
+                        code: 'payment.queue.pool.missing',
+                        details: { lineIndex, poolId: subject.id },
+                    });
+                }
+                return;
+            }
+            if (!capacityFailed.has(key) && requiredAmount > facts.capacity){
+                capacityFailed.add(key);
+                reasons.push({
+                    code: 'payment.queue.pool.capacity_insufficient',
+                    details: {
+                        lineIndex,
+                        poolId: subject.id,
+                        requiredAmount,
+                        capacity: facts.capacity,
                     },
                 });
             }
