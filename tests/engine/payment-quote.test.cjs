@@ -101,7 +101,7 @@ test('PaymentQuote preserves exact line order, duplicates and repeated input ide
     assert.equal(quote.lines[0].amount, 2);
 });
 
-test('PaymentQuote distinguishes malformed line kinds from well-formed unsupported later families', async () => {
+test('PaymentQuote distinguishes malformed kinds, admitted-family shape errors, and unsupported later families', async () => {
     const { createPaymentQuote, EngineContractError } = await modules();
     for (const kind of [null, 1, {}, 'Resource', 'Bad Kind', 'resource..grant']){
         assert.throws(
@@ -109,7 +109,13 @@ test('PaymentQuote distinguishes malformed line kinds from well-formed unsupport
             error => error instanceof EngineContractError && error.code === 'INVALID_PAYMENT_QUOTE_LINE_KIND'
         );
     }
-    for (const kind of ['special', 'resource.consume']){
+
+    assert.throws(
+        () => createPaymentQuote([{ kind: 'special', resourceId: 'example:resource/wood', amount: 1 }]),
+        error => error instanceof EngineContractError && error.code === 'INVALID_PAYMENT_QUOTE_LINE'
+    );
+
+    for (const kind of ['resource.consume', 'special.consume']){
         assert.throws(
             () => createPaymentQuote([{ kind, resourceId: 'example:resource/wood', amount: 1 }]),
             error => error instanceof EngineContractError && error.code === 'UNSUPPORTED_PAYMENT_QUOTE_LINE_KIND'

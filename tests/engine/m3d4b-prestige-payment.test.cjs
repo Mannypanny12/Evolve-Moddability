@@ -42,7 +42,7 @@ test('M3D4B PaymentQuote accepts generic prestige lines and keeps them detached 
     assert.equal(quote.lines[0].amount, 2.5);
 });
 
-test('M3D4B prestige quote lines require canonical prestige IDs and exact family fields', async () => {
+test('M3D4B prestige quote lines retain canonical IDs and exact family fields after M3D4C widening', async () => {
     const [{ createPaymentQuote }, { EngineContractError }] = await Promise.all([quotePromise, identityPromise]);
 
     for (const line of [
@@ -55,14 +55,20 @@ test('M3D4B prestige quote lines require canonical prestige IDs and exact family
         );
     }
 
-    assert.throws(
-        () => createPaymentQuote([{ kind: 'prestige', resourceId: 'example:resource/token', amount: 1 }]),
-        error => error instanceof EngineContractError && error.code === 'INVALID_PAYMENT_QUOTE_LINE'
-    );
-    assert.throws(
-        () => createPaymentQuote([{ kind: 'special', paymentId: 'example:payment/test', amount: 1 }]),
-        error => error instanceof EngineContractError && error.code === 'UNSUPPORTED_PAYMENT_QUOTE_LINE_KIND'
-    );
+    for (const line of [
+        { kind: 'prestige', resourceId: 'example:resource/token', amount: 1 },
+        {
+            kind: 'prestige',
+            prestigeId: 'example:prestige/token',
+            source: { kind: 'pool', poolId: 'example:payment-pool/test' },
+            amount: 1,
+        },
+    ]){
+        assert.throws(
+            () => createPaymentQuote([line]),
+            error => error instanceof EngineContractError && error.code === 'INVALID_PAYMENT_QUOTE_LINE'
+        );
+    }
 });
 
 test('M3D4B current and queue prestige assessment both use current prestige holdings only', async () => {

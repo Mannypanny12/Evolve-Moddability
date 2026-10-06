@@ -57,14 +57,31 @@ test('M3D4C reviewed quote and plan shapes reject family widening', () => {
         "if (kind !== 'pool'){}\nconst a = 'payment'; const b = 'payment-pool';";
     assert.deepEqual(analyzeReviewedContractShape(validCommon, COMMON), []);
     assert.notDeepEqual(
+        analyzeReviewedContractShape(
+            validCommon.replace("value !== 'special')", "value !== 'special' && value !== 'future')"),
+            COMMON
+        ),
+        []
+    );
+    assert.notDeepEqual(
         analyzeReviewedContractShape(validCommon.replace("kind !== 'pool'", "kind !== 'pool' && kind !== 'resource'"), COMMON),
         []
     );
+
+    const decoyCommon =
+        "// if (value !== 'resource' && value !== 'prestige' && value !== 'special'){} if (kind !== 'pool'){}\n" +
+        "if (value !== 'resource'){}\nif (kind !== 'pool' && kind !== 'resource'){}\n" +
+        "const a = 'payment'; const b = 'payment-pool';";
+    assert.notDeepEqual(analyzeReviewedContractShape(decoyCommon, COMMON), []);
 
     const validPlan = "const a = { kind: 'payment.special.settle', source: { kind: 'pool' } };";
     assert.deepEqual(analyzeReviewedContractShape(validPlan, PLAN), []);
     assert.notDeepEqual(
         analyzeReviewedContractShape(validPlan.replace('payment.special.settle', 'payment.special.execute'), PLAN),
+        []
+    );
+    assert.notDeepEqual(
+        analyzeReviewedContractShape(validPlan + "\nconst b = { kind: 'payment.special.execute' };", PLAN),
         []
     );
 });

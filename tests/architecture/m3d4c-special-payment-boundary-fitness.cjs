@@ -2,6 +2,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const esbuild = require('esbuild');
 const { extractModuleReferences, maskNonCode } = require('./architecture-fitness.cjs');
 
 const COST_ROOT = 'src/engine/costs';
@@ -21,6 +22,9 @@ const FORBIDDEN_LATER_SCOPE = /\b(?:adjustCosts|costModifier|priceModifier|modif
 const FIRST_PARTY_ENGINE_TERMS = /\b(?:Plasmid|AntiPlasmid|Supply|Knowledge|Species|purifier|sup_max)\b/i;
 const DEFERRED_SPECIAL_TERMS = /\b(?:Knowledge|Species|defaultJob|default_job|stats\.know)\b/i;
 const POOL_MAPPING_LIST = /const\s+SUPPORTED_POOL_MAPPING_IDS\s*=\s*Object\.freeze\(\s*\[\s*['"]evolve\.payment_pool\.purifier_supply_state['"]\s*,?\s*\]\s*\)\s*;/;
+const EXACT_QUOTE_KIND_GUARD = /\bif\s*\(\s*value\s*!==\s*['"]resource['"]\s*&&\s*value\s*!==\s*['"]prestige['"]\s*&&\s*value\s*!==\s*['"]special['"]\s*\)\s*\{/g;
+const EXACT_SPECIAL_SOURCE_GUARD = /\bif\s*\(\s*kind\s*!==\s*['"]pool['"]\s*\)\s*\{/g;
+const SPECIAL_PLAN_KIND = /\bkind\s*:\s*['"](payment\.special\.[a-z0-9._-]+)['"]/g;
 
 function normalize(value){ return value.split(path.sep).join('/'); }
 function resolveRelative(fromRelativePath, specifier){
@@ -37,6 +41,29 @@ function listSourceFiles(dir){
         else if (entry.isFile() && SOURCE_EXTENSIONS.has(path.extname(entry.name))) files.push(full);
     }
     return files.sort();
+}
+
+function sourceWithoutComments(source, relativePath, violations){
+    try {
+        return esbuild.transformSync(source, {
+            loader: 'js',
+            format: 'esm',
+            legalComments: 'none',
+            minify: false,
+            sourcefile: relativePath,
+        }).code;
+    }
+    catch {
+        violations.push(`${relativePath}: contract source could not be parsed for exact-shape review`);
+        return '';
+    }
+}
+
+function exactMatchCount(source, pattern){
+    pattern.lastIndex = 0;
+    const matches = source.match(pattern);
+    pattern.lastIndex = 0;
+    return matches ? matches.length : 0;
 }
 
 function analyzeGenericCostSource(source, relativePath){
@@ -56,35 +83,41 @@ function analyzeGenericCostSource(source, relativePath){
 
 function analyzeReviewedContractShape(source, relativePath){
     const violations = [];
+    const reviewedSource = sourceWithoutComments(source, relativePath, violations);
+    if (!reviewedSource) return violations;
+
     if (relativePath === COMMON){
-        if (!/\bvalue\s*!==\s*['"]resource['"]\s*&&\s*value\s*!==\s*['"]prestige['"]\s*&&\s*value\s*!==\s*['"]special['"]/.test(source)){
+        if (exactMatchCount(reviewedSource, EXACT_QUOTE_KIND_GUARD) !== 1){
             violations.push(`${relativePath}: quote kind union must remain exactly resource | prestige | special`);
         }
-        if (!/\bkind\s*!==\s*['"]pool['"]/.test(source)){
+        if (exactMatchCount(reviewedSource, EXACT_SPECIAL_SOURCE_GUARD) !== 1){
             violations.push(`${relativePath}: M3D4C special source union must remain pool-only`);
         }
-        if (!/['"]payment-pool['"]/.test(source) || !/['"]payment['"]/.test(source)){
+        if (!/['"]payment-pool['"]/.test(reviewedSource) || !/['"]payment['"]/.test(reviewedSource)){
             violations.push(`${relativePath}: special quote identities must retain typed payment and payment-pool validation`);
         }
     }
     if (relativePath === READ_CAPABILITIES){
-        if (!/\['resource',\s*'prestige',\s*'pool'\]/.test(source)){
+        if (!/\['resource',\s*'prestige',\s*'pool'\]/.test(reviewedSource) &&
+            !/\["resource",\s*"prestige",\s*"pool"\]/.test(reviewedSource)){
             violations.push(`${relativePath}: payment read root must retain optional prestige and pool families`);
         }
-        if (!/\['present',\s*'amount',\s*'capacity'\]/.test(source)){
+        if (!/\['present',\s*'amount',\s*'capacity'\]/.test(reviewedSource) &&
+            !/\["present",\s*"amount",\s*"capacity"\]/.test(reviewedSource)){
             violations.push(`${relativePath}: pool read family must remain exactly present/amount/capacity`);
         }
     }
     if (relativePath === ASSESSOR){
-        if (!/family:\s*['"]pool['"]/.test(source) || !/readFamily:\s*['"]pool['"]/.test(source)){
+        if (!/family:\s*['"]pool['"]/.test(reviewedSource) || !/readFamily:\s*['"]pool['"]/.test(reviewedSource)){
             violations.push(`${relativePath}: pool-backed special assessment source handling is missing`);
         }
     }
     if (relativePath === PLAN){
-        if (!/kind:\s*['"]payment\.special\.settle['"]/.test(source)){
+        const specialKinds = [...reviewedSource.matchAll(SPECIAL_PLAN_KIND)].map(match => match[1]);
+        if (specialKinds.length !== 1 || specialKinds[0] !== 'payment.special.settle'){
             violations.push(`${relativePath}: special quotes must plan only payment.special.settle`);
         }
-        if (!/kind:\s*['"]pool['"]/.test(source)){
+        if (!/kind:\s*['"]pool['"]/.test(reviewedSource)){
             violations.push(`${relativePath}: M3D4C special settlement source must remain pool-backed inert data`);
         }
     }

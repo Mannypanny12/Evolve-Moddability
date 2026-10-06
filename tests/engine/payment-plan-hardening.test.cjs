@@ -122,8 +122,8 @@ test('M3D3 operation output never aliases caller quote lines, even when the same
     assert.equal(plan.operations[1].amount, 3);
 });
 
-test('M3D4B consciously admits prestige while retaining a tripwire for the later special family', async () => {
-    const { createPaymentPlan, EngineContractError } = await modules();
+test('M3D4B prestige planning remains stable after M3D4C special admission', async () => {
+    const { createPaymentPlan } = await modules();
 
     assert.deepEqual(
         createPaymentPlan({
@@ -132,11 +132,20 @@ test('M3D4B consciously admits prestige while retaining a tripwire for the later
         [{ kind: 'payment.prestige.debit', prestigeId: 'example:prestige/token', amount: 1 }]
     );
 
-    assert.throws(
-        () => createPaymentPlan({
-            lines: [{ kind: 'special', paymentId: 'example:payment/test', amount: 1 }],
-        }),
-        error => error instanceof EngineContractError &&
-            error.code === 'UNSUPPORTED_PAYMENT_QUOTE_LINE_KIND'
-    );
+    const specialPlan = createPaymentPlan({
+        lines: [{
+            kind: 'special',
+            paymentId: 'example:payment/test',
+            source: { kind: 'pool', poolId: 'example:payment-pool/test' },
+            amount: 1,
+        }],
+    });
+    assert.deepEqual(specialPlan.operations, [{
+        kind: 'payment.special.settle',
+        paymentId: 'example:payment/test',
+        source: { kind: 'pool', poolId: 'example:payment-pool/test' },
+        amount: 1,
+    }]);
+    assert.equal(Object.isFrozen(specialPlan.operations[0]), true);
+    assert.equal(Object.isFrozen(specialPlan.operations[0].source), true);
 });
