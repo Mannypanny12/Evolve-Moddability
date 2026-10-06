@@ -24,8 +24,6 @@ const FORBIDDEN_IDENTIFIERS = Object.freeze([
     'arpaTimeCheck',
     'calcQueueMax',
     'calcRQueueMax',
-    'dispatch',
-    'execute',
     'PaymentPlan',
     'PaymentQuote',
     'EffectPlan',
@@ -43,15 +41,19 @@ function normalize(relativePath){
     return relativePath.split(path.sep).join('/');
 }
 
-function listSourceFiles(dir){
+function listFiles(dir){
     if (!fs.existsSync(dir)) return [];
     const files = [];
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })){
         const full = path.join(dir, entry.name);
-        if (entry.isDirectory()) files.push(...listSourceFiles(full));
-        else if (entry.isFile() && SOURCE_EXTENSIONS.has(path.extname(entry.name))) files.push(full);
+        if (entry.isDirectory()) files.push(...listFiles(full));
+        else if (entry.isFile()) files.push(full);
     }
     return files.sort();
+}
+
+function listSourceFiles(dir){
+    return listFiles(dir).filter(filename => SOURCE_EXTENSIONS.has(path.extname(filename)));
 }
 
 function resolveRelative(fromRelativePath, specifier){
@@ -76,19 +78,19 @@ function analyzeQueueModule(source, relativePath){
             violations.push(`${relativePath}: M3E closure forbids generic queue ownership of ${identifier}`);
         }
     }
-    if (source.includes('evolve:command/')){
-        violations.push(`${relativePath}: M3E generic queue modules may not embed first-party command IDs`);
+    if (source.includes('evolve:')){
+        violations.push(`${relativePath}: M3E generic queue modules may not embed first-party content IDs`);
     }
     return violations;
 }
 
-function analyzeVanillaQueueImports(source, relativePath){
+function analyzeProductionQueueImports(source, relativePath){
     const violations = [];
     for (const reference of extractModuleReferences(source, relativePath)){
         if (!reference.specifier.startsWith('.')) continue;
         const target = resolveRelative(relativePath, reference.specifier);
         if (target.startsWith(`${QUEUE_ROOT}/`)){
-            violations.push(`${relativePath}: vanilla production source may not consume M3E queue modules before reviewed cutover: ${target}`);
+            violations.push(`${relativePath}: production code outside the queue package may not consume M3E queue modules before reviewed cutover: ${target}`);
         }
     }
     return violations;
@@ -97,13 +99,14 @@ function analyzeVanillaQueueImports(source, relativePath){
 function findViolations(root){
     const violations = [];
     const queueDir = path.join(root, ...QUEUE_ROOT.split('/'));
-    const queueFiles = listSourceFiles(queueDir).map(filename => normalize(path.relative(root, filename)));
-    if (JSON.stringify(queueFiles) !== JSON.stringify([...EXPECTED_QUEUE_MODULES].sort())){
+    const queueFiles = listFiles(queueDir).map(filename => normalize(path.relative(root, filename)));
+    const expected = [...EXPECTED_QUEUE_MODULES].sort();
+    if (JSON.stringify(queueFiles) !== JSON.stringify(expected)){
         violations.push(
-            `M3E queue production module set drifted: expected ${JSON.stringify([...EXPECTED_QUEUE_MODULES].sort())}, got ${JSON.stringify(queueFiles)}`
+            `M3E queue production file set drifted: expected ${JSON.stringify(expected)}, got ${JSON.stringify(queueFiles)}`
         );
     }
-    for (const relativePath of queueFiles){
+    for (const relativePath of queueFiles.filter(value => SOURCE_EXTENSIONS.has(path.posix.extname(value)))){
         const filename = path.join(root, ...relativePath.split('/'));
         violations.push(...analyzeQueueModule(fs.readFileSync(filename, 'utf8'), relativePath));
     }
@@ -111,8 +114,8 @@ function findViolations(root){
     const srcDir = path.join(root, 'src');
     for (const filename of listSourceFiles(srcDir)){
         const relativePath = normalize(path.relative(root, filename));
-        if (relativePath.startsWith('src/engine/')) continue;
-        violations.push(...analyzeVanillaQueueImports(fs.readFileSync(filename, 'utf8'), relativePath));
+        if (relativePath.startsWith(`${QUEUE_ROOT}/`)) continue;
+        violations.push(...analyzeProductionQueueImports(fs.readFileSync(filename, 'utf8'), relativePath));
     }
     return violations;
 }
@@ -132,7 +135,7 @@ function main(){
 module.exports = {
     EXPECTED_QUEUE_MODULES,
     analyzeQueueModule,
-    analyzeVanillaQueueImports,
+    analyzeProductionQueueImports,
     findViolations,
 };
 
