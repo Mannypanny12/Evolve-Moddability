@@ -19,8 +19,7 @@ const resolverPromise = import(pathToFileURL(path.join(root, 'src/legacy/bridge/
 function install(mutator){
     const state = legacy.pristineLegacyState();
     mutator(state);
-    legacy.installLegacyState(state);
-    return state;
+    return legacy.installLegacyState(state);
 }
 
 async function newAssessmentFor(state, declaredIdsAndAmounts){
@@ -57,6 +56,15 @@ async function newAssessmentFor(state, declaredIdsAndAmounts){
         quote,
     };
 }
+
+test('M3D4B differential fixture mutates the same installed runtime observed by legacy and modern readers', () => {
+    const state = install(state => {
+        state.prestige.AntiPlasmid = { count: 2 };
+    });
+    assert.equal(state, legacy.legacyState());
+    state.prestige.AntiPlasmid.count = 3;
+    assert.equal(legacy.legacyState().prestige.AntiPlasmid.count, 3);
+});
 
 test('M3D4B matches legacy prestige affordability outside antimatter', async () => {
     const state = install(state => {

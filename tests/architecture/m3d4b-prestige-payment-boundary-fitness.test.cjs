@@ -35,15 +35,30 @@ test('M3D4B generic cost engine rejects first-party, special/pool, execution and
     for (const source of [
         'const Plasmid = 1;',
         "const kind = 'special';",
+        'const kind = `pool`;',
         'const paymentId = "example:payment/test";',
         'executePayment();',
+        'executor["payCosts"]();',
         'reads.prestige.capacity(id);',
+        "reads.prestige['capacity'](id);",
         'prestige.available(id);',
+        'reads["prestige"].available(id);',
     ]){
         assert.notDeepEqual(analyzeCostSource(source, 'src/engine/costs/example.mjs'), []);
     }
     assert.deepEqual(
         analyzeCostSource("const family = 'prestige'; const op = 'payment.prestige.debit';", 'src/engine/costs/example.mjs'),
+        []
+    );
+});
+
+test('M3D4B future-family literals remain a whole-source architecture tripwire', () => {
+    assert.notDeepEqual(
+        analyzeCostSource("// Future scope must not land here: kind = 'special'", 'src/engine/costs/example.mjs'),
+        []
+    );
+    assert.deepEqual(
+        analyzeCostSource("// Prestige is the only added family in this slice.\nconst family = 'prestige';", 'src/engine/costs/example.mjs'),
         []
     );
 });
@@ -64,6 +79,7 @@ test('M3D4B prestige bridges reject globals, mutation, calculation scope and unr
         '\nmodRes("Plasmid", -1);',
         '\nadjustCosts();',
         "\nimport '../../actions.js';",
+        "\nimport('../../actions.js');",
     ]){
         assert.notDeepEqual(analyzeBridgeSource(validReadAdapter() + addition, READ_ADAPTER), []);
         assert.notDeepEqual(analyzeBridgeSource(validResolver() + addition, SOURCE_RESOLVER), []);

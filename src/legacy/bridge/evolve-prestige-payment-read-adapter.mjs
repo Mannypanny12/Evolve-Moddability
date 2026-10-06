@@ -60,14 +60,65 @@ function readOptions(rawOptions){
     return fields;
 }
 
-function assertReadFunction(value, path){
+function assertSynchronousFunction(value, path){
     if (typeof value !== 'function'){
         fail('INVALID_LEGACY_PRESTIGE_PAYMENT_ROOT_PROVIDER', `${path} must be a function.`, {
             path,
             valueType: typeof value,
         });
     }
+    let source;
+    try {
+        source = Function.prototype.toString.call(value);
+    }
+    catch {
+        fail('INVALID_LEGACY_PRESTIGE_PAYMENT_ROOT_PROVIDER', `${path} could not be inspected.`, { path });
+    }
+    if (
+        /^\s*async\b/.test(source) ||
+        /^\s*(?:async\s+)?function\s*\*/.test(source) ||
+        /^\s*\*/.test(source) ||
+        /^\s*class\b/.test(source)
+    ){
+        fail(
+            'INVALID_LEGACY_PRESTIGE_PAYMENT_ROOT_PROVIDER',
+            `${path} must be a directly callable synchronous non-generator function.`,
+            { path }
+        );
+    }
     return value;
+}
+
+function isPromiseLike(value, path){
+    if (value === null || (typeof value !== 'object' && typeof value !== 'function')) return false;
+    let cursor = value;
+    const seen = new WeakSet();
+    while (cursor !== null){
+        if ((typeof cursor !== 'object' && typeof cursor !== 'function') || seen.has(cursor)){
+            fail('INVALID_LEGACY_PRESTIGE_PAYMENT_ROOT_PROVIDER', `${path} thenable state could not be safely inspected.`, { path });
+        }
+        seen.add(cursor);
+        let descriptor;
+        try {
+            descriptor = Object.getOwnPropertyDescriptor(cursor, 'then');
+        }
+        catch {
+            fail('INVALID_LEGACY_PRESTIGE_PAYMENT_ROOT_PROVIDER', `${path} thenable state could not be safely inspected.`, { path });
+        }
+        if (descriptor){
+            if (!Object.prototype.hasOwnProperty.call(descriptor, 'value')){
+                fail('INVALID_LEGACY_PRESTIGE_PAYMENT_ROOT_PROVIDER', `${path} may not expose an accessor-based then property.`, { path });
+            }
+            return typeof descriptor.value === 'function';
+        }
+        try {
+            cursor = Object.getPrototypeOf(cursor);
+        }
+        catch {
+            fail('INVALID_LEGACY_PRESTIGE_PAYMENT_ROOT_PROVIDER', `${path} thenable state could not be safely inspected.`, { path });
+        }
+    }
+    return false;
 }
 
 function assertPlainRecord(value, path){
@@ -175,13 +226,16 @@ function createRootReader(readLegacyRoot){
         catch {
             fail('LEGACY_PRESTIGE_PAYMENT_ROOT_READ_FAILURE', 'Legacy prestige payment root provider threw while reading current state.');
         }
+        if (isPromiseLike(root, 'evolveLegacyPrestigePaymentAdapter.readLegacyRoot.result')){
+            fail('INVALID_LEGACY_PRESTIGE_PAYMENT_ROOT_PROVIDER', 'Legacy prestige payment root provider must be synchronous.');
+        }
         return assertPlainRecord(root, 'legacyPrestigePaymentRoot');
     };
 }
 
 export function createEvolvePrestigePaymentReadProvider(rawOptions){
     const options = readOptions(rawOptions);
-    const readLegacyRoot = assertReadFunction(
+    const readLegacyRoot = assertSynchronousFunction(
         options.get('readLegacyRoot'),
         'evolveLegacyPrestigePaymentAdapterOptions.readLegacyRoot'
     );

@@ -50,6 +50,61 @@ function readDataField(record, field, path, code){
     return descriptor.value;
 }
 
+function assertSynchronousFunction(value, path){
+    let source;
+    try {
+        source = Function.prototype.toString.call(value);
+    }
+    catch {
+        fail('INVALID_PRESTIGE_PAYMENT_SOURCE_ROOT_PROVIDER', `${path} could not be inspected.`, { path });
+    }
+    if (
+        /^\s*async\b/.test(source) ||
+        /^\s*(?:async\s+)?function\s*\*/.test(source) ||
+        /^\s*\*/.test(source) ||
+        /^\s*class\b/.test(source)
+    ){
+        fail(
+            'INVALID_PRESTIGE_PAYMENT_SOURCE_ROOT_PROVIDER',
+            `${path} must be a directly callable synchronous non-generator function.`,
+            { path }
+        );
+    }
+    return value;
+}
+
+function isPromiseLike(value, path){
+    if (value === null || (typeof value !== 'object' && typeof value !== 'function')) return false;
+    let cursor = value;
+    const seen = new WeakSet();
+    while (cursor !== null){
+        if ((typeof cursor !== 'object' && typeof cursor !== 'function') || seen.has(cursor)){
+            fail('INVALID_PRESTIGE_PAYMENT_SOURCE_ROOT_PROVIDER', `${path} thenable state could not be safely inspected.`, { path });
+        }
+        seen.add(cursor);
+        let descriptor;
+        try {
+            descriptor = Object.getOwnPropertyDescriptor(cursor, 'then');
+        }
+        catch {
+            fail('INVALID_PRESTIGE_PAYMENT_SOURCE_ROOT_PROVIDER', `${path} thenable state could not be safely inspected.`, { path });
+        }
+        if (descriptor){
+            if (!Object.prototype.hasOwnProperty.call(descriptor, 'value')){
+                fail('INVALID_PRESTIGE_PAYMENT_SOURCE_ROOT_PROVIDER', `${path} may not expose an accessor-based then property.`, { path });
+            }
+            return typeof descriptor.value === 'function';
+        }
+        try {
+            cursor = Object.getPrototypeOf(cursor);
+        }
+        catch {
+            fail('INVALID_PRESTIGE_PAYMENT_SOURCE_ROOT_PROVIDER', `${path} thenable state could not be safely inspected.`, { path });
+        }
+    }
+    return false;
+}
+
 function readOptions(rawOptions){
     assertPlainRecord(rawOptions, 'evolvePrestigePaymentSourceResolverOptions', 'INVALID_PRESTIGE_PAYMENT_SOURCE_RESOLVER_CONFIG');
     const fields = inspectPlainInertObject(rawOptions, {
@@ -77,7 +132,10 @@ function readOptions(rawOptions){
             valueType: typeof readLegacyRoot,
         });
     }
-    return readLegacyRoot;
+    return assertSynchronousFunction(
+        readLegacyRoot,
+        'evolvePrestigePaymentSourceResolverOptions.readLegacyRoot'
+    );
 }
 
 function canonicalPrestigeId(value){
@@ -118,6 +176,9 @@ function readUniverse(readLegacyRoot){
     }
     catch {
         fail('PRESTIGE_PAYMENT_SOURCE_CONTEXT_READ_FAILURE', 'Prestige payment source context provider threw while reading current state.');
+    }
+    if (isPromiseLike(root, 'evolvePrestigePaymentSourceResolver.readLegacyRoot.result')){
+        fail('INVALID_PRESTIGE_PAYMENT_SOURCE_ROOT_PROVIDER', 'Prestige payment source context provider must be synchronous.');
     }
     assertPlainRecord(root, 'legacyPrestigePaymentSourceRoot', 'INVALID_PRESTIGE_PAYMENT_SOURCE_CONTEXT');
     const race = readDataField(root, 'race', 'legacyPrestigePaymentSourceRoot', 'INVALID_PRESTIGE_PAYMENT_SOURCE_CONTEXT');
