@@ -13,7 +13,7 @@ function operationFor(line){
             kind: 'payment.special.settle',
             paymentId: line.paymentId,
             source: Object.freeze({
-                kind: line.source.kind,
+                kind: 'pool',
                 poolId: line.source.poolId,
             }),
             amount: line.amount,
