@@ -209,7 +209,8 @@ function normalizeSpecialSource(value, path){
     if (kind !== 'pool'){
         fail('UNSUPPORTED_PAYMENT_QUOTE_SPECIAL_SOURCE_KIND', `${path}.kind is not a supported special payment source kind.`, {
             path: `${path}.kind`,
-            kind,
+            kindType: typeof kind,
+            kind: typeof kind === 'string' ? kind : undefined,
         });
     }
     assertClosedFields(fields, path, SPECIAL_POOL_SOURCE_FIELDS, 'INVALID_PAYMENT_QUOTE_SPECIAL_SOURCE');
