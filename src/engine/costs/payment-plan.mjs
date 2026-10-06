@@ -8,6 +8,17 @@ function operationFor(line){
             amount: line.amount,
         });
     }
+    if (line.kind === 'special'){
+        return Object.freeze({
+            kind: 'payment.special.settle',
+            paymentId: line.paymentId,
+            source: Object.freeze({
+                kind: line.source.kind,
+                poolId: line.source.poolId,
+            }),
+            amount: line.amount,
+        });
+    }
     return Object.freeze({
         kind: 'payment.resource.debit',
         resourceId: line.resourceId,
