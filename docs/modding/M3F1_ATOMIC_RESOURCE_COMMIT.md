@@ -160,7 +160,7 @@ The next M3F slice owns the concrete `evolve:command/evolution/dna` registration
 
 ## Review hardening
 
-The post-implementation review found three justified hardening issues and fixed all three before closure.
+The post-implementation review found three production/gate hardening issues and one cleanup regression. All were fixed before closure.
 
 ### Hostile thrown-value classification
 
@@ -182,6 +182,12 @@ The guard now walks the execution package recursively and allows exactly the rev
 
 The review also removed a mutable nested array from one contract-error detail shape so error diagnostics remain simple detached values under the existing shallow diagnostic-freezing contract.
 
+### Package-script preservation
+
+While wiring the new architecture gate into `package.json`, the first full-file replacement accidentally omitted the pre-existing `serve`, `deploy`, and `deploy-win` scripts. The repository diff review caught the unrelated deletion before closure.
+
+Those scripts were restored unchanged. The final M3F1 diff for `package.json` is therefore only the intended addition of `m3f1-resource-commit-fitness.cjs` to `test:architecture`.
+
 ## Verification
 
 Production implementation commit:
@@ -196,7 +202,13 @@ Review/hardening commit:
 56636f60e04c71a61a17e7680fc817de607a3bb8
 ```
 
-GitHub Actions run `37528764762` passed the complete repository safety net on the hardening head:
+Package-script cleanup commit:
+
+```text
+afce558ce28eabf19de458f94228dda8fd1468cd
+```
+
+GitHub Actions run `37528764762` passed the complete repository safety net on the production hardening head:
 
 - full test suite;
 - cumulative architecture fitness including the new M3F1 gate;
@@ -205,7 +217,7 @@ GitHub Actions run `37528764762` passed the complete repository safety net on th
 - real-browser startup-exception negative control;
 - real-browser smoke test.
 
-A final documentation-only closure run is still required on the branch head after this verification record is committed.
+M3F1 closure additionally requires the same complete safety net to remain green on the final branch head after documentation/cleanup.
 
 ## Definition of done
 
