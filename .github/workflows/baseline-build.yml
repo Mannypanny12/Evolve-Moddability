@@ -63,7 +63,22 @@ jobs:
         run: npm ci
 
       - name: Run test suite
-        run: npm test
+        id: tests
+        shell: bash
+        run: |
+          set +e
+          npm test > test-output.log 2>&1
+          status=$?
+          set -e
+          cat test-output.log
+          exit "$status"
+
+      - name: Upload failing test diagnostics
+        if: failure() && steps.tests.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-output
+          path: test-output.log
 
       - name: Run architecture fitness gate
         run: npm run test:architecture
