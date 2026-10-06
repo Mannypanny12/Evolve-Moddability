@@ -230,7 +230,7 @@ M5 remains responsible for scheduler cadence and offline progression.
 
 It does not import command internals, GameState/state infrastructure, cost/payment modules, effect modules, legacy source modules, or external packages.
 
-The M3E1 fitness gate rejects direct references to legacy queue policy/progress vocabulary, legacy action/UI/cache fields, cached readiness/affordability fields, raw mutation authority, payment/effect-plan storage, callbacks/handlers, and scheduling/payment helpers. This protects future M3E2/M3E3 queue modules as well as today's WorkItem implementation.
+The M3E1 fitness gate rejects direct references to legacy queue-policy identifiers, scheduling/payment helpers, mutation authority and plan types. Separately, it rejects legacy progress, lookup, UI/cache and cached-readiness concepts when they are exposed as queue data fields. Ordinary local variable names are not globally reserved. This protects future M3E2/M3E3 queue modules without making unrelated implementation vocabulary illegal.
 
 Canonical `command.id` and the identity parser's `parsed.type` remain legitimate internal uses; the queue layer still may not reconstruct legacy top-level action lookup records.
 
@@ -258,7 +258,7 @@ M3E1 only establishes the architecture later slices can use.
 
 The post-implementation review hardened M3E1 before M3E2 begins:
 
-- queue-package architecture guards now reserve legacy `q/qs/queue_size`, action lookup, UI/cache and cached-readiness vocabulary rather than guarding only payment/callback imports;
+- queue-package architecture guards reject legacy `q/qs/queue_size`, action lookup, UI/cache and cached-readiness concepts as queue data fields while allowing harmless local vocabulary;
 - the command payload-validator contract is explicitly structural/context-independent, preventing enqueue-time world state from being baked into durable queued intent;
 - defensive prepared-command verification now pins canonical numeric/object ordering in addition to frozen inert shape, cycles/shared identity and command identity;
 - hostile raw WorkItem coverage pins accessors, hidden fields, symbols and null-prototype inert input;
@@ -284,7 +284,7 @@ M3E1 is complete when:
 9. WorkItem construction uses `CommandBus.prepare` so malformed command-specific payloads cannot enter queued work through the production path;
 10. queued work contains no callback, handler, legacy action lookup, UI/cache, readiness, PaymentQuote, PaymentPlan, EffectPlan, scheduler, persistence, or mutation-authority state;
 11. work items are detached/frozen inert data and reject non-canonical replacement-preparer output;
-12. the queue package has a dedicated architecture fitness gate protecting future queue modules from legacy/cache/readiness vocabulary;
+12. the queue package has a dedicated architecture fitness gate protecting future queue modules from legacy/cache/readiness data-field regressions and forbidden cross-layer authority;
 13. M3A1's public-surface tests/docs are ratcheted forward rather than weakened;
 14. all cumulative tests, architecture checks, build checks, and browser smoke checks remain green;
 15. no vanilla gameplay path is cut over.

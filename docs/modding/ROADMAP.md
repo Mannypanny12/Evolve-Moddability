@@ -216,13 +216,14 @@ M3A0 is an evidence/design-authority slice only. It does not add the command bus
 The first production command primitive now provides:
 
 - canonical namespaced `command` IDs using the M1 identity grammar;
-- closed inert `{ id, payload }` dispatch envelopes;
+- closed inert `{ id, payload }` command envelopes;
 - detached/canonical/frozen payload validation;
 - fixed synchronous runtime registrations;
+- a shared non-executing `prepare()` path for validated command intent;
 - structured success/rejection results instead of overloaded legacy callback values;
 - deterministic command/phase contract diagnostics;
 - fail-closed async/thenable and reentrancy handling;
-- a sealed bus surface (`dispatch`, `has`, `ids`);
+- a sealed bus surface (`prepare`, `dispatch`, `has`, `ids`);
 - architecture enforcement preventing GameState/state-infrastructure imports, raw mutation authority, dynamic loading, or use of the inert M1 Registry as executable handler storage.
 
 M3A1 does not cut over vanilla gameplay and does not implement conditions, costs, effects or queues. Atomic gameplay mutation remains owned by semantic capabilities/domain services rather than the bus. See `M3A1_COMMAND_BUS.md`.
@@ -256,22 +257,39 @@ The completed effect milestone includes:
 
 M3C deliberately adds no EffectExecutor and does not cut over vanilla gameplay. DNA's `2 RNA` payment remains M3D responsibility.
 
-### M3D Quote/cost/payment engine - next
+### M3D Quote/cost/payment engine - complete
 
-Migrate affordability and payment semantics from helpers such as:
+M3D now owns the inert quote/assessment/payment-plan architecture needed to separate current affordability from durable command intent.
 
-- `checkCosts`;
-- `checkAffordable`;
-- `payCosts`;
-- max-affordable/queue quoting.
+The completed payment milestone covers:
 
-Support prestige/special currencies explicitly rather than hidden branches. Keep current affordability distinct from queue/capacity feasibility. M4 remains responsible for the general calculation/modifier pipeline.
+- deterministic payment quotes and affordability assessment;
+- fresh inert payment plans rather than stored authorization tokens;
+- queue-feasibility support that remains payment-side only;
+- explicit special/prestige payment families rather than hidden generic branches;
+- cumulative boundary hardening and closure evidence.
 
-DNA's `2 RNA` price is the first simple payment evidence vertical; pseudo-cost requirements and special payment families remain distinct rather than being forced into generic M3C resource effects.
+Payment quotes and plans are contextual and must be recomputed when execution conditions change. M4 remains responsible for the broader calculation/modifier pipeline.
 
 ### M3E Queue work-item model
 
 Represent queued work as commands/work items independent of DOM action objects and overloaded action callback returns.
+
+#### M3E1 Prepared command + WorkItem foundation - complete
+
+Adds non-executing `CommandBus.prepare()` and one closed inert `{ command, remaining, unitsPerSlot }` WorkItem contract. No queue list behavior, readiness, scheduling, persistence, or vanilla cutover is introduced. See `M3E1_WORK_ITEM_FOUNDATION.md`.
+
+#### M3E2 Pure WorkQueue/list operations - next
+
+Add immutable queue-list operations, slot accounting, explicit merge policies, capacity as an explicit input, removal and reordering. No scheduler or execution authority.
+
+#### M3E3 Readiness and selection
+
+Add scheduler-independent structured readiness plus ordered/first-ready selection through runtime evaluator capabilities, without caching readiness on WorkItems or reproducing legacy production/time prediction.
+
+#### M3E4 Evidence, hardening and closure
+
+Characterize the remaining legacy build/research queue semantics, pin queueable/non-queueable evidence, add adversarial architecture coverage, and close M3E without cutting over vanilla queues prematurely.
 
 ### M3F First real vanilla cutover
 
