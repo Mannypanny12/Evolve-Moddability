@@ -122,16 +122,19 @@ test('M3D3 operation output never aliases caller quote lines, even when the same
     assert.equal(plan.operations[1].amount, 3);
 });
 
-test('M3D3 must be consciously updated when PaymentQuote later admits a new payment family', async () => {
+test('M3D4B consciously admits prestige while retaining a tripwire for the later special family', async () => {
     const { createPaymentPlan, EngineContractError } = await modules();
+
+    assert.deepEqual(
+        createPaymentPlan({
+            lines: [{ kind: 'prestige', prestigeId: 'example:prestige/token', amount: 1 }],
+        }).operations,
+        [{ kind: 'payment.prestige.debit', prestigeId: 'example:prestige/token', amount: 1 }]
+    );
 
     assert.throws(
         () => createPaymentPlan({
-            lines: [{
-                kind: 'prestige',
-                resourceId: 'example:resource/prestige_token',
-                amount: 1,
-            }],
+            lines: [{ kind: 'special', paymentId: 'example:payment/test', amount: 1 }],
         }),
         error => error instanceof EngineContractError &&
             error.code === 'UNSUPPORTED_PAYMENT_QUOTE_LINE_KIND'
