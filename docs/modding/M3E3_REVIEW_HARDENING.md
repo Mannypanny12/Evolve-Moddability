@@ -28,7 +28,9 @@ Readiness detail data now rejects cycles and repeated object identity across the
 
 ### Selector surface and reentrancy
 
-The review pins the selector facade to exactly `evaluate` and `select`, proves it is frozen, and retains the same-selector reentrancy lock with recovery through `finally`.
+The slice review pins the selector facade to exactly `evaluate` and `select`, proves it is frozen, and originally retained a same-selector reentrancy lock with recovery through `finally`.
+
+The later whole-M3E review identified cross-instance selector nesting as a remaining bypass of that intent. M3E now uses a module-wide readiness/selection operation lock, so nested `evaluate()` / `select()` calls are rejected even when a different selector instance is used. See `M3E_REVIEW_HARDENING.md`.
 
 ## Semantics retained
 
@@ -54,11 +56,11 @@ The review found no justification to add time prediction, future production simu
 
 The M3E3 fitness gate rejects drift toward legacy `qAny` settings, `timeCheck`/ARPA prediction, affordability/technology helpers, command dispatch/execution, PaymentQuote/PaymentPlan/EffectPlan, GameState or mutation authority, scheduling/timers, offline processing, persistence, or cached readiness fields.
 
-M3E1 and M3E2 production modules were not changed by M3E3.
+M3E1 and M3E2 production modules were not changed by the original M3E3 slice review. The later whole-M3E review hardened shared WorkItem verification and selector reentrancy without adding new queue authority.
 
 ## Verification
 
-The hardened implementation passed the complete repository CI safety net:
+The original hardened implementation passed the complete repository CI safety net:
 
 - full test suite;
 - cumulative architecture fitness gate;
@@ -67,9 +69,11 @@ The hardened implementation passed the complete repository CI safety net:
 - browser-startup exception negative control;
 - real-browser smoke test.
 
+The later whole-M3E hardening is independently verified and recorded in `M3E_REVIEW_HARDENING.md`.
+
 ## Closure
 
-M3E3 is closed. The durable/transient boundary is now:
+M3E3 remains closed. The durable/transient boundary is:
 
 ```text
 WorkItem   = durable intent and quantity
@@ -79,4 +83,4 @@ Selection  = transient current decision
 Scheduler  = M5
 ```
 
-M3E4 is next: characterize remaining legacy build/research queue semantics, pin queueable/non-queueable and special-case evidence, add any whole-M3E closure guards justified by that evidence, and close M3E without prematurely cutting vanilla queues over to the new engine.
+M3E4 subsequently completed the evidence/architecture closure, and the whole-M3E review then hardened the combined subsystem. M3F remains the next milestone.

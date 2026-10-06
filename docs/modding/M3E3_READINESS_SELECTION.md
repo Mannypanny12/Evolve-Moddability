@@ -205,7 +205,9 @@ Invocation is context-free and synchronous in effect. Promise/thenable results f
 
 Evaluator exceptions are wrapped as deterministic `EngineContractError` data. Hostile thrown objects/messages are not retained. A selector reentrancy failure remains a direct selector contract error rather than being hidden behind evaluator wrapping.
 
-Nested `evaluate()` / `select()` operations on the same selector are prohibited and the lock recovers through `finally` after failures.
+Nested `evaluate()` / `select()` operations are prohibited across all selector instances by a module-wide operation lock. Switching to a different selector therefore cannot bypass the no-nested-selection boundary. The lock recovers through `finally` after failures.
+
+This module-wide rule was strengthened by the whole-M3E review after the original M3E3 slice closure. See `M3E_REVIEW_HARDENING.md`.
 
 ## M3B and M3D boundaries
 
@@ -274,7 +276,7 @@ M3E3 tests pin:
 - Promise/thenable rejection without accessor invocation;
 - sanitized evaluator failures;
 - context-free evaluator invocation;
-- reentrancy rejection and lock recovery;
+- same-selector and cross-selector reentrancy rejection plus lock recovery;
 - WorkItem, WorkQueue and selection-policy validation;
 - zero command execution during readiness/selection.
 
@@ -291,10 +293,10 @@ M3E3 is implementation-complete when:
 7. no queue mutation occurs during readiness evaluation or selection;
 8. the evaluator capability is synchronous, context-free and fail-closed;
 9. thenables/accessor-based thenables and hostile evaluator failures are hardened;
-10. selector reentrancy is rejected and lock recovery is proven;
+10. selector reentrancy is rejected across selector instances and lock recovery is proven;
 11. M3B/M3D remain external ingredients rather than queue dependencies;
 12. no scheduler, prediction, execution, persistence, offline or vanilla-cutover authority is added;
 13. a cumulative M3E3 architecture gate is wired into `npm run test:architecture`;
 14. the repository test/build/browser safety net remains green.
 
-Formal roadmap closure remains a separate review-and-hardening checkpoint after implementation CI.
+Formal roadmap closure was completed by M3E4. The later whole-M3E review is recorded in `M3E_REVIEW_HARDENING.md`.
