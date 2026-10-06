@@ -27,16 +27,14 @@ function validResolver(){
         'export function createEvolvePrestigePaymentSourceResolver(options){ return options; }';
 }
 
-test('M3D4B prestige payment boundary is clean in the repository', () => {
+test('M3D4B prestige payment boundary remains clean after M3D4C widening', () => {
     assert.deepEqual(findViolations(root), []);
 });
 
-test('M3D4B generic cost engine rejects first-party, special/pool, execution and prestige-capacity scope', () => {
+test('M3D4B ratchet still rejects first-party names, execution and prestige-capacity scope', () => {
     for (const source of [
         'const Plasmid = 1;',
-        "const kind = 'special';",
-        'const kind = `pool`;',
-        'const paymentId = "example:payment/test";',
+        'const Supply = 1;',
         'executePayment();',
         'executor["payCosts"]();',
         'reads.prestige.capacity(id);',
@@ -46,21 +44,18 @@ test('M3D4B generic cost engine rejects first-party, special/pool, execution and
     ]){
         assert.notDeepEqual(analyzeCostSource(source, 'src/engine/costs/example.mjs'), []);
     }
-    assert.deepEqual(
-        analyzeCostSource("const family = 'prestige'; const op = 'payment.prestige.debit';", 'src/engine/costs/example.mjs'),
-        []
-    );
 });
 
-test('M3D4B future-family literals remain a whole-source architecture tripwire', () => {
-    assert.notDeepEqual(
-        analyzeCostSource("// Future scope must not land here: kind = 'special'", 'src/engine/costs/example.mjs'),
-        []
-    );
-    assert.deepEqual(
-        analyzeCostSource("// Prestige is the only added family in this slice.\nconst family = 'prestige';", 'src/engine/costs/example.mjs'),
-        []
-    );
+test('M3D4B ratchet deliberately permits the reviewed M3D4C generic special/pool vocabulary', () => {
+    for (const source of [
+        "const kind = 'special';",
+        "const sourceKind = 'pool';",
+        'const paymentId = "example:payment/test";',
+        'const poolId = "example:payment-pool/test";',
+        "const op = 'payment.special.settle';",
+    ]){
+        assert.deepEqual(analyzeCostSource(source, 'src/engine/costs/example.mjs'), []);
+    }
 });
 
 test('M3D4B prestige bridge exports are pinned to one reviewed factory each', () => {
