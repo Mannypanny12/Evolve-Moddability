@@ -23,7 +23,7 @@ const FIRST_PARTY_ENGINE_TERMS = /\b(?:Plasmid|AntiPlasmid|Supply|Knowledge|Spec
 const DEFERRED_SPECIAL_TERMS = /\b(?:Knowledge|Species|defaultJob|default_job|stats\.know)\b/i;
 const POOL_MAPPING_LIST = /const\s+SUPPORTED_POOL_MAPPING_IDS\s*=\s*Object\.freeze\(\s*\[\s*['"]evolve\.payment_pool\.purifier_supply_state['"]\s*,?\s*\]\s*\)\s*;/;
 const EXACT_QUOTE_KIND_GUARD = /\bif\s*\(\s*value\s*!==\s*['"]resource['"]\s*&&\s*value\s*!==\s*['"]prestige['"]\s*&&\s*value\s*!==\s*['"]special['"]\s*\)\s*\{/g;
-const EXACT_SPECIAL_SOURCE_GUARD = /\bif\s*\(\s*kind\s*!==\s*['"]pool['"]\s*\)\s*\{/g;
+const EXACT_SPECIAL_SOURCE_GUARD = /\bif\s*\(\s*kind\s*!==\s*['"]resource['"]\s*&&\s*kind\s*!==\s*['"]pool['"]\s*\)\s*\{/g;
 const SPECIAL_PLAN_KIND = /\bkind\s*:\s*['"](payment\.special\.[a-z0-9._-]+)['"]/g;
 
 function normalize(value){ return value.split(path.sep).join('/'); }
@@ -70,13 +70,13 @@ function analyzeGenericCostSource(source, relativePath){
     const violations = [];
     const code = maskNonCode(source);
     if (FIRST_PARTY_ENGINE_TERMS.test(source)){
-        violations.push(`${relativePath}: generic M3D4C cost engine may not contain first-party special-payment terms`);
+        violations.push(`${relativePath}: generic M3D4 cost engine may not contain first-party special-payment terms`);
     }
     if (FORBIDDEN_EXECUTION.test(code)){
-        violations.push(`${relativePath}: M3D4C cost engine remains inert/read-only and may not execute payment`);
+        violations.push(`${relativePath}: M3D4 cost engine remains inert/read-only and may not execute payment`);
     }
     if (FORBIDDEN_LATER_SCOPE.test(code)){
-        violations.push(`${relativePath}: M3D4C cost engine may not acquire modifier or queue scope`);
+        violations.push(`${relativePath}: M3D4 cost engine may not acquire modifier or queue scope`);
     }
     return violations;
 }
@@ -91,16 +91,16 @@ function analyzeReviewedContractShape(source, relativePath){
             violations.push(`${relativePath}: quote kind union must remain exactly resource | prestige | special`);
         }
         if (exactMatchCount(reviewedSource, EXACT_SPECIAL_SOURCE_GUARD) !== 1){
-            violations.push(`${relativePath}: M3D4C special source union must remain pool-only`);
+            violations.push(`${relativePath}: reviewed special source union must remain exactly resource | pool`);
         }
-        if (!/['"]payment-pool['"]/.test(reviewedSource) || !/['"]payment['"]/.test(reviewedSource)){
-            violations.push(`${relativePath}: special quote identities must retain typed payment and payment-pool validation`);
+        if (!/['"]resource['"]/.test(reviewedSource) || !/['"]payment-pool['"]/.test(reviewedSource) || !/['"]payment['"]/.test(reviewedSource)){
+            violations.push(`${relativePath}: special quote identities must retain typed resource/payment/payment-pool validation`);
         }
     }
     if (relativePath === READ_CAPABILITIES){
         if (!/\['resource',\s*'prestige',\s*'pool'\]/.test(reviewedSource) &&
             !/\["resource",\s*"prestige",\s*"pool"\]/.test(reviewedSource)){
-            violations.push(`${relativePath}: payment read root must retain optional prestige and pool families`);
+            violations.push(`${relativePath}: payment read root must retain resource plus optional prestige and pool families`);
         }
         if (!/\['present',\s*'amount',\s*'capacity'\]/.test(reviewedSource) &&
             !/\["present",\s*"amount",\s*"capacity"\]/.test(reviewedSource)){
@@ -108,8 +108,8 @@ function analyzeReviewedContractShape(source, relativePath){
         }
     }
     if (relativePath === ASSESSOR){
-        if (!/family:\s*['"]pool['"]/.test(reviewedSource) || !/readFamily:\s*['"]pool['"]/.test(reviewedSource)){
-            violations.push(`${relativePath}: pool-backed special assessment source handling is missing`);
+        if (!/family:\s*['"]pool['"]/.test(reviewedSource) || !/family:\s*['"]resource['"]/.test(reviewedSource)){
+            violations.push(`${relativePath}: resource-backed and pool-backed special assessment source handling is missing`);
         }
     }
     if (relativePath === PLAN){
@@ -117,8 +117,8 @@ function analyzeReviewedContractShape(source, relativePath){
         if (specialKinds.length !== 1 || specialKinds[0] !== 'payment.special.settle'){
             violations.push(`${relativePath}: special quotes must plan only payment.special.settle`);
         }
-        if (!/kind:\s*['"]pool['"]/.test(reviewedSource)){
-            violations.push(`${relativePath}: M3D4C special settlement source must remain pool-backed inert data`);
+        if (!/kind:\s*['"]resource['"]/.test(reviewedSource) || !/kind:\s*['"]pool['"]/.test(reviewedSource)){
+            violations.push(`${relativePath}: special settlement source must preserve the reviewed resource | pool source union`);
         }
     }
     return violations;
@@ -132,8 +132,8 @@ function analyzeBridgeExports(source, relativePath){
         return exportCount === 1 && ok ? [] : [`${relativePath}: must expose only createEvolveSpecialPaymentPoolReadProvider(options)`];
     }
     if (relativePath === SOURCE_RESOLVER){
-        const ok = /\bexport\s+function\s+createEvolveSpecialPaymentSourceResolver\s*\(\s*\)/.test(code);
-        return exportCount === 1 && ok ? [] : [`${relativePath}: must expose only createEvolveSpecialPaymentSourceResolver()`];
+        const ok = /\bexport\s+function\s+createEvolveSpecialPaymentSourceResolver\s*\(/.test(code);
+        return exportCount === 1 && ok ? [] : [`${relativePath}: must expose only createEvolveSpecialPaymentSourceResolver(...)`];
     }
     return [];
 }
@@ -142,16 +142,16 @@ function analyzeBridgeSource(source, relativePath){
     const violations = [...analyzeBridgeExports(source, relativePath)];
     const code = maskNonCode(source);
     if (/\b(?:global|globalThis|window|document|navigator|jQuery|Vue)\b|\$\s*\(/.test(code)){
-        violations.push(`${relativePath}: M3D4C compatibility bridge may not access globals/UI directly`);
+        violations.push(`${relativePath}: M3D4 compatibility bridge may not access globals/UI directly`);
     }
     if (FORBIDDEN_EXECUTION.test(code)){
-        violations.push(`${relativePath}: M3D4C compatibility bridge must remain read-only`);
+        violations.push(`${relativePath}: M3D4 compatibility bridge must remain read-only`);
     }
     if (FORBIDDEN_LATER_SCOPE.test(code)){
-        violations.push(`${relativePath}: M3D4C compatibility bridge may not acquire M4/queue scope`);
+        violations.push(`${relativePath}: M3D4 compatibility bridge may not acquire M4/queue scope`);
     }
     if (DEFERRED_SPECIAL_TERMS.test(source)){
-        violations.push(`${relativePath}: M3D4D Knowledge/Species semantics are deferred`);
+        violations.push(`${relativePath}: Knowledge/Species bridge semantics require the explicit M3D4D review gate`);
     }
     if (relativePath === POOL_ADAPTER && !POOL_MAPPING_LIST.test(source)){
         violations.push(`${relativePath}: pool adapter must remain pinned to the single purifier supply mapping`);
@@ -162,15 +162,15 @@ function analyzeBridgeSource(source, relativePath){
         : new Set([IDENTITY]);
     for (const reference of extractModuleReferences(source, relativePath)){
         if (reference.kind !== 'import-statement'){
-            violations.push(`${relativePath}: M3D4C bridge may use only static ESM imports`);
+            violations.push(`${relativePath}: M3D4 bridge may use only static ESM imports`);
             continue;
         }
         if (!reference.specifier.startsWith('.')){
-            violations.push(`${relativePath}: M3D4C bridge may not import external packages`);
+            violations.push(`${relativePath}: M3D4 bridge may not import external packages`);
             continue;
         }
         const target = resolveRelative(relativePath, reference.specifier);
-        if (!allowed.has(target)) violations.push(`${relativePath}: unsupported M3D4C bridge dependency ${target}`);
+        if (!allowed.has(target)) violations.push(`${relativePath}: unsupported M3D4 bridge dependency ${target}`);
     }
     return violations;
 }
@@ -188,7 +188,7 @@ function findViolations(root){
     for (const relative of [POOL_ADAPTER, SOURCE_RESOLVER]){
         const filename = path.join(root, ...relative.split('/'));
         if (!fs.existsSync(filename)){
-            violations.push(`${relative}: required M3D4C bridge file is missing`);
+            violations.push(`${relative}: required M3D4 bridge file is missing`);
             continue;
         }
         violations.push(...analyzeBridgeSource(fs.readFileSync(filename, 'utf8'), relative));
@@ -200,12 +200,12 @@ function main(){
     const root = path.resolve(__dirname, '../..');
     const violations = findViolations(root);
     if (violations.length){
-        console.error('M3D4C special payment boundary fitness failed:');
+        console.error('M3D4 special payment boundary fitness failed:');
         for (const violation of violations) console.error(`- ${violation}`);
         process.exitCode = 1;
         return;
     }
-    console.log('M3D4C special payment boundary fitness passed.');
+    console.log('M3D4 special payment boundary fitness passed.');
 }
 
 module.exports = {

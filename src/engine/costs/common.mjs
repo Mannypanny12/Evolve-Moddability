@@ -10,6 +10,7 @@ export const MAX_PAYMENT_QUOTE_LINES = 4096;
 const RESOURCE_LINE_FIELDS = Object.freeze(['kind', 'resourceId', 'amount']);
 const PRESTIGE_LINE_FIELDS = Object.freeze(['kind', 'prestigeId', 'amount']);
 const SPECIAL_LINE_FIELDS = Object.freeze(['kind', 'paymentId', 'source', 'amount']);
+const SPECIAL_RESOURCE_SOURCE_FIELDS = Object.freeze(['kind', 'resourceId']);
 const SPECIAL_POOL_SOURCE_FIELDS = Object.freeze(['kind', 'poolId']);
 const PAYMENT_QUOTE_LINE_KIND_PATTERN = /^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/;
 
@@ -206,13 +207,25 @@ function normalizeSpecialSource(value, path){
         });
     }
     const kind = fields.get('kind');
-    if (kind !== 'pool'){
+    if (kind !== 'resource' && kind !== 'pool'){
         fail('UNSUPPORTED_PAYMENT_QUOTE_SPECIAL_SOURCE_KIND', `${path}.kind is not a supported special payment source kind.`, {
             path: `${path}.kind`,
             kindType: typeof kind,
             kind: typeof kind === 'string' ? kind : undefined,
         });
     }
+
+    if (kind === 'resource'){
+        assertClosedFields(fields, path, SPECIAL_RESOURCE_SOURCE_FIELDS, 'INVALID_PAYMENT_QUOTE_SPECIAL_SOURCE');
+        const resourceId = assertTypedId(
+            fields.get('resourceId'),
+            `${path}.resourceId`,
+            'resource',
+            'INVALID_PAYMENT_QUOTE_RESOURCE_ID'
+        );
+        return Object.freeze({ kind, resourceId });
+    }
+
     assertClosedFields(fields, path, SPECIAL_POOL_SOURCE_FIELDS, 'INVALID_PAYMENT_QUOTE_SPECIAL_SOURCE');
     const poolId = assertTypedId(
         fields.get('poolId'),

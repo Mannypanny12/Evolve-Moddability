@@ -1,5 +1,18 @@
 import { normalizePaymentQuoteInput } from './payment-quote-input.mjs';
 
+function specialSourceFor(source){
+    if (source.kind === 'resource'){
+        return Object.freeze({
+            kind: 'resource',
+            resourceId: source.resourceId,
+        });
+    }
+    return Object.freeze({
+        kind: 'pool',
+        poolId: source.poolId,
+    });
+}
+
 function operationFor(line){
     if (line.kind === 'prestige'){
         return Object.freeze({
@@ -12,10 +25,7 @@ function operationFor(line){
         return Object.freeze({
             kind: 'payment.special.settle',
             paymentId: line.paymentId,
-            source: Object.freeze({
-                kind: 'pool',
-                poolId: line.source.poolId,
-            }),
+            source: specialSourceFor(line.source),
             amount: line.amount,
         });
     }

@@ -17,6 +17,9 @@ function lineSubject(line){
     if (line.kind === 'prestige'){
         return { family: 'prestige', id: line.prestigeId, detailKey: 'prestigeId' };
     }
+    if (line.source.kind === 'resource'){
+        return { family: 'resource', id: line.source.resourceId, detailKey: 'resourceId' };
+    }
     return { family: 'pool', id: line.source.poolId, detailKey: 'poolId' };
 }
 
