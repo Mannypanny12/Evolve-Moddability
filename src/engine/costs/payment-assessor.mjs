@@ -10,68 +10,106 @@ function fail(code, message, details){
     throw new EngineContractError(code, message, details);
 }
 
+function lineSubject(line){
+    return line.kind === 'resource'
+        ? { family: 'resource', id: line.resourceId, detailKey: 'resourceId' }
+        : { family: 'prestige', id: line.prestigeId, detailKey: 'prestigeId' };
+}
+
 function accumulateRequirement(cumulative, line, lineIndex){
-    const previousAmount = cumulative.get(line.resourceId) || 0;
+    const subject = lineSubject(line);
+    const key = `${subject.family}:${subject.id}`;
+    const previousAmount = cumulative.get(key) || 0;
     const requiredAmount = previousAmount + line.amount;
     if (!Number.isFinite(requiredAmount)){
         fail('PAYMENT_REQUIREMENT_OVERFLOW', 'Cumulative payment requirement exceeds finite numeric range.', {
-            resourceId: line.resourceId,
+            paymentFamily: subject.family,
+            [subject.detailKey]: subject.id,
             lineIndex,
             previousAmount,
             lineAmount: line.amount,
         });
     }
-    cumulative.set(line.resourceId, requiredAmount);
-    return requiredAmount;
+    cumulative.set(key, requiredAmount);
+    return { subject, key, requiredAmount };
+}
+
+function requirePrestigeReads(reads){
+    if (!reads.prestige){
+        fail('MISSING_PAYMENT_READ_FAMILY', 'Prestige payment assessment requires a prestige read capability.', {
+            readFamily: 'prestige',
+        });
+    }
+    return reads.prestige;
 }
 
 function currentAssessment(quote, reads){
     const cumulative = new Map();
-    const facts = new Map();
+    const resourceFacts = new Map();
+    const prestigeFacts = new Map();
     const amountFailed = new Set();
     const capacityFailed = new Set();
     const reasons = [];
 
-    function factsFor(resourceId){
-        if (!facts.has(resourceId)){
-            facts.set(resourceId, Object.freeze({
+    function resourceFactsFor(resourceId){
+        if (!resourceFacts.has(resourceId)){
+            resourceFacts.set(resourceId, Object.freeze({
                 amount: reads.resource.amount(resourceId),
                 capacity: reads.resource.capacity(resourceId),
             }));
         }
-        return facts.get(resourceId);
+        return resourceFacts.get(resourceId);
+    }
+
+    function prestigeAmountFor(prestigeId){
+        if (!prestigeFacts.has(prestigeId)){
+            prestigeFacts.set(prestigeId, requirePrestigeReads(reads).amount(prestigeId));
+        }
+        return prestigeFacts.get(prestigeId);
     }
 
     quote.lines.forEach((line, lineIndex) => {
-        const requiredAmount = accumulateRequirement(cumulative, line, lineIndex);
-        const resourceFacts = factsFor(line.resourceId);
+        const { subject, key, requiredAmount } = accumulateRequirement(cumulative, line, lineIndex);
 
-        if (!amountFailed.has(line.resourceId) && requiredAmount > resourceFacts.amount){
-            amountFailed.add(line.resourceId);
+        if (subject.family === 'prestige'){
+            const currentAmount = prestigeAmountFor(subject.id);
+            if (!amountFailed.has(key) && requiredAmount > currentAmount){
+                amountFailed.add(key);
+                reasons.push({
+                    code: 'payment.current.prestige.holdings_insufficient',
+                    details: {
+                        lineIndex,
+                        prestigeId: subject.id,
+                        requiredAmount,
+                        currentAmount,
+                    },
+                });
+            }
+            return;
+        }
+
+        const facts = resourceFactsFor(subject.id);
+        if (!amountFailed.has(key) && requiredAmount > facts.amount){
+            amountFailed.add(key);
             reasons.push({
                 code: 'payment.current.resource.amount_insufficient',
                 details: {
                     lineIndex,
-                    resourceId: line.resourceId,
+                    resourceId: subject.id,
                     requiredAmount,
-                    currentAmount: resourceFacts.amount,
+                    currentAmount: facts.amount,
                 },
             });
         }
-
-        if (
-            resourceFacts.capacity !== null &&
-            !capacityFailed.has(line.resourceId) &&
-            requiredAmount > resourceFacts.capacity
-        ){
-            capacityFailed.add(line.resourceId);
+        if (facts.capacity !== null && !capacityFailed.has(key) && requiredAmount > facts.capacity){
+            capacityFailed.add(key);
             reasons.push({
                 code: 'payment.current.resource.capacity_insufficient',
                 details: {
                     lineIndex,
-                    resourceId: line.resourceId,
+                    resourceId: subject.id,
                     requiredAmount,
-                    capacity: resourceFacts.capacity,
+                    capacity: facts.capacity,
                 },
             });
         }
@@ -84,49 +122,67 @@ function currentAssessment(quote, reads){
 
 function queueAssessment(quote, reads){
     const cumulative = new Map();
-    const facts = new Map();
+    const resourceFacts = new Map();
+    const prestigeFacts = new Map();
     const unavailableFailed = new Set();
     const capacityFailed = new Set();
+    const prestigeFailed = new Set();
     const reasons = [];
 
-    function factsFor(resourceId){
-        if (!facts.has(resourceId)){
-            facts.set(resourceId, Object.freeze({
+    function resourceFactsFor(resourceId){
+        if (!resourceFacts.has(resourceId)){
+            resourceFacts.set(resourceId, Object.freeze({
                 available: reads.resource.available(resourceId),
                 capacity: reads.resource.capacity(resourceId),
             }));
         }
-        return facts.get(resourceId);
+        return resourceFacts.get(resourceId);
+    }
+
+    function prestigeAmountFor(prestigeId){
+        if (!prestigeFacts.has(prestigeId)){
+            prestigeFacts.set(prestigeId, requirePrestigeReads(reads).amount(prestigeId));
+        }
+        return prestigeFacts.get(prestigeId);
     }
 
     quote.lines.forEach((line, lineIndex) => {
-        const requiredAmount = accumulateRequirement(cumulative, line, lineIndex);
-        const resourceFacts = factsFor(line.resourceId);
+        const { subject, key, requiredAmount } = accumulateRequirement(cumulative, line, lineIndex);
 
-        if (!resourceFacts.available && !unavailableFailed.has(line.resourceId)){
-            unavailableFailed.add(line.resourceId);
-            reasons.push({
-                code: 'payment.queue.resource.unavailable',
-                details: {
-                    lineIndex,
-                    resourceId: line.resourceId,
-                },
-            });
+        if (subject.family === 'prestige'){
+            const currentAmount = prestigeAmountFor(subject.id);
+            if (!prestigeFailed.has(key) && requiredAmount > currentAmount){
+                prestigeFailed.add(key);
+                reasons.push({
+                    code: 'payment.queue.prestige.holdings_insufficient',
+                    details: {
+                        lineIndex,
+                        prestigeId: subject.id,
+                        requiredAmount,
+                        currentAmount,
+                    },
+                });
+            }
+            return;
         }
 
-        if (
-            resourceFacts.capacity !== null &&
-            !capacityFailed.has(line.resourceId) &&
-            requiredAmount > resourceFacts.capacity
-        ){
-            capacityFailed.add(line.resourceId);
+        const facts = resourceFactsFor(subject.id);
+        if (!facts.available && !unavailableFailed.has(key)){
+            unavailableFailed.add(key);
+            reasons.push({
+                code: 'payment.queue.resource.unavailable',
+                details: { lineIndex, resourceId: subject.id },
+            });
+        }
+        if (facts.capacity !== null && !capacityFailed.has(key) && requiredAmount > facts.capacity){
+            capacityFailed.add(key);
             reasons.push({
                 code: 'payment.queue.resource.capacity_insufficient',
                 details: {
                     lineIndex,
-                    resourceId: line.resourceId,
+                    resourceId: subject.id,
                     requiredAmount,
-                    capacity: resourceFacts.capacity,
+                    capacity: facts.capacity,
                 },
             });
         }
