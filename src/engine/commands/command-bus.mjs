@@ -9,7 +9,7 @@ import {
 } from './common.mjs';
 import { normalizeCommandOutcome } from './result.mjs';
 
-let dispatchActive = false;
+let commandOperationActive = false;
 
 function fail(code, message, details){
     throw new EngineContractError(code, message, details);
@@ -149,12 +149,17 @@ export function createCommandBus(rawOptions){
         return handlers.has(assertCommandId(id, 'commandBus.has.id'));
     }
 
-    function dispatch(rawCommand){
-        if (dispatchActive){
-            fail('COMMAND_DISPATCH_REENTRANCY', 'Command dispatch may not be nested.', { phase: 'dispatch' });
+    function assertOperationMayStart(phase){
+        if (commandOperationActive){
+            fail(
+                'COMMAND_DISPATCH_REENTRANCY',
+                'Command preparation/dispatch may not be nested.',
+                { phase }
+            );
         }
+    }
 
-        dispatchActive = true;
+    function prepareResolved(rawCommand){
         let commandId = null;
         let phase = 'envelope';
         try {
@@ -187,20 +192,13 @@ export function createCommandBus(rawOptions){
             }
             const payload = canonicalizeCommandPayload(validatedPayload, 'command.validatedPayload');
 
-            phase = 'execute';
-            let rawOutcome;
-            try {
-                rawOutcome = Reflect.apply(registration.execute, undefined, [payload]);
-            }
-            catch (error){
-                throw enrichError(error, commandId, phase);
-            }
-            if (isPromiseLike(rawOutcome, 'command.execute', 'INVALID_COMMAND_RESULT')){
-                fail('INVALID_COMMAND_RESULT', 'Command handlers must not return a Promise or thenable.', { commandId, phase });
-            }
-
-            phase = 'result';
-            return normalizeCommandOutcome(commandId, rawOutcome);
+            return Object.freeze({
+                command: Object.freeze({
+                    id: commandId,
+                    payload,
+                }),
+                registration,
+            });
         }
         catch (error){
             if (error instanceof EngineContractError){
@@ -210,10 +208,59 @@ export function createCommandBus(rawOptions){
             }
             throw enrichError(error, commandId, phase);
         }
+    }
+
+    function prepare(rawCommand){
+        assertOperationMayStart('prepare');
+        commandOperationActive = true;
+        try {
+            return prepareResolved(rawCommand).command;
+        }
         finally {
-            dispatchActive = false;
+            commandOperationActive = false;
         }
     }
 
-    return Object.freeze({ dispatch, has, ids });
+    function dispatch(rawCommand){
+        assertOperationMayStart('dispatch');
+        commandOperationActive = true;
+        try {
+            const prepared = prepareResolved(rawCommand);
+            const commandId = prepared.command.id;
+            let phase = 'execute';
+
+            try {
+                let rawOutcome;
+                try {
+                    rawOutcome = Reflect.apply(
+                        prepared.registration.execute,
+                        undefined,
+                        [prepared.command.payload]
+                    );
+                }
+                catch (error){
+                    throw enrichError(error, commandId, phase);
+                }
+                if (isPromiseLike(rawOutcome, 'command.execute', 'INVALID_COMMAND_RESULT')){
+                    fail('INVALID_COMMAND_RESULT', 'Command handlers must not return a Promise or thenable.', { commandId, phase });
+                }
+
+                phase = 'result';
+                return normalizeCommandOutcome(commandId, rawOutcome);
+            }
+            catch (error){
+                if (error instanceof EngineContractError){
+                    const errorPhase = readDiagnosticDetail(readErrorField(error, 'details'), 'phase');
+                    if (errorPhase === phase) throw error;
+                    throw enrichError(error, commandId, phase);
+                }
+                throw enrichError(error, commandId, phase);
+            }
+        }
+        finally {
+            commandOperationActive = false;
+        }
+    }
+
+    return Object.freeze({ prepare, dispatch, has, ids });
 }

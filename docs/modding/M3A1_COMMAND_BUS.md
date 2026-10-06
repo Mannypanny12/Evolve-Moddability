@@ -6,7 +6,9 @@ M3A1 introduces the first production command primitive while preserving the M3A0
 
 It establishes a sealed synchronous dispatch boundary with canonical command IDs, inert payloads, command-specific validation, structured success/rejection results, deterministic contract diagnostics, and a strict reentrancy policy.
 
-M3A1 deliberately does **not** implement conditions, costs, effects, queues, a resource adapter, a GameState schema change, or a vanilla gameplay cutover.
+M3A1 deliberately did **not** implement conditions, costs, effects, queues, a resource adapter, a GameState schema change, or a vanilla gameplay cutover.
+
+M3E1 later ratchets this same command boundary forward with a non-executing `prepare()` method. That method shares dispatch's validation path and exists so inert queued work can be validated without executing a command. It does not weaken any M3A1 restrictions.
 
 ## Command identity
 
@@ -22,7 +24,7 @@ No second identity grammar is introduced.
 
 ## Command envelope
 
-Every dispatch uses exactly:
+Every preparation or dispatch uses exactly:
 
 ```text
 {
@@ -60,7 +62,7 @@ They reject:
 - shared object identity;
 - excessive nesting.
 
-The bus canonicalizes and freezes the caller payload before command-specific validation, then canonicalizes and freezes validator output again before execution. Handlers therefore never receive the caller's original mutable object.
+The bus canonicalizes and freezes the caller payload before command-specific validation, then canonicalizes and freezes validator output again before either returning a prepared command or executing it. Neither `prepare()` nor command handlers receive/store the caller's original mutable payload tree.
 
 Diagnostic paths use dot notation for ordinary field names and quoted bracket notation for unusual names, so fields containing dots or similar punctuation remain unambiguous.
 
@@ -82,9 +84,10 @@ The existing M1 `Registry` is not used as an executable handler container. That 
 
 Validators and handlers are invoked context-free. They receive their payload argument but no implicit registration object through `this`.
 
-The bus exposes only:
+After the M3E1 ratchet, the bus exposes only:
 
 ```text
+prepare
 dispatch
 has
 ids
@@ -92,9 +95,9 @@ ids
 
 It exposes no public `register`, `remove`, handler lookup, mutable registration map, or dynamic package-loading surface. Public/package registration remains deferred to M10.
 
-## Dispatch lifecycle
+## Preparation lifecycle
 
-Dispatch is synchronous and follows one closed path:
+M3E1 extracts the preparation stages that were already embedded in dispatch into one shared internal path:
 
 ```text
 reentrancy check
@@ -104,6 +107,27 @@ reentrancy check
   -> payload detachment/canonicalization
   -> command-specific payload validation
   -> validator-output canonicalization
+  -> frozen prepared command
+```
+
+`prepare(rawCommand)` returns exactly:
+
+```text
+{
+  id,
+  payload
+}
+```
+
+and does not call the registered `execute` handler.
+
+## Dispatch lifecycle
+
+Dispatch remains synchronous and now reuses the exact preparation path:
+
+```text
+reentrancy check
+  -> shared preparation path
   -> handler execution
   -> result normalization
 ```
@@ -114,17 +138,19 @@ Declared async validators/handlers are rejected during registration. Promise/the
 
 ## Reentrancy
 
-Nested command dispatch is prohibited during both payload validation and handler execution. The lock is module-wide, so dispatching through a second command-bus instance from inside an active command is also rejected.
+Nested command operations are prohibited during payload validation and handler execution. The lock is module-wide, so a second command-bus instance cannot be used to bypass it.
 
-A nested attempt throws:
+Both nested `dispatch()` and nested `prepare()` attempts are rejected. The established contract code remains:
 
 ```text
 COMMAND_DISPATCH_REENTRANCY
 ```
 
-The active-dispatch lock is always cleared in `finally`, including after validator, handler, or result failures.
+Cause-phase diagnostics identify whether the nested attempt was preparation or dispatch.
 
-Command composition is therefore not invented implicitly in M3A1. A future reviewed slice may introduce a safe composition model if real gameplay requires one.
+The active command-operation lock is always cleared in `finally`, including after validator, handler, result, or preparation failures.
+
+Command composition is therefore not invented implicitly. A future reviewed slice may introduce a safe composition model if real gameplay requires one.
 
 ## Result contract
 
@@ -176,7 +202,7 @@ where `code` is a stable lowercase machine code and `details` is null or an iner
 
 Result normalization independently validates that `commandId` is a canonical command ID, even when the result helper is called outside the bus.
 
-M3B may later produce richer structured condition details without redesigning the command result envelope.
+M3B may produce richer structured condition details without redesigning the command result envelope.
 
 ## Rejection versus contract failure
 
@@ -203,7 +229,7 @@ Contract failures are enriched with deterministic command/phase context where a 
 
 ## Mutation and atomicity boundary
 
-M3A1 does not receive or expose GameState mutation authority, mutation scopes, writable drafts, or arbitrary state setters.
+The command bus does not receive or expose GameState mutation authority, mutation scopes, writable drafts, or arbitrary state setters.
 
 It does not import StateStore or GameState composition.
 
@@ -234,62 +260,68 @@ M3A1 establishes one synchronous dispatch boundary, but does not claim unrestric
 - do not import external packages;
 - do not use dynamic imports;
 - do not reference raw GameState mutation-authority identifiers;
-- import only `identity.mjs` or sibling command modules.
+- import only `identity.mjs`, the inert-data contract, or sibling command modules.
 
 The existing M0/M1/M2 architecture gates remain cumulative and continue to prohibit legacy globals, DOM/UI/platform access and raw mutation authority throughout `src/engine/**`.
+
+M3E1 adds a separate queue-package boundary gate. The queue package consumes `prepare()` as a runtime capability rather than importing `commands/common.mjs` or command registrations.
 
 ## Review hardening
 
 The post-implementation M3A1 review tightened five areas before closure:
 
-- enriched `EngineContractError` diagnostics now retain the underlying structured fields instead of replacing them with only command/phase metadata;
+- enriched `EngineContractError` diagnostics retain underlying structured fields instead of replacing them with only command/phase metadata;
 - validators and handlers are invoked with no implicit `this` context;
-- thenable detection no longer invokes a potentially hostile `then` getter;
+- thenable detection does not invoke a potentially hostile `then` getter;
 - result normalization itself requires a canonical command ID, rather than relying solely on the bus caller;
-- the dispatch lock is module-wide, so multiple bus instances cannot be used to bypass the no-nested-command rule.
+- the command-operation lock is module-wide, so multiple bus instances cannot bypass the no-nested-command rule.
 
-Adversarial coverage was expanded for null-prototype data, hidden/symbol fields, array subclasses, shared array identity, excessive nesting, hostile inspection failures, unusual diagnostic paths, registration accessors, preserved cause diagnostics, accessor-based thenables, same-bus reentrancy cause phases, and cross-bus reentrancy.
+Adversarial coverage includes null-prototype data, hidden/symbol fields, array subclasses, shared array identity, excessive nesting, hostile inspection failures, unusual diagnostic paths, registration accessors, preserved cause diagnostics, accessor-based thenables, same-bus reentrancy cause phases, and cross-bus reentrancy.
+
+M3E1 adds direct coverage proving that preparation does not execute handlers, returns detached/frozen canonical data, rejects malformed command-specific payloads through the same validator path, and cannot be nested to evade the command-operation lock.
 
 ## Production impact
 
-M3A1 adds a production engine primitive but does not route any current vanilla action through it.
+At M3A1 closure no vanilla action was routed through the command bus.
 
-It does not modify:
+M3E1 adds the inert WorkItem foundation but still does not route the legacy build/research queues through the bus.
+
+Neither slice modifies:
 
 - `src/actions.js`;
 - `src/main.js`;
 - `src/functions.js`;
 - GameState schema/composition;
 - legacy bridges;
-- queues;
+- legacy queue execution;
 - save/persistence;
 - UI behavior;
 - oracle snapshots.
 
-The first real vanilla cutover remains M3F.
+The first real vanilla command cutover remains M3F.
 
 ## Definition of done
 
-M3A1 is complete when:
+The M3A1 contract, including the M3E1 surface ratchet, is maintained when:
 
 1. canonical command IDs reuse the M1 identity grammar and require type `command`;
 2. command envelopes are closed `{ id, payload }` data;
-3. payloads are detached, canonical, inert and deeply frozen before validation/execution;
+3. payloads are detached, canonical, inert and deeply frozen before preparation/execution;
 4. each command has one synchronous validator and one synchronous handler;
 5. fixed registration is immutable after bus construction;
 6. duplicate/malformed registrations fail closed;
-7. public bus surface is only `dispatch`, `has`, and `ids`;
-8. dispatch is synchronous and handlers execute once without an implicit `this` context;
-9. nested dispatch is forbidden across all bus instances and the lock always recovers after failure;
-10. Promise/thenable validators and handlers fail closed without invoking then accessors;
-11. success and rejection use one frozen structured result contract;
-12. rejected results contain machine-readable reasons rather than localized messages;
-13. legacy `false`/`0`/truthy callback semantics are not accepted as command results;
-14. expected gameplay rejection remains distinct from `EngineContractError`;
-15. enriched command errors preserve useful underlying diagnostic fields;
-16. command modules cannot access raw GameState write authority or state composition;
-17. the M1 definition Registry is not repurposed as executable handler storage;
-18. M3A1 architecture fitness is part of the cumulative architecture CI chain;
-19. all unit, architecture, build, generated-output and browser smoke gates remain green;
-20. no vanilla gameplay path is cut over yet;
-21. M3B condition engine is the next production slice.
+7. public bus surface is only `prepare`, `dispatch`, `has`, and `ids`;
+8. `prepare()` shares dispatch's validation path and never executes the handler;
+9. dispatch is synchronous and handlers execute once without an implicit `this` context;
+10. nested preparation/dispatch is forbidden across all bus instances and the lock always recovers after failure;
+11. Promise/thenable validators and handlers fail closed without invoking then accessors;
+12. success and rejection use one frozen structured result contract;
+13. rejected results contain machine-readable reasons rather than localized messages;
+14. legacy `false`/`0`/truthy callback semantics are not accepted as command results;
+15. expected gameplay rejection remains distinct from `EngineContractError`;
+16. enriched command errors preserve useful underlying diagnostic fields;
+17. command modules cannot access raw GameState write authority or state composition;
+18. the M1 definition Registry is not repurposed as executable handler storage;
+19. M3A1 architecture fitness remains part of the cumulative architecture CI chain;
+20. all unit, architecture, build, generated-output and browser smoke gates remain green;
+21. no vanilla gameplay path is cut over by this foundation work.

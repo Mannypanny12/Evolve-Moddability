@@ -19,7 +19,7 @@ function passPayload(payload){
     return payload;
 }
 
-test('M3A1 bus is sealed, deterministic and exposes no handler lookup or registration mutation', async () => {
+test('M3A1/M3E1 bus is sealed, deterministic and exposes no handler lookup or registration mutation', async () => {
     const { createCommandBus, commandSucceeded } = await modules();
     const bus = createCommandBus({
         registrations: [
@@ -29,7 +29,7 @@ test('M3A1 bus is sealed, deterministic and exposes no handler lookup or registr
     });
 
     assert.equal(Object.isFrozen(bus), true);
-    assert.deepEqual(Object.keys(bus).sort(), ['dispatch', 'has', 'ids']);
+    assert.deepEqual(Object.keys(bus).sort(), ['dispatch', 'has', 'ids', 'prepare']);
     assert.deepEqual(bus.ids(), ['evolve:command/alpha', 'evolve:command/zeta']);
     assert.equal(Object.isFrozen(bus.ids()), true);
     assert.equal(bus.has('evolve:command/alpha'), true);
