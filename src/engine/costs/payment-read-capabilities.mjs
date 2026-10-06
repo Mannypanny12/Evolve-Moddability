@@ -125,9 +125,9 @@ function assertTypedId(value, path, expectedType){
 }
 
 function subjectDetail(subjectType, canonicalId){
-    return subjectType === 'resource'
-        ? { resourceId: canonicalId }
-        : { prestigeId: canonicalId };
+    if (subjectType === 'resource') return { resourceId: canonicalId };
+    if (subjectType === 'prestige') return { prestigeId: canonicalId };
+    return { poolId: canonicalId };
 }
 
 function invoke(read, family, operation, subjectId, subjectType){
@@ -180,7 +180,7 @@ function readAvailable(read, resourceId){
     return value;
 }
 
-function readCapacity(read, resourceId){
+function readResourceCapacity(read, resourceId){
     const { canonicalId, value } = invoke(read, 'resource', 'capacity', resourceId, 'resource');
     if (value === null) return null;
     if (typeof value !== 'number' || !Number.isFinite(value) || value < 0){
@@ -194,8 +194,34 @@ function readCapacity(read, resourceId){
     return Object.is(value, -0) ? 0 : value;
 }
 
+function readPoolPresent(read, poolId){
+    const { canonicalId, value } = invoke(read, 'pool', 'present', poolId, 'payment-pool');
+    if (typeof value !== 'boolean'){
+        fail('INVALID_PAYMENT_READ_RESULT', 'Payment pool.present read must return a boolean.', {
+            readFamily: 'pool',
+            readOperation: 'present',
+            poolId: canonicalId,
+            valueType: typeof value,
+        });
+    }
+    return value;
+}
+
+function readPoolCapacity(read, poolId){
+    const { canonicalId, value } = invoke(read, 'pool', 'capacity', poolId, 'payment-pool');
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0){
+        fail('INVALID_PAYMENT_READ_RESULT', 'Payment pool.capacity read must return a non-negative finite number.', {
+            readFamily: 'pool',
+            readOperation: 'capacity',
+            poolId: canonicalId,
+            valueType: typeof value,
+        });
+    }
+    return Object.is(value, -0) ? 0 : value;
+}
+
 export function createPaymentReadCapabilities(rawCapabilities){
-    const root = readClosedObject(rawCapabilities, 'paymentReadCapabilities', ['resource', 'prestige'], ['resource']);
+    const root = readClosedObject(rawCapabilities, 'paymentReadCapabilities', ['resource', 'prestige', 'pool'], ['resource']);
     const resourceFields = readClosedObject(
         root.get('resource'),
         'paymentReadCapabilities.resource',
@@ -209,7 +235,7 @@ export function createPaymentReadCapabilities(rawCapabilities){
         resource: Object.freeze({
             amount: resourceId => readFiniteAmount(resourceAmount, 'resource', resourceId, 'resource'),
             available: resourceId => readAvailable(resourceAvailable, resourceId),
-            capacity: resourceId => readCapacity(resourceCapacity, resourceId),
+            capacity: resourceId => readResourceCapacity(resourceCapacity, resourceId),
         }),
     };
 
@@ -222,6 +248,22 @@ export function createPaymentReadCapabilities(rawCapabilities){
         const prestigeAmount = assertReadFunction(prestigeFields.get('amount'), 'paymentReadCapabilities.prestige.amount');
         output.prestige = Object.freeze({
             amount: prestigeId => readFiniteAmount(prestigeAmount, 'prestige', prestigeId, 'prestige'),
+        });
+    }
+
+    if (root.has('pool')){
+        const poolFields = readClosedObject(
+            root.get('pool'),
+            'paymentReadCapabilities.pool',
+            ['present', 'amount', 'capacity']
+        );
+        const poolPresent = assertReadFunction(poolFields.get('present'), 'paymentReadCapabilities.pool.present');
+        const poolAmount = assertReadFunction(poolFields.get('amount'), 'paymentReadCapabilities.pool.amount');
+        const poolCapacity = assertReadFunction(poolFields.get('capacity'), 'paymentReadCapabilities.pool.capacity');
+        output.pool = Object.freeze({
+            present: poolId => readPoolPresent(poolPresent, poolId),
+            amount: poolId => readFiniteAmount(poolAmount, 'pool', poolId, 'payment-pool'),
+            capacity: poolId => readPoolCapacity(poolCapacity, poolId),
         });
     }
 
