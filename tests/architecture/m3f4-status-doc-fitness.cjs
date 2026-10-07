@@ -7,6 +7,7 @@ const ROADMAP = 'docs/modding/ROADMAP.md';
 const BACKLOG = 'docs/modding/BACKLOG.md';
 const CURRENT_ARCHITECTURE = 'docs/modding/CURRENT_ARCHITECTURE.md';
 const M3_CLOSURE = 'docs/modding/M3_CLOSURE_REVIEW.md';
+const M3_FINAL_REVIEW = 'docs/modding/M3_FINAL_REVIEW_HARDENING.md';
 
 function occurrences(source, needle){
     return source.split(needle).length - 1;
@@ -25,7 +26,7 @@ function forbid(source, needle, label, violations){
     }
 }
 
-function statusDocViolations(roadmap, backlog, currentArchitecture, m3Closure){
+function statusDocViolations(roadmap, backlog, currentArchitecture, m3Closure, m3FinalReview){
     const violations = [];
 
     requireExactlyOnce(roadmap, '## M3: Commands, conditions, effects, and costs - complete', ROADMAP, violations);
@@ -53,7 +54,13 @@ function statusDocViolations(roadmap, backlog, currentArchitecture, m3Closure){
 
     requireExactlyOnce(
         currentArchitecture,
-        '| M3 Commands, conditions, effects and costs | complete | `M3_CLOSURE_REVIEW.md` |',
+        '| M3 Commands, conditions, effects and costs | complete | `M3_CLOSURE_REVIEW.md`, `M3_FINAL_REVIEW_HARDENING.md` |',
+        CURRENT_ARCHITECTURE,
+        violations
+    );
+    requireExactlyOnce(
+        currentArchitecture,
+        'Read `M3_CLOSURE_REVIEW.md` for the integrated milestone design/exit authority and `M3_FINAL_REVIEW_HARDENING.md` for the later whole-M3 audit and post-closure hardening.',
         CURRENT_ARCHITECTURE,
         violations
     );
@@ -73,6 +80,13 @@ function statusDocViolations(roadmap, backlog, currentArchitecture, m3Closure){
     requireExactlyOnce(m3Closure, '## Closure proof', M3_CLOSURE, violations);
     requireExactlyOnce(m3Closure, 'With M3 closed, the next architectural slice is **M4A Calculation context and trace**.', M3_CLOSURE, violations);
 
+    requireExactlyOnce(m3FinalReview, '# M3 Final Review and Hardening', M3_FINAL_REVIEW, violations);
+    requireExactlyOnce(m3FinalReview, '## Overall result', M3_FINAL_REVIEW, violations);
+    requireExactlyOnce(m3FinalReview, '## Cross-milestone review', M3_FINAL_REVIEW, violations);
+    requireExactlyOnce(m3FinalReview, '## Test review', M3_FINAL_REVIEW, violations);
+    requireExactlyOnce(m3FinalReview, '## Exit assessment', M3_FINAL_REVIEW, violations);
+    requireExactlyOnce(m3FinalReview, 'M3 remains complete after full review.', M3_FINAL_REVIEW, violations);
+
     return violations;
 }
 
@@ -81,7 +95,8 @@ function findViolations(root){
     const backlog = fs.readFileSync(path.join(root, BACKLOG), 'utf8');
     const currentArchitecture = fs.readFileSync(path.join(root, CURRENT_ARCHITECTURE), 'utf8');
     const m3Closure = fs.readFileSync(path.join(root, M3_CLOSURE), 'utf8');
-    return statusDocViolations(roadmap, backlog, currentArchitecture, m3Closure);
+    const m3FinalReview = fs.readFileSync(path.join(root, M3_FINAL_REVIEW), 'utf8');
+    return statusDocViolations(roadmap, backlog, currentArchitecture, m3Closure, m3FinalReview);
 }
 
 function main(){
