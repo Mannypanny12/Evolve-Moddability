@@ -137,18 +137,21 @@ jobs:
         shell: bash
         run: |
           set +e
-          M0E4_INJECT_STARTUP_FAILURE=1 npm run test:browser > /tmp/m0e4-negative-control.log 2>&1
-          status=$?
+          set -o pipefail
+          M0E4_INJECT_STARTUP_FAILURE=1 npm run test:browser 2>&1 | tee /tmp/m0e4-negative-control.log
+          status=${PIPESTATUS[0]}
+          set +o pipefail
           set -e
-
-          cat /tmp/m0e4-negative-control.log
 
           if [ "$status" -eq 0 ]; then
             echo "Browser smoke unexpectedly passed with an injected Evolve startup exception."
             exit 1
           fi
 
-          grep -q "M0E4_INJECTED_STARTUP_FAILURE" /tmp/m0e4-negative-control.log
+          if ! grep -q "M0E4_NEGATIVE_CONTROL_CONFIRMED" /tmp/m0e4-negative-control.log; then
+            echo "Browser smoke failed, but not for the expected injected startup exception."
+            exit 1
+          fi
 
       - name: Run real-browser smoke test
         env:
