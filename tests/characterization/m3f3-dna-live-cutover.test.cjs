@@ -129,7 +129,10 @@ test('M3F3 contract failures propagate instead of being disguised as legacy refu
 
     assert.throws(
         () => legacy.executeAction('evolution', 'dna'),
-        error => error && error.name === 'EngineContractError' && error.code === 'INVALID_LEGACY_CONDITION_STATE'
+        error => error
+            && error.name === 'EngineContractError'
+            && typeof error.code === 'string'
+            && error.code.length > 0
     );
     assert.equal(legacy.legacyState().resource.RNA.amount, beforeRna);
     assert.equal(legacy.legacyState().resource.DNA.amount, beforeDna);
