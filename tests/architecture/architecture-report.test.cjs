@@ -14,7 +14,7 @@ const {
 
 const root = path.resolve(__dirname, '..', '..');
 
-test('M2E4 architecture report is complete, JSON-safe, and reflects the guarded repository state', async () => {
+test('M3G architecture report is complete, JSON-safe, and reflects the guarded repository state', async () => {
     const report = await buildArchitectureReport(root);
 
     assert.equal(report.reportVersion, ARCHITECTURE_REPORT_VERSION);
@@ -65,6 +65,25 @@ test('M2E4 architecture report is complete, JSON-safe, and reflects the guarded 
     assert.equal(report.stateArchitecture.migration.gates.achievementReaders.details.readerExportCount, 6);
     assert.equal(report.stateArchitecture.selectors.domainCount, 1);
 
+    assert.deepEqual(report.commandArchitecture.reviewedLiveCommandIds, ['evolve:command/evolution/dna']);
+    assert.deepEqual(report.commandArchitecture.reviewedCommandModules, ['src/content/evolve/commands/evolution-dna.mjs']);
+    assert.deepEqual(report.commandArchitecture.productionRuntimes, ['src/application/evolve/evolution-dna-command-runtime.mjs']);
+    assert.deepEqual(report.commandArchitecture.executionAuthorities, ['src/engine/execution/resource-commit.mjs']);
+    assert.deepEqual(report.commandArchitecture.legacyWriteCapabilities, ['src/legacy/bridge/evolve-resource-commit-adapter.mjs']);
+    assert.equal(report.commandArchitecture.genericPackageRoots.length, 6);
+    assert.equal(report.commandArchitecture.queueProductionConsumerCount, 0);
+    assert.deepEqual(report.commandArchitecture.queueProductionConsumers, []);
+    assert.deepEqual(report.commandArchitecture.prerequisiteViolationCounts, {
+        command: 0,
+        condition: 0,
+        effect: 0,
+        payment: 0,
+        queue: 0,
+        cutover: 0,
+    });
+    assert.equal(report.commandArchitecture.crossLayerViolationCount, 0);
+    assert.equal(report.commandArchitecture.violationCount, 0);
+
     assert.equal(report.legacyMappings.size, report.legacyMappings.mappings.length);
     assert.equal(report.legacyMappings.size >= 2, true, 'later milestones may extend the M1D legacy mapping catalog');
     const mappingIds = new Set(report.legacyMappings.mappings.map(mapping => mapping.id));
@@ -81,7 +100,7 @@ test('M2E4 architecture report is complete, JSON-safe, and reflects the guarded 
     assert.equal(roundTrip.legacyMappings.mappings.length, report.legacyMappings.mappings.length, 'legacy mapping records must survive report serialization');
 });
 
-test('M2E4 JSON normalization fails closed instead of silently losing unsupported report data', () => {
+test('M3G JSON normalization fails closed instead of silently losing unsupported report data', () => {
     assert.throws(() => normalizeJsonData({ hidden: undefined }), /unsupported JSON value type undefined/);
     assert.throws(() => normalizeJsonData({ count: Infinity }), /non-finite number/);
     assert.throws(() => normalizeJsonData({ count: -0 }), /negative zero/);
