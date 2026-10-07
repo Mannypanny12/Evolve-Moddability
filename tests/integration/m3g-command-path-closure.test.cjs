@@ -39,11 +39,18 @@ function loadModules(){
     return modulesPromise;
 }
 
-function makeState({ rna = 10, rnaMax = 100, dna = 0, dnaMax = 100, dnaRecord = null } = {}){
+function makeState({
+    rna = 10,
+    rnaMax = 100,
+    rnaRecord = null,
+    dna = 0,
+    dnaMax = 100,
+    dnaRecord = null,
+} = {}){
     return {
         stats: { achieve: {} },
         resource: {
-            RNA: { amount: rna, max: rnaMax, display: true },
+            RNA: rnaRecord || { amount: rna, max: rnaMax, display: true },
             DNA: dnaRecord || { amount: dna, max: dnaMax, display: true },
         },
     };
@@ -63,9 +70,24 @@ function failThenRecoveringResource({ amount = 0, max = 100, failRollback = fals
     });
 }
 
-async function createHarness(state, { afterCondition = null } = {}){
+function sideEffectResource({ amount = 0, max = 100, onFirstAmountWrite } = {}){
+    const target = { amount, max, display: true };
+    let amountWrites = 0;
+    return new Proxy(target, {
+        set(record, field, value){
+            const written = Reflect.set(record, field, value);
+            if (field === 'amount'){
+                amountWrites++;
+                if (amountWrites === 1 && onFirstAmountWrite) onFirstAmountWrite();
+            }
+            return written;
+        },
+    });
+}
+
+async function createHarness(state, { afterCondition = null, readLegacyRoot: suppliedReadRoot = null } = {}){
     const modules = await loadModules();
-    const readLegacyRoot = () => state;
+    const readLegacyRoot = suppliedReadRoot || (() => state);
     const conditionReads = modules.conditionAdapter.createEvolveLegacyConditionReadProvider({ readLegacyRoot });
     const evaluator = modules.conditionEvaluator.createConditionEvaluator({
         registrations: modules.coreRequirements.createCoreRequirementRegistrations(conditionReads),
@@ -77,7 +99,7 @@ async function createHarness(state, { afterCondition = null } = {}){
     const registration = modules.dnaCommand.createEvolutionDnaCommandRegistration({
         evaluateCondition: condition => {
             const result = evaluator.evaluate(condition);
-            if (afterCondition && result.status === 'satisfied') afterCondition(state, result);
+            if (afterCondition && result.status === 'satisfied') afterCondition(readLegacyRoot(), result);
             return result;
         },
         commitResourcePlans: (paymentPlan, effectPlan) => executor.commit(paymentPlan, effectPlan),
@@ -146,6 +168,84 @@ test('M3G settlement revalidates DNA capacity after the execution condition has 
     }]);
     assert.equal(state.resource.RNA.amount, 10, 'payment must not be debited after target-capacity drift');
     assert.equal(state.resource.DNA.amount, 5, 'the external drift must remain visible');
+});
+
+test('M3G settlement rejects synchronous resource drift introduced by an earlier write and rolls back', async () => {
+    const dna = { amount: 0, max: 100, display: true };
+    const rna = sideEffectResource({
+        amount: 10,
+        max: 100,
+        onFirstAmountWrite(){
+            dna.amount = 4;
+        },
+    });
+    const state = makeState({ rnaRecord: rna, dnaRecord: dna });
+    const dispatch = await createHarness(state);
+
+    assertExecutionContractError(dispatch, 'LEGACY_RESOURCE_COMMIT_STATE_DRIFT');
+    assert.equal(rna.amount, 10, 'the earlier RNA debit must be rolled back');
+    assert.equal(dna.amount, 4, 'the externally introduced DNA drift must not be overwritten');
+});
+
+test('M3G settlement rolls back if an earlier write makes a later resource malformed', async () => {
+    const dna = { amount: 0, max: 100, display: true };
+    const rna = sideEffectResource({
+        amount: 10,
+        max: 100,
+        onFirstAmountWrite(){
+            dna.amount = Number.NaN;
+        },
+    });
+    const state = makeState({ rnaRecord: rna, dnaRecord: dna });
+    const dispatch = await createHarness(state);
+
+    assertExecutionContractError(dispatch, 'INVALID_LEGACY_RESOURCE_COMMIT_STATE');
+    assert.equal(rna.amount, 10, 'the earlier RNA debit must be rolled back before malformed-state failure escapes');
+    assert.equal(Number.isNaN(dna.amount), true, 'the external malformed state must not be overwritten by a stale projection');
+});
+
+test('M3G settlement rejects a live-root rebind during atomic application and rolls back the old root', async () => {
+    let currentState;
+    const replacementState = makeState({ rna: 50, dna: 7, dnaMax: 100 });
+    const rna = sideEffectResource({
+        amount: 10,
+        max: 100,
+        onFirstAmountWrite(){
+            currentState = replacementState;
+        },
+    });
+    const originalState = makeState({ rnaRecord: rna, dna: 0, dnaMax: 100 });
+    currentState = originalState;
+    const dispatch = await createHarness(originalState, {
+        readLegacyRoot: () => currentState,
+    });
+
+    assertExecutionContractError(dispatch, 'LEGACY_RESOURCE_COMMIT_STATE_DRIFT');
+    assert.equal(originalState.resource.RNA.amount, 10, 'the debit against the old root must be rolled back');
+    assert.equal(originalState.resource.DNA.amount, 0);
+    assert.equal(replacementState.resource.RNA.amount, 50, 'the replacement root must remain untouched');
+    assert.equal(replacementState.resource.DNA.amount, 7);
+});
+
+test('M3G settlement rolls back if the live root becomes malformed during atomic application', async () => {
+    let currentState;
+    const rna = sideEffectResource({
+        amount: 10,
+        max: 100,
+        onFirstAmountWrite(){
+            currentState = null;
+        },
+    });
+    const originalState = makeState({ rnaRecord: rna, dna: 0, dnaMax: 100 });
+    currentState = originalState;
+    const dispatch = await createHarness(originalState, {
+        readLegacyRoot: () => currentState,
+    });
+
+    assertExecutionContractError(dispatch, 'INVALID_LEGACY_RESOURCE_COMMIT_STATE');
+    assert.equal(originalState.resource.RNA.amount, 10, 'the old-root debit must be rolled back before malformed-root failure escapes');
+    assert.equal(originalState.resource.DNA.amount, 0);
+    assert.equal(currentState, null, 'the external root replacement must remain visible');
 });
 
 test('M3G partial legacy write failure rolls earlier resource changes back atomically', async () => {
