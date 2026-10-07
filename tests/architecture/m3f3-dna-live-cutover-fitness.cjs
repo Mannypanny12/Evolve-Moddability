@@ -38,6 +38,40 @@ function listSourceFiles(dir){
     return listFiles(dir).filter(file => SOURCE_EXTENSIONS.has(path.extname(file)));
 }
 
+function extractFunctionBody(source, signaturePattern){
+    const code = maskNonCode(source);
+    const match = signaturePattern.exec(code);
+    if (!match) return null;
+    const open = code.indexOf('{', match.index + match[0].length);
+    if (open < 0) return null;
+    let depth = 0;
+    for (let index = open; index < code.length; index++){
+        if (code[index] === '{') depth++;
+        else if (code[index] === '}'){
+            depth--;
+            if (depth === 0) return source.slice(open + 1, index);
+        }
+    }
+    return null;
+}
+
+function extractRuntimeDispatchBody(source){
+    return extractFunctionBody(
+        source,
+        /\bexport\s+function\s+dispatchEvolutionDnaCommand\s*\(\s*\)/
+    );
+}
+
+function executableDnaIdPositions(source){
+    const code = maskNonCode(source);
+    const positions = [];
+    const pattern = /\bid\s*:\s*['"]evolution-dna['"]/g;
+    for (let match = pattern.exec(source); match; match = pattern.exec(source)){
+        if (code.slice(match.index, match.index + 2) === 'id') positions.push(match.index);
+    }
+    return positions;
+}
+
 function analyzeRuntimeSource(source){
     const violations = [];
     const code = maskNonCode(source);
@@ -60,8 +94,23 @@ function analyzeRuntimeSource(source){
         if (!source.includes(required)) violations.push(`${RUNTIME}: reviewed production composition marker is missing: ${required}`);
     }
 
+    const globalReferences = code.match(/\bglobal\b/g) || [];
+    if (globalReferences.length !== 2){
+        violations.push(`${RUNTIME}: global may appear only in the reviewed live import and readLegacyRoot provider`);
+    }
+
+    const dispatchBody = extractRuntimeDispatchBody(source);
+    if (dispatchBody === null){
+        violations.push(`${RUNTIME}: dispatchEvolutionDnaCommand() body could not be located`);
+    }
+    else {
+        const normalizedDispatch = maskNonCode(dispatchBody).replace(/\s+/g, ' ').trim();
+        if (normalizedDispatch !== 'return commandBus.dispatch(DNA_COMMAND);'){
+            violations.push(`${RUNTIME}: dispatchEvolutionDnaCommand() must remain a pure command-bus dispatch`);
+        }
+    }
+
     const forbidden = [
-        ['captured legacy root', /\b(?:const|let|var)\s+(?:legacyRoot|stateRoot|capturedRoot)\s*=\s*global\b/],
         ['legacy rebinding authority', /\bsetGlobal\b/],
         ['direct legacy resource mutation', /\b(?:modRes|payCosts)\b/],
         ['DOM/UI', /\b(?:window|document|navigator|jQuery|Vue)\b|\$\s*\(/],
@@ -93,8 +142,9 @@ function analyzeRuntimeSource(source){
 
 function extractDnaActionBody(source){
     const code = maskNonCode(source);
-    const dnaId = source.indexOf("id: 'evolution-dna'");
-    if (dnaId < 0) return null;
+    const positions = executableDnaIdPositions(source);
+    if (positions.length !== 1) return null;
+    const dnaId = positions[0];
     const actionStart = code.indexOf('action(args)', dnaId);
     if (actionStart < 0) return null;
     const open = code.indexOf('{', actionStart);
@@ -120,9 +170,14 @@ function analyzeActionsSource(source){
         violations.push(`${ACTIONS}: legacy actions may not import the DNA registration directly`);
     }
 
+    const dnaIds = executableDnaIdPositions(source);
+    if (dnaIds.length !== 1){
+        violations.push(`${ACTIONS}: executable evolution-dna identity must occur exactly once; found ${dnaIds.length}`);
+    }
+
     const body = extractDnaActionBody(source);
     if (body === null){
-        violations.push(`${ACTIONS}: evolution.dna.action(args) could not be located`);
+        violations.push(`${ACTIONS}: evolution.dna.action(args) could not be located unambiguously`);
         return violations;
     }
     const normalized = maskNonCode(body).replace(/\s+/g, ' ').trim();
@@ -183,6 +238,13 @@ function main(){
     console.log('M3F3 DNA live-cutover fitness passed.');
 }
 
-module.exports = { analyzeRuntimeSource, extractDnaActionBody, analyzeActionsSource, analyzeRuntimeConsumers, findViolations };
+module.exports = {
+    analyzeRuntimeSource,
+    extractRuntimeDispatchBody,
+    extractDnaActionBody,
+    analyzeActionsSource,
+    analyzeRuntimeConsumers,
+    findViolations,
+};
 
 if (require.main === module) main();

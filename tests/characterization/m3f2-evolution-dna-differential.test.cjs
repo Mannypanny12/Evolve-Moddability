@@ -54,11 +54,26 @@ function snapshotLegacyState(){
     return JSON.stringify(legacy.legacyState());
 }
 
+function applyFrozenNotrackResourceDelta(state, resourceId, delta){
+    const resource = state.resource[resourceId];
+    let count = resource.amount + delta;
+    let success = true;
+    if (count > resource.max && resource.max >= 0){
+        count = resource.max;
+    }
+    else if (count < 0){
+        success = false;
+        count = 0;
+    }
+    if (!Number.isNaN(count)) resource.amount = count;
+    return success;
+}
+
 function executeFrozenLegacyDna(){
     const state = legacy.legacyState();
     if (state.resource.RNA.amount >= 2 && state.resource.DNA.amount < state.resource.DNA.max){
-        legacy.applyResourceDelta('RNA', -2, true);
-        legacy.applyResourceDelta('DNA', 1, true);
+        applyFrozenNotrackResourceDelta(state, 'RNA', -2);
+        applyFrozenNotrackResourceDelta(state, 'DNA', 1);
     }
     return false;
 }

@@ -369,10 +369,10 @@ function preflight(root, index, changes){
     return { result: null, order };
 }
 
-function rollback(applied){
+function rollback(attempted){
     let rollbackFailed = false;
-    for (let index = applied.length - 1; index >= 0; index--){
-        const resource = applied[index];
+    for (let index = attempted.length - 1; index >= 0; index--){
+        const resource = attempted[index];
         try {
             if (!Reflect.set(resource.record, 'amount', resource.original)) rollbackFailed = true;
         }
@@ -386,18 +386,18 @@ function rollback(applied){
 }
 
 function applyProjected(order){
-    const applied = [];
+    const attempted = [];
     try {
         for (const resource of order){
             if (Object.is(resource.original, resource.projected)) continue;
+            attempted.push(resource);
             if (!Reflect.set(resource.record, 'amount', resource.projected)){
                 throw new Error('resource amount write rejected');
             }
-            applied.push(resource);
         }
     }
     catch {
-        rollback(applied);
+        rollback(attempted);
         fail('LEGACY_RESOURCE_COMMIT_WRITE_FAILURE', 'Resource commit could not apply all resource amount changes atomically.');
     }
 }
