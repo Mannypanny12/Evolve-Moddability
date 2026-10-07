@@ -4,7 +4,11 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const { statusDocViolations } = require('./m3f4-status-doc-fitness.cjs');
+const {
+    CURRENT_M3_ROW,
+    CURRENT_M3_AUTHORITY,
+    statusDocViolations,
+} = require('./m3f4-status-doc-fitness.cjs');
 
 const root = path.resolve(__dirname, '../..');
 const roadmap = fs.readFileSync(path.join(root, 'docs/modding/ROADMAP.md'), 'utf8');
@@ -43,7 +47,7 @@ test('M3 status-document guard rejects stale M3G-next and M3-next authority text
         .replace('M4A calculation context and trace - next', 'M4A calculation context and trace');
     const staleCurrentArchitecture = currentArchitecture
         .replace(
-            '| M3 Commands, conditions, effects and costs | complete | `M3_CLOSURE_REVIEW.md`, `M3_FINAL_REVIEW_HARDENING.md` |',
+            CURRENT_M3_ROW,
             '| M3 Commands, conditions, effects and costs | next | `ROADMAP.md` |'
         )
         .replace('M4A is next: **Calculation context and trace**.', 'M3 begins with the command bus.');
@@ -63,16 +67,31 @@ test('M3 status-document guard rejects stale M3G-next and M3-next authority text
 test('M3 status-document guard rejects loss of the post-closure hardening authority', () => {
     const staleCurrentArchitecture = currentArchitecture
         .replace(
-            '| M3 Commands, conditions, effects and costs | complete | `M3_CLOSURE_REVIEW.md`, `M3_FINAL_REVIEW_HARDENING.md` |',
-            '| M3 Commands, conditions, effects and costs | complete | `M3_CLOSURE_REVIEW.md` |'
+            CURRENT_M3_ROW,
+            '| M3 Commands, conditions, effects and costs | complete | `M3_CLOSURE_REVIEW.md`, `M0_M3_RETROSPECTIVE_HARDENING.md` |'
         )
         .replace(
-            'Read `M3_CLOSURE_REVIEW.md` for the integrated milestone design/exit authority and `M3_FINAL_REVIEW_HARDENING.md` for the later whole-M3 audit and post-closure hardening.',
-            'Read `M3_CLOSURE_REVIEW.md` for the integrated milestone design/exit authority.'
+            CURRENT_M3_AUTHORITY,
+            'Read `M3_CLOSURE_REVIEW.md` for the integrated milestone design/exit authority and `M0_M3_RETROSPECTIVE_HARDENING.md` for the subsequent cross-milestone pre-M4 revalidation.'
         );
     const violations = violationsFor({ currentArchitectureText: staleCurrentArchitecture });
 
     assert.ok(violations.some(violation => violation.includes('M3_FINAL_REVIEW_HARDENING.md')));
+});
+
+test('M3 status-document guard rejects loss of the cumulative retrospective authority', () => {
+    const staleCurrentArchitecture = currentArchitecture
+        .replace(
+            CURRENT_M3_ROW,
+            '| M3 Commands, conditions, effects and costs | complete | `M3_CLOSURE_REVIEW.md`, `M3_FINAL_REVIEW_HARDENING.md` |'
+        )
+        .replace(
+            CURRENT_M3_AUTHORITY,
+            'Read `M3_CLOSURE_REVIEW.md` for the integrated milestone design/exit authority and `M3_FINAL_REVIEW_HARDENING.md` for the later whole-M3 audit and post-closure hardening.'
+        );
+    const violations = violationsFor({ currentArchitectureText: staleCurrentArchitecture });
+
+    assert.ok(violations.some(violation => violation.includes('M0_M3_RETROSPECTIVE_HARDENING.md')));
 });
 
 test('M3 status-document guard rejects loss of CommandBus.prepare documentation', () => {
