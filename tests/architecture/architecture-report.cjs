@@ -21,7 +21,7 @@ const { scanSelectorStateDependencies } = require('./m2e3-selector-state-depende
 const { scanM2E3ReviewHardening } = require('./m2e3-selector-review-hardening.cjs');
 const { scanM3GCommandArchitecture } = require('./m3g-command-architecture-closure.cjs');
 
-const ARCHITECTURE_REPORT_VERSION = 4;
+const ARCHITECTURE_REPORT_VERSION = 5;
 
 function sortedUnique(values){
     return [...new Set(values)].sort();
