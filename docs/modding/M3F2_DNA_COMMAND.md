@@ -8,50 +8,52 @@ M3F2 creates the first concrete first-party command registration without yet cha
 evolve:command/evolution/dna
 ```
 
-It composes the already-completed M3 condition, payment, effect and M3F1 atomic resource-commit contracts. The command remains independent of DOM/UI state, queue policy and direct legacy state access.
+It composes the completed M3 condition, quote/payment-plan, effect-plan and M3F1 atomic resource-commit contracts. The command remains independent of DOM/UI state, queue policy and direct legacy state access.
 
 ## Execution contract
 
-The semantic execution pipeline is deliberately narrower than the legacy presentation `condition()`:
+The hardened execution pipeline follows the M3A0 DNA execution contract rather than legacy presentation qualification or current-affordability observation:
 
 ```text
 DNA below capacity
-  -> current affordability for 2 RNA
+  -> fresh PaymentQuote: 2 RNA
   -> PaymentPlan: debit 2 RNA
   -> EffectPlan: grant 1 DNA
   -> one atomic resource commit
   -> structured CommandResult
 ```
 
-The command does **not** test DNA display, RNA display or `evoFinalMenu`. Existing characterization proves those values belong to presentation/availability behavior rather than direct execution semantics. RNA holdings are also not duplicated as a condition; current affordability remains owned by M3D.
+The command does **not** test DNA display, RNA display or `evoFinalMenu`. It also does not use M3D current affordability as an execution gate. M3A0 explicitly characterizes these as distinct questions: the direct DNA execution guard is `RNA amount >= 2 && DNA < DNA.max`, while current affordability may additionally fail because the price exceeds current resource capacity.
+
+M3D still owns the fresh quote and payment-plan representation. M3F1 settlement is the final payment/mutation authority and revalidates the actual debit and grant atomically.
 
 ## Capability boundary
 
-`createEvolutionDnaCommandRegistration()` receives only three synchronous semantic capabilities:
+`createEvolutionDnaCommandRegistration()` receives only two synchronous semantic capabilities:
 
 ```text
 evaluateCondition
-assessCurrentAffordability
 commitResourcePlans
 ```
 
-It receives no legacy root, DOM handle, settings object, GameState mutation authority, queue object or raw resource writer. The first-party command therefore describes the operation while lower layers retain read/mutation authority.
+It receives no legacy root, DOM handle, settings object, GameState mutation authority, queue object, raw resource writer or affordability service. The first-party command therefore describes the operation while lower layers retain read/mutation authority.
 
-All capability result shapes are validated fail-closed before they can influence command success.
+Capability result shapes are validated fail-closed before they can influence command success.
 
 ## Failure ordering
 
 Execution is fail-fast and deterministic:
 
-1. DNA capacity condition;
-2. current RNA affordability;
-3. final atomic resource commit.
+1. validate the closed empty payload;
+2. evaluate the DNA-below-capacity execution condition;
+3. create the fresh 2-RNA quote/payment plan and +1 DNA effect plan;
+4. atomically settle the complete resource exchange.
 
-Condition failure prevents payment assessment and commit. Affordability failure prevents commit. The M3F1 commit remains the final mutation authority and can still reject if the underlying resource state no longer supports the complete debit/grant exchange.
+A capacity-condition failure prevents settlement. Settlement itself rejects insufficient RNA or an invalid/full target without partial mutation.
 
 Expected gameplay refusal becomes `commandRejected(...)`. Contract/configuration failures remain `EngineContractError` values handled by the command bus.
 
-## Payload
+## Payload and direct execution hardening
 
 The command payload is exactly:
 
@@ -60,6 +62,8 @@ The command payload is exactly:
 ```
 
 Legacy control values such as `isQueue`, action names, DOM identity and presentation flags are prohibited from entering the command envelope.
+
+The exposed registration handler also revalidates its payload directly rather than relying solely on CommandBus dispatch validation. A module-wide execution lock prevents a supplied capability from re-entering the exposed handler directly; `finally` guarantees lock recovery.
 
 ## First-party placement
 
@@ -70,6 +74,25 @@ src/content/evolve/commands/evolution-dna.mjs
 ```
 
 The generic command, condition, cost, effect and execution packages remain first-party neutral. The DNA module may depend only on reviewed engine contracts and receives runtime capabilities by injection.
+
+## M3F1 compatibility dependency
+
+M3F2 hardening exposed one parity gap in the temporary M3F1 legacy resource adapter. Legacy `modRes(res, delta, true)` clamps the resulting amount to bounded resource capacity for both positive and negative deltas. The adapter already did this for credits but initially did not do it for debits.
+
+The bounded adapter now applies the same post-change capacity clamp to reviewed RNA/DNA debits and credits. This matters when a resource amount is temporarily above a reduced max and preserves exact legacy DNA execution behavior without broadening the adapter into a general writer.
+
+## Differential proof
+
+The hardened M3F2 characterization is a true old-versus-new comparison. For each reviewed scenario it:
+
+1. installs a controlled legacy state;
+2. executes the real legacy `evolution.dna.action()`;
+3. snapshots the complete resulting legacy state;
+4. reinstalls the identical starting state;
+5. dispatches `evolve:command/evolution/dna` through the real M3B/M3D/M3F1 composition;
+6. compares the complete resulting state.
+
+The matrix covers normal success, insufficient RNA, DNA capacity, hidden DNA, `evoFinalMenu`, hidden RNA, RNA holdings above a reduced capacity, and DNA grant clamping.
 
 ## M3F2 boundary
 
@@ -86,51 +109,76 @@ M3F2 therefore does not:
 - introduce a general PaymentExecutor or EffectExecutor;
 - execute prestige or special-payment families.
 
+## Architecture enforcement
+
+`tests/architecture/m3f2-dna-command-fitness.cjs` pins the first-party command boundary and prohibits:
+
+- direct legacy/global access;
+- DOM/UI or settings access;
+- queue or GameState mutation authority;
+- presentation-backed `resource.available` authorization;
+- current-affordability authorization;
+- dynamic loading/async control flow;
+- production consumption before M3F3.
+
+It also requires the reviewed command/resource IDs, DNA capacity condition, 2-RNA quote/payment plan, +1 DNA effect, direct payload revalidation and reentrancy guard.
+
+Dedicated negative-control tests prove the scanner catches representative regressions rather than merely reporting success on the current source.
+
 ## Review and hardening
 
-The implementation was reviewed against the M3A0 DNA evidence, M3B condition contract, M3D payment semantics and M3F1 commit boundary before closure.
+The post-implementation review found and fixed substantive issues rather than only cosmetic cleanup:
 
-Two issues were caught before the production commit was created:
+- current affordability had been incorrectly promoted into DNA execution authorization;
+- the M3F1 bounded resource adapter did not clamp debits exactly like legacy `modRes()` when a resource began above capacity;
+- direct handler invocation could bypass payload validation;
+- direct handler reentrancy was not independently guarded;
+- the original M3F2 differential proof was expectation-based rather than true old-versus-new state comparison;
+- the expanded architecture scanner itself needed two edge-case fixes and negative controls.
 
-- an unrelated package-script typo introduced while editing `package.json` was removed so the only package change is the intended M3F2 architecture-gate addition;
-- the first architecture-gate draft incorrectly expected the generated `payment.resource.debit` operation literal to appear in the command-composition source. The gate now pins the actual composition contract instead: fresh PaymentQuote/PaymentPlan construction plus the reviewed DNA grant effect.
-
-The committed implementation then passed the complete repository safety net without requiring further production changes.
+The detailed review authority is [M3F2_REVIEW_HARDENING.md](M3F2_REVIEW_HARDENING.md).
 
 ## Verification
 
-Implementation commit:
+Initial implementation commit:
 
 ```text
 c3524f4dae7adeb37745d1d0a215ea25a8c085aa
 ```
 
-GitHub Actions run `37567605539` passed on that implementation head, including:
+Hardened production/test head:
 
-- the full test suite, including the new M3F2 orchestration and integrated DNA differential tests;
-- the cumulative architecture fitness suite including `m3f2-dna-command-fitness.cjs`;
+```text
+2e1be6d3793b74faba06bd3b56d4bec81929d658
+```
+
+GitHub Actions run `37569895823` passed the complete repository safety net on the hardened production/test head:
+
+- full test suite;
+- cumulative architecture fitness;
 - game and wiki builds;
 - generated-output cleanliness;
-- the real-browser startup-failure negative control;
-- the real-browser smoke test.
+- real-browser startup-failure negative control;
+- real-browser smoke test.
 
-The final documentation-only closure head must preserve the same complete safety net.
+The final documentation head must preserve the same safety net.
 
 ## M3F3 handoff
 
-M3F3 owns the live caller cutover. It must create the reviewed production composition root, wire the real legacy read/commit adapters to the DNA command, replace the bounded legacy DNA caller, and explicitly translate structured command results into the historical caller/queue lifecycle without making the UI authoritative again.
+M3F3 owns the live caller cutover. It must create the reviewed production composition root, wire the real legacy read/commit adapters to the DNA command, replace the bounded legacy DNA caller, and explicitly translate structured command results into the historical caller/queue lifecycle without making UI or affordability presentation state gameplay authority again.
 
 ## Definition of done
 
 M3F2 is complete when:
 
-1. the concrete DNA registration exists and accepts only an empty payload;
+1. the concrete DNA registration exists and accepts only an empty payload, including direct handler invocation;
 2. the execution condition is exactly DNA-below-capacity and contains no presentation availability rule;
-3. the price is freshly represented as a 2-RNA PaymentQuote and PaymentPlan;
-4. the effect is freshly represented as a +1 DNA EffectPlan;
-5. condition and affordability failures are complete non-mutation;
-6. M3F1 remains the final atomic authority for the debit/grant pair;
-7. real M3B/M3D/M3F1 implementations plus legacy compatibility adapters pass differential DNA evidence;
-8. the architecture gate keeps the first-party command out of legacy/UI/settings/queue/state-mutation authority;
-9. no production consumer exists before M3F3;
-10. the complete repository test, architecture, build and browser safety net remains green.
+3. current affordability is not promoted into direct execution authorization;
+4. the price is freshly represented as a 2-RNA PaymentQuote and PaymentPlan;
+5. the effect is freshly represented as a +1 DNA EffectPlan;
+6. M3F1 remains the final atomic authority for the debit/grant pair and preserves bounded `modRes()` parity for reviewed resources;
+7. real legacy execution and the real M3B/M3D/M3F1 command path are state-equivalent across the reviewed DNA matrix;
+8. direct execution is payload-validated and reentrancy-safe;
+9. the architecture gate and its negative controls keep the first-party command out of legacy/UI/settings/queue/state-mutation/current-affordability authority;
+10. no production consumer exists before M3F3;
+11. the complete repository test, architecture, build and browser safety net remains green.
