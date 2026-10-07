@@ -434,6 +434,20 @@ function rollback(attempted){
     }
 }
 
+function rollbackBeforeRethrow(attempted, error){
+    rollback(attempted);
+    throw error;
+}
+
+function verifiedAmount(resource, attempted){
+    try {
+        return resourceAmount(resource);
+    }
+    catch (error){
+        rollbackBeforeRethrow(attempted, error);
+    }
+}
+
 function failStateDrift(attempted, resourceId, phase, expected, actual){
     rollback(attempted);
     fail('LEGACY_RESOURCE_COMMIT_STATE_DRIFT', 'Legacy resource state changed during atomic commit.', {
@@ -445,7 +459,14 @@ function failStateDrift(attempted, resourceId, phase, expected, actual){
 }
 
 function verifyRoot(readLegacyRoot, expectedRoot, attempted, resourceId, phase){
-    if (currentRoot(readLegacyRoot) !== expectedRoot){
+    let root;
+    try {
+        root = currentRoot(readLegacyRoot);
+    }
+    catch (error){
+        rollbackBeforeRethrow(attempted, error);
+    }
+    if (root !== expectedRoot){
         rollback(attempted);
         fail('LEGACY_RESOURCE_COMMIT_STATE_DRIFT', 'Legacy resource root changed during atomic commit.', {
             resourceId,
@@ -462,7 +483,7 @@ function applyProjected(root, readLegacyRoot, order){
         if (Object.is(resource.original, resource.projected)) continue;
 
         verifyRoot(readLegacyRoot, root, attempted, resource.resourceId, 'before_write');
-        const current = resourceAmount(resource);
+        const current = verifiedAmount(resource, attempted);
         if (!Object.is(current, resource.original)){
             failStateDrift(
                 attempted,
@@ -485,7 +506,7 @@ function applyProjected(root, readLegacyRoot, order){
         }
 
         verifyRoot(readLegacyRoot, root, attempted, resource.resourceId, 'after_write');
-        const written = resourceAmount(resource);
+        const written = verifiedAmount(resource, attempted);
         if (!Object.is(written, resource.projected)){
             failStateDrift(
                 attempted,
@@ -500,7 +521,7 @@ function applyProjected(root, readLegacyRoot, order){
     verifyRoot(readLegacyRoot, root, attempted, null, 'final');
     for (const resource of order){
         if (Object.is(resource.original, resource.projected)) continue;
-        const current = resourceAmount(resource);
+        const current = verifiedAmount(resource, attempted);
         if (!Object.is(current, resource.projected)){
             failStateDrift(
                 attempted,
