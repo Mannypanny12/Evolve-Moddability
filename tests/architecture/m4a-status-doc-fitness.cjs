@@ -56,6 +56,8 @@ function statusDocViolations(roadmap, backlog, currentArchitecture, m4aAuthority
     requireExactlyOnce(m4aAuthority, '## Calculation contract', M4A_AUTHORITY, violations);
     requireExactlyOnce(m4aAuthority, '## Architecture boundary', M4A_AUTHORITY, violations);
     requireExactlyOnce(m4aAuthority, '## Independent review and hardening', M4A_AUTHORITY, violations);
+    requireExactlyOnce(m4aAuthority, '## Post-merge independent review and hardening', M4A_AUTHORITY, violations);
+    requireExactlyOnce(m4aAuthority, 'Code-hardening head `442182acb737e520144ff54e1fe0c6a1c131b263` passed the complete Baseline workflow in run `37673775002`', M4A_AUTHORITY, violations);
     requireExactlyOnce(m4aAuthority, '## Deliberate deferrals', M4A_AUTHORITY, violations);
     requireExactlyOnce(m4aAuthority, 'M4B Modifier pipeline is the next slice.', M4A_AUTHORITY, violations);
 
