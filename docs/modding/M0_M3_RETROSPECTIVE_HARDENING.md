@@ -19,9 +19,9 @@ The review covered:
 
 ## Overall result
 
-No unresolved in-scope gameplay-correctness or architectural-boundary defect was found in M0-M3 after hardening.
+No unresolved in-scope gameplay-correctness or architectural-boundary defect remains in M0-M3 after the retrospective and the later cleanup hardening recorded below.
 
-One concrete cross-milestone test-wiring weakness was found and fixed. Several documentation/authority gaps were also corrected. The review did not change vanilla gameplay semantics.
+The retrospective itself found one concrete cross-milestone test-wiring weakness and several documentation/authority gaps. A later repository-cleanup review also discovered that a valid M3 resource-settlement hardening fix had been stranded on an abandoned post-closure branch rather than merged into the final M3 line. That fix has now been recovered and revalidated without changing vanilla gameplay semantics.
 
 This assessment does not mean the repository is mathematically bug-free. It means the reviewed completed milestone contracts are internally coherent, actively guarded, and no justified unresolved defect was found within their defined scope.
 
@@ -119,7 +119,7 @@ The existing adversarial M1 tests remain aligned with the implementation after M
 
 ### Result
 
-No unresolved GameState/StateStore/achievement correctness defect was found. The only concrete M2 issue found was the architecture-test wrapper asymmetry fixed by Finding 1.
+No unresolved GameState/StateStore/achievement correctness defect was found. The only concrete M2 issue found by the retrospective was the architecture-test wrapper asymmetry fixed by Finding 1.
 
 ### Revalidated strengths
 
@@ -150,7 +150,7 @@ The legacy achievement adapter remains temporary compatibility projection rather
 
 ### Result
 
-M3 remains complete after the earlier dedicated final review and this cross-milestone retrospective. No new M3 behavior defect was found.
+M3 remains complete after the earlier dedicated final review, the cross-milestone retrospective, and the later cleanup correction described below.
 
 ### Revalidated relationships
 
@@ -175,6 +175,52 @@ The earlier M3 hardening remains valid:
 
 The user's post-merge manual test of the live M3 build also exercised successful DNA purchase, refusal/edge behavior and continued gameplay without exposing a regression. Manual confirmation complements rather than replaces the automated proof.
 
+## Post-retrospective cleanup review
+
+A later cleanup review looked specifically for dead tests, forgotten branch work, generated residue, stale proof text and artifacts that had become unusable after M0-M3 closure.
+
+### Recovered M3 hardening that had been stranded on an abandoned branch
+
+The review found one material case of useful work that was not merely branch clutter.
+
+The abandoned `m3-post-closure-hardening` line had identified a narrow synchronous atomicity gap in `evolve-resource-commit-adapter.mjs`. The final M3 branch had started again from the earlier M3G closure, so that adapter hardening and its expanded integration matrix never reached `master`.
+
+The gap existed between sequential compatibility writes. A custom/reactive setter on an earlier resource write could synchronously mutate a later resource, replace the live legacy root, replace a mapped resource record or transform the written value. The old commit path had already preflighted the transaction and could therefore continue using a stale projection.
+
+The cleanup hardening recovers the justified part of that branch:
+
+- the live root must remain the same root before, after and at the end of the write sequence;
+- the mapped resource record must remain the same record;
+- amount and capacity are re-read and verified around each write;
+- written amounts are read back rather than assuming `Reflect.set()` stored the requested value;
+- drift or malformed state rolls back already-attempted resource writes before the hard failure escapes;
+- rollback itself verifies restoration and retains `LEGACY_RESOURCE_COMMIT_ROLLBACK_FAILURE` when restoration cannot be proven.
+
+The stronger cases are folded into the existing `m3g-command-path-closure.test.cjs` integration suite rather than adding the abandoned branch's separate overlapping post-closure test file. This preserves the behavioral proof while avoiding another redundant test artifact.
+
+### Test cleanup decision
+
+No existing tracked test was found that was both unreachable and semantically superseded.
+
+The test layers intentionally overlap at their boundaries but protect different failure classes:
+
+- characterization tests freeze legacy behavior;
+- differential tests compare legacy and refactored behavior;
+- engine tests protect generic contracts and hostile inputs;
+- integration tests protect composed production paths;
+- architecture tests prohibit invalid dependency/ownership states;
+- browser tests exercise the built application rather than isolated modules.
+
+The direct architecture gates and their `*.test.cjs` wrappers do execute related scanner logic twice in the full CI chain. That duplication is deliberate today: one surface is the explicit architecture gate while the other guarantees recursive `npm test` cannot silently lose the same invariant. Removing one side would weaken the coverage contract added by this retrospective. A future test-runner redesign may consolidate orchestration, but deleting individual guards during cleanup would be the wrong tradeoff.
+
+### Artifact cleanup decision
+
+No generated test bundle, `dist/` output or source map is tracked by the current tree. Those paths remain ignored and CI continues to verify that the production build changes only expected generated outputs.
+
+The main remaining repository clutter is branch-level rather than source-tree-level: many completed milestone, review-hardening and temporary deployment branches still exist after their useful work was merged or superseded. Historical commits remain available through Git/PR history, so those refs do not need to be retained indefinitely. Temporary test-site branches are especially disposable once any unique useful work has been reconciled.
+
+The cleanup review intentionally does not move or delete the slice design documents. They remain useful migration history, and `CURRENT_ARCHITECTURE.md` already establishes that later closure/final-review/retrospective authorities supersede them when their historical wording differs from current architecture.
+
 ## Deliberate boundaries that remain later work
 
 The retrospective does not reclassify planned future work as a defect in a completed milestone.
@@ -193,16 +239,20 @@ Those boundaries remain explicit rather than hidden gaps.
 
 ## Hardening proof
 
-The first retrospective hardening checkpoint is commit `1d683bd1e121b57be82b266f8bf929dac767e518` on branch `m0-m3-retrospective-hardening`.
+The first retrospective hardening checkpoint was commit `1d683bd1e121b57be82b266f8bf929dac767e518` on branch `m0-m3-retrospective-hardening`.
 
-GitHub Actions run `37642820326` passed the complete baseline safety chain after the architecture-test coverage hardening, including the recursive Node suite, cumulative architecture gates, production build/cleanliness checks and browser smoke.
+GitHub Actions run `37642820326` passed the complete baseline safety chain after the architecture-test coverage hardening.
 
-A final full CI run on the completed retrospective branch is still required after the documentation/cleanup checkpoint. This document should be updated with that final proof before the retrospective is merged.
+The completed retrospective branch reached final reviewed head `d1015ab110f8a9c6d6f874995e9df3a25b1b537a`. GitHub Actions run `37646786601` passed the full repository safety chain on that exact head, including recursive Node tests, architecture fitness, production build/cleanliness, startup-exception negative control and real-browser smoke.
+
+PR #50 merged the retrospective into `master` as `0ac0a0578af183508cea8a0d152671fe767df603`. Post-merge Baseline build run `37647289815` and Android test-site run `37647289871` both passed on that merge commit.
+
+The later cleanup code-hardening checkpoint is `26ada8ee27a4f25e0a9a0e1f15a53b152c408668` on `m0-m3-cleanup-review`. PR #51 Baseline build run `37651107187` passed the complete safety chain on that exact code checkpoint, including the recovered synchronous-drift/root-rebind settlement cases.
 
 ## Exit assessment
 
-M0-M3 form a coherent cumulative foundation for M4.
+M0-M3 form a coherent cumulative foundation for M4 after both the retrospective and cleanup hardening.
 
-The retrospective found no reason to reopen milestone design or roll back the live M3 cutover. The justified technical change was to make architecture-gate coverage uniform and fail-closed across the explicit architecture manifest. The justified documentation changes make M0 closure and the cumulative pre-M4 audit explicit.
+The cleanup review found no reason to remove useful regression layers or reopen milestone scope. Its material correction was to recover the stranded M3 intra-commit atomicity hardening and integrate that proof into the existing M3G suite rather than preserving another abandoned audit/test layer.
 
 M4 should therefore build on this foundation rather than compensating for known unresolved debt inside M0-M3.
