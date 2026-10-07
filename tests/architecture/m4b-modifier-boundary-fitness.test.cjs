@@ -1,0 +1,37 @@
+'use strict';
+
+const assert = require('node:assert/strict');
+const test = require('node:test');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { findViolations } = require('./m4b-modifier-boundary-fitness.cjs');
+
+const root = path.resolve(__dirname, '../..');
+
+test('M4B modifier package satisfies its dedicated architecture boundary', () => {
+    assert.deepEqual(findViolations(root), []);
+});
+
+test('M4B boundary rejects production consumers before M4D', () => {
+    const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'm4b-boundary-'));
+    try {
+        fs.mkdirSync(path.join(fixture, 'src/engine/calculations'), { recursive: true });
+        fs.mkdirSync(path.join(fixture, 'src/application'), { recursive: true });
+        fs.writeFileSync(path.join(fixture, 'src/engine/calculations/modifier-contract.mjs'), 'export const x = 1;\n');
+        fs.writeFileSync(path.join(fixture, 'src/engine/calculations/modifier-pipeline.mjs'), 'export function createModifierPipeline(){}\n');
+        fs.writeFileSync(
+            path.join(fixture, 'src/engine/calculations/calculation-engine.mjs'),
+            "import { createModifierPipeline } from './modifier-pipeline.mjs';\nconst allowed = ['registrations', 'modifiers'];\n"
+        );
+        fs.writeFileSync(
+            path.join(fixture, 'src/application/illegal.mjs'),
+            "import { createCalculationEngine } from '../engine/calculations/calculation-engine.mjs';\nexport { createCalculationEngine };\n"
+        );
+        const violations = findViolations(fixture);
+        assert.equal(violations.some(value => value.includes('zero production calculation consumers')), true);
+    }
+    finally {
+        fs.rmSync(fixture, { recursive: true, force: true });
+    }
+});
