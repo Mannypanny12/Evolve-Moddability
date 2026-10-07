@@ -7,6 +7,9 @@ const { extractModuleReferences, maskNonCode } = require('./architecture-fitness
 const SOURCE_EXTENSIONS = new Set(['.js', '.mjs', '.cjs']);
 const COMMAND_ROOT = 'src/content/evolve/commands';
 const DNA_COMMAND = 'src/content/evolve/commands/evolution-dna.mjs';
+const REVIEWED_DNA_CONSUMERS = new Set([
+    'src/application/evolve/evolution-dna-command-runtime.mjs',
+]);
 const ALLOWED_IMPORTS = new Set([
     'src/engine/identity.mjs',
     'src/engine/contracts/inert-data.mjs',
@@ -119,8 +122,8 @@ function analyzePrematureConsumers(root){
         for (const reference of extractModuleReferences(source, relative)){
             if (!reference.specifier.startsWith('.')) continue;
             const target = resolveRelative(relative, reference.specifier);
-            if (target === DNA_COMMAND){
-                violations.push(`${relative}: M3F2 DNA registration has a production consumer before M3F3 legacy caller cutover`);
+            if (target === DNA_COMMAND && !REVIEWED_DNA_CONSUMERS.has(relative)){
+                violations.push(`${relative}: DNA registration may only be consumed by the reviewed M3F3 production composition root`);
             }
         }
     }
