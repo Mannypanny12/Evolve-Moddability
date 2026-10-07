@@ -28,6 +28,7 @@ const REQUIRED_ARCHITECTURE_COMMANDS = Object.freeze([
     'node tests/architecture/m3f2-dna-command-fitness.cjs',
     'node tests/architecture/m3f3-dna-live-cutover-fitness.cjs',
     'node tests/architecture/m3f4-cutover-closure.cjs',
+    'node tests/architecture/m3f4-status-doc-fitness.cjs',
 ]);
 const REQUIRED_BROWSER_COMMANDS = Object.freeze([
     'node tests/browser/smoke.cjs',
