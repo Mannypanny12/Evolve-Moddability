@@ -219,7 +219,7 @@ No obsolete test was found whose expected behavior contradicted the current M3 a
 
 The first code-hardening checkpoint is commit `8e8fcddeaab862a77daa1b993f04fb2589595236` on branch `m3-final-review-hardening`.
 
-GitHub Actions run `37632909133` passed the complete repository safety chain:
+GitHub Actions run `37632909133` passed the complete repository safety chain at that checkpoint:
 
 - recursive Node test suite;
 - cumulative architecture fitness chain;
@@ -229,7 +229,11 @@ GitHub Actions run `37632909133` passed the complete repository safety chain:
 - startup-exception negative control;
 - real-browser smoke suite.
 
-The later architecture-report schema correction is part of the same review branch and must retain that complete green chain before this review is considered final.
+The later architecture-report schema correction and status-document fitness hardening were included in final reviewed head `abe65ee1ec2577453050778fd3d5d879aa1d28ae`.
+
+GitHub Actions run `37636877317` passed the complete safety chain on that exact final reviewed head. The reviewed M3 branch was then merged through PR #49 into `master` as merge commit `92d22691bc18f315dc94c8d18ea82fc09610c3de`.
+
+The post-merge Android test-site workflow run `37640580680` independently passed its Node tests, architecture gate, production build and GitHub Pages deployment from that `master` commit. M3 therefore has both pre-merge closure proof and post-merge deployment proof.
 
 ## Remaining debt is intentional later work
 
@@ -252,4 +256,4 @@ M3 remains complete after full review.
 
 The architecture is coherent, the first live vanilla vertical preserves characterized behavior, the mutation boundary is atomic and live-state-aware, the queue abstraction has not overreached its scope, and lower/later milestone responsibilities remain correctly separated.
 
-The justified findings from this review were in test-manifest self-auditing and architecture-report versioning. Both are hardened in this branch rather than deferred.
+The justified findings from this review were in test-manifest self-auditing and architecture-report versioning. Both are hardened rather than deferred.

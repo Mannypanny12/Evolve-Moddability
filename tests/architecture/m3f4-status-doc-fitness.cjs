@@ -9,6 +9,9 @@ const CURRENT_ARCHITECTURE = 'docs/modding/CURRENT_ARCHITECTURE.md';
 const M3_CLOSURE = 'docs/modding/M3_CLOSURE_REVIEW.md';
 const M3_FINAL_REVIEW = 'docs/modding/M3_FINAL_REVIEW_HARDENING.md';
 
+const CURRENT_M3_ROW = '| M3 Commands, conditions, effects and costs | complete | `M3_CLOSURE_REVIEW.md`, `M3_FINAL_REVIEW_HARDENING.md`, `M0_M3_RETROSPECTIVE_HARDENING.md` |';
+const CURRENT_M3_AUTHORITY = 'Read `M3_CLOSURE_REVIEW.md` for the integrated milestone design/exit authority, `M3_FINAL_REVIEW_HARDENING.md` for the later whole-M3 audit, and `M0_M3_RETROSPECTIVE_HARDENING.md` for the subsequent cross-milestone pre-M4 revalidation.';
+
 function occurrences(source, needle){
     return source.split(needle).length - 1;
 }
@@ -52,18 +55,8 @@ function statusDocViolations(roadmap, backlog, currentArchitecture, m3Closure, m
     forbid(backlog, 'M3G whole-M3 hardening and closure - next', BACKLOG, violations);
     forbid(backlog, '- M3G whole-M3 hardening and closure;', BACKLOG, violations);
 
-    requireExactlyOnce(
-        currentArchitecture,
-        '| M3 Commands, conditions, effects and costs | complete | `M3_CLOSURE_REVIEW.md`, `M3_FINAL_REVIEW_HARDENING.md` |',
-        CURRENT_ARCHITECTURE,
-        violations
-    );
-    requireExactlyOnce(
-        currentArchitecture,
-        'Read `M3_CLOSURE_REVIEW.md` for the integrated milestone design/exit authority and `M3_FINAL_REVIEW_HARDENING.md` for the later whole-M3 audit and post-closure hardening.',
-        CURRENT_ARCHITECTURE,
-        violations
-    );
+    requireExactlyOnce(currentArchitecture, CURRENT_M3_ROW, CURRENT_ARCHITECTURE, violations);
+    requireExactlyOnce(currentArchitecture, CURRENT_M3_AUTHORITY, CURRENT_ARCHITECTURE, violations);
     requireExactlyOnce(
         currentArchitecture,
         '| M4 Calculation and modifier engine | next | `ROADMAP.md` |',
@@ -111,6 +104,11 @@ function main(){
     console.log('M3 status-document fitness passed.');
 }
 
-module.exports = { statusDocViolations, findViolations };
+module.exports = {
+    CURRENT_M3_ROW,
+    CURRENT_M3_AUTHORITY,
+    statusDocViolations,
+    findViolations,
+};
 
 if (require.main === module) main();
