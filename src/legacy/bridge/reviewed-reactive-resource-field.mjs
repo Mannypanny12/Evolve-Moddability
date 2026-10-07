@@ -1,5 +1,17 @@
+const REVIEWED_RESOURCE_FIELDS = new Set(['amount', 'max', 'display']);
+
 function ownDescriptor(target, field){
     return Object.getOwnPropertyDescriptor(target, field);
+}
+
+function isWritableEnumerableDataField(descriptor){
+    return Boolean(
+        descriptor &&
+        Object.prototype.hasOwnProperty.call(descriptor, 'value') &&
+        descriptor.writable === true &&
+        descriptor.enumerable === true &&
+        descriptor.configurable === true
+    );
 }
 
 function isObservedResourceRecord(record){
@@ -7,7 +19,9 @@ function isObservedResourceRecord(record){
     if (
         !marker ||
         !Object.prototype.hasOwnProperty.call(marker, 'value') ||
+        marker.writable !== true ||
         marker.enumerable !== false ||
+        marker.configurable !== true ||
         marker.value === null ||
         typeof marker.value !== 'object'
     ){
@@ -19,15 +33,12 @@ function isObservedResourceRecord(record){
     const depDescriptor = ownDescriptor(observer, 'dep');
     const vmCountDescriptor = ownDescriptor(observer, 'vmCount');
     if (
-        !valueDescriptor ||
-        !Object.prototype.hasOwnProperty.call(valueDescriptor, 'value') ||
+        !isWritableEnumerableDataField(valueDescriptor) ||
         valueDescriptor.value !== record ||
-        !depDescriptor ||
-        !Object.prototype.hasOwnProperty.call(depDescriptor, 'value') ||
+        !isWritableEnumerableDataField(depDescriptor) ||
         depDescriptor.value === null ||
         typeof depDescriptor.value !== 'object' ||
-        !vmCountDescriptor ||
-        !Object.prototype.hasOwnProperty.call(vmCountDescriptor, 'value') ||
+        !isWritableEnumerableDataField(vmCountDescriptor) ||
         !Number.isSafeInteger(vmCountDescriptor.value) ||
         vmCountDescriptor.value < 0
     ){
@@ -36,14 +47,15 @@ function isObservedResourceRecord(record){
 
     const depIdDescriptor = ownDescriptor(depDescriptor.value, 'id');
     return Boolean(
-        depIdDescriptor &&
-        Object.prototype.hasOwnProperty.call(depIdDescriptor, 'value') &&
+        isWritableEnumerableDataField(depIdDescriptor) &&
         Number.isSafeInteger(depIdDescriptor.value) &&
         depIdDescriptor.value >= 0
     );
 }
 
 export function readReviewedReactiveResourceField(record, field){
+    if (!REVIEWED_RESOURCE_FIELDS.has(field)) return null;
+
     const descriptor = ownDescriptor(record, field);
     if (!descriptor || Object.prototype.hasOwnProperty.call(descriptor, 'value')) return null;
     if (!isObservedResourceRecord(record)) return null;
