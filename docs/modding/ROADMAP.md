@@ -203,7 +203,7 @@ Exit achieved: `GameState` is authoritative for one real domain, the migration p
 
 ---
 
-## M3: Commands, conditions, effects, and costs
+## M3: Commands, conditions, effects, and costs - complete
 
 M3 is deliberately split into small slices so legacy command semantics are characterized before new execution authority is introduced.
 
@@ -293,7 +293,7 @@ Adds the frozen `createWorkQueueSelector()` readiness/selection boundary with tr
 
 Closes M3E with executable legacy build/research queue evidence, a zero-execution `prepare -> WorkItem -> WorkQueue -> selection` integration proof, and a cumulative architecture gate that pins the four-file generic queue package, keeps it first-party-neutral, and prevents any production consumer before reviewed cutover. Command-specific admission, execution progress, reconciliation, prediction, scheduling and persistence remain deferred to their owning later milestones. See `M3E4_QUEUE_CLOSURE.md`.
 
-M3E is closed without modifying vanilla build/research gameplay. M3F is closed; M3G is the active milestone.
+M3E is closed without modifying vanilla build/research gameplay. M3F and M3G are closed; M4A is next.
 
 ### M3F First real vanilla cutover - complete
 
@@ -317,17 +317,17 @@ Cuts the real `actions.evolution.dna.action()` callback over to the reviewed com
 
 Reconciles the first live cutover as a complete vertical, including the real-browser Vue-reactive resource compatibility gap, cumulative architecture ratchets, and final CI/build/browser proof. See `M3F4_CUTOVER_CLOSURE.md`.
 
-### M3G Hardening and closure - next
+### M3G Hardening and closure - complete
 
-Audit the complete M3 path for atomicity, failure semantics, boundary ownership, diagnostics, legacy compatibility, and architecture regressions. Extend CI/fitness guards where needed and record the M3 closure review.
+Audits the complete M3 path for atomicity, failure semantics, boundary ownership, diagnostics, legacy compatibility and architecture regressions. M3G adds a cumulative whole-M3 architecture gate, extends the architecture report with command-architecture state, and proves stale-state settlement plus rollback behavior through the production composition boundary. See `M3_CLOSURE_REVIEW.md`.
 
-Exit: at least one real vanilla action can validate, quote, pay, mutate, and emit results through the new engine without using a DOM element as gameplay authority or directly mutating legacy state.
+Exit achieved: at least one real vanilla action validates, checks execution conditions, constructs fresh payment/effect plans, mutates through atomic settlement, and emits structured results through the new engine without using a DOM element as gameplay authority or leaving mutation authority in the legacy callback.
 
 ---
 
 ## M4: Calculation and modifier engine
 
-### M4A Calculation context and trace
+### M4A Calculation context and trace - next
 
 Define named calculations with explicit inputs and traceable outputs.
 
