@@ -217,7 +217,7 @@ The M2 state laws are now machine-enforced cumulatively:
 
 See [M2_CLOSURE_REVIEW.md](M2_CLOSURE_REVIEW.md) for the M2 exit authority.
 
-## M3: Commands, conditions, effects, and costs
+## M3: Commands, conditions, effects, and costs - complete
 
 ### M3A0 - Legacy command behavior and architecture contract - complete
 
@@ -305,9 +305,9 @@ The generic queue package is complete through prepared commands, inert WorkItems
 
 The live DNA callback delegates gameplay authority through the command/condition/payment/effect/atomic-settlement path while retaining its historical legacy return protocol. The full vertical is closed by the cumulative production/browser proof. See [M3F4_CUTOVER_CLOSURE.md](M3F4_CUTOVER_CLOSURE.md).
 
-### M3G - Whole-M3 hardening and closure - next
+### M3G - Whole-M3 hardening and closure - complete
 
-Audit the complete M3 command/condition/effect/payment/queue/cutover architecture as one milestone and record the whole-M3 closure review.
+The complete M3 command/condition/effect/payment/queue/cutover architecture is now audited as one milestone. M3G adds cumulative cross-layer ownership enforcement, command-architecture reporting and adversarial production-path proof for stale-state settlement, partial-write rollback and hard rollback failure. See [M3_CLOSURE_REVIEW.md](M3_CLOSURE_REVIEW.md).
 
 ## Immediate sequence
 
@@ -322,14 +322,15 @@ M3A0-M3E command/condition/effect/payment/queue foundations - complete
    |
 M3F1-M3F4 first DNA vertical - complete
    |
-M3G whole-M3 hardening and closure - next
+M3G whole-M3 hardening and closure - complete
+   |
+M4A calculation context and trace - next
 ```
 
 Do not jump directly to mod loading, total conversions, or bulk content conversion. Those would lock in legacy assumptions before the engine is ready.
 
 ## Later milestones
 
-- M3G whole-M3 hardening and closure;
 - M4 calculation/modifier engine;
 - M5 deterministic simulation;
 - M6 vanilla migration waves;
