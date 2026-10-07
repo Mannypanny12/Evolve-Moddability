@@ -8,9 +8,11 @@ const SOURCE_EXTENSIONS = new Set(['.js', '.mjs', '.cjs']);
 const EXECUTION_ROOT = 'src/engine/execution';
 const RESOURCE_COMMIT = 'src/engine/execution/resource-commit.mjs';
 const LEGACY_ADAPTER = 'src/legacy/bridge/evolve-resource-commit-adapter.mjs';
+const REVIEWED_DNA_RUNTIME = 'src/application/evolve/evolution-dna-command-runtime.mjs';
 const IDENTITY = 'src/engine/identity.mjs';
 const INERT_DATA = 'src/engine/contracts/inert-data.mjs';
 const MAPPINGS = 'src/legacy/bridge/evolve-mappings.mjs';
+const REVIEWED_COMMIT_TARGETS = new Set([RESOURCE_COMMIT, LEGACY_ADAPTER]);
 
 function normalize(value){ return value.split(path.sep).join('/'); }
 function resolveRelative(fromRelativePath, specifier){
@@ -130,22 +132,45 @@ function analyzeAdapterSource(source){
     return violations;
 }
 
-function analyzePrematureConsumers(root){
+function analyzeCommitConsumerSource(relative, source){
     const violations = [];
+    const targets = new Set();
+    for (const reference of extractModuleReferences(source, relative)){
+        if (!reference.specifier.startsWith('.')) continue;
+        const target = resolveRelative(relative, reference.specifier);
+        if (!REVIEWED_COMMIT_TARGETS.has(target)) continue;
+        targets.add(target);
+        if (relative !== REVIEWED_DNA_RUNTIME){
+            violations.push(`${relative}: M3F1 commit authority may only be consumed by the reviewed DNA runtime; imported ${target}`);
+        }
+    }
+    return { violations, targets };
+}
+
+function analyzeCommitConsumers(root){
+    const violations = [];
+    const reviewedTargets = new Set();
     const srcRoot = path.join(root, 'src');
     for (const filename of listSourceFiles(srcRoot)){
         const relative = normalize(path.relative(root, filename));
         if (relative === RESOURCE_COMMIT || relative === LEGACY_ADAPTER) continue;
         const source = fs.readFileSync(filename, 'utf8');
-        for (const reference of extractModuleReferences(source, relative)){
-            if (!reference.specifier.startsWith('.')) continue;
-            const target = resolveRelative(relative, reference.specifier);
-            if (target === RESOURCE_COMMIT || target === LEGACY_ADAPTER){
-                violations.push(`${relative}: M3F1 commit authority has a production consumer before the reviewed DNA cutover`);
-            }
+        const analysis = analyzeCommitConsumerSource(relative, source);
+        violations.push(...analysis.violations);
+        if (relative === REVIEWED_DNA_RUNTIME){
+            for (const target of analysis.targets) reviewedTargets.add(target);
+        }
+    }
+    for (const target of REVIEWED_COMMIT_TARGETS){
+        if (!reviewedTargets.has(target)){
+            violations.push(`${REVIEWED_DNA_RUNTIME}: reviewed DNA runtime must remain the production consumer of ${target}`);
         }
     }
     return violations;
+}
+
+function analyzePrematureConsumers(root){
+    return analyzeCommitConsumers(root);
 }
 
 function findViolations(root){
@@ -156,7 +181,7 @@ function findViolations(root){
     else violations.push(...analyzeExecutorSource(fs.readFileSync(executorPath, 'utf8')));
     if (!fs.existsSync(adapterPath)) violations.push(`${LEGACY_ADAPTER}: missing`);
     else violations.push(...analyzeAdapterSource(fs.readFileSync(adapterPath, 'utf8')));
-    violations.push(...analyzePrematureConsumers(root));
+    violations.push(...analyzeCommitConsumers(root));
     return violations;
 }
 
@@ -172,6 +197,14 @@ function main(){
     console.log('M3F1 atomic resource commit boundary fitness passed.');
 }
 
-module.exports = { analyzeExecutionPackage, analyzeExecutorSource, analyzeAdapterSource, analyzePrematureConsumers, findViolations };
+module.exports = {
+    analyzeExecutionPackage,
+    analyzeExecutorSource,
+    analyzeAdapterSource,
+    analyzeCommitConsumerSource,
+    analyzeCommitConsumers,
+    analyzePrematureConsumers,
+    findViolations,
+};
 
 if (require.main === module) main();
