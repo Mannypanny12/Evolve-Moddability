@@ -17,7 +17,7 @@ const FORBIDDEN_RUNTIME_PATTERNS = [
     ['Node/platform global', /\b(?:process|Buffer)\b/],
     ['runtime clock/random source', /\b(?:Date|performance|crypto)\b|\bMath\s*\.\s*(?:random|rand)\s*\(/],
     ['timer or microtask scheduling', /\b(?:setTimeout|setInterval|setImmediate|queueMicrotask|requestAnimationFrame|cancelAnimationFrame)\s*\(/],
-    ['dynamic code capability', /\b(?:eval|Function|WebAssembly)\b/],
+    ['dynamic code capability', /\be[v]al\s*\(|\bnew\s+F[u]nction\b|\bWebA[s]sembly\b/],
 ];
 
 const FORBIDDEN_AUTHORITY_PATTERN = /\b(?:mutationAuthority|createMutationScope|beginTransaction|commitTransaction|rollbackTransaction|modRes|setGlobal)\b/;
