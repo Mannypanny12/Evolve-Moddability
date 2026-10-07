@@ -110,6 +110,18 @@ function analyzeRuntimeSource(source){
         }
     }
 
+    for (const [label, pattern] of [
+        ['condition evaluation forwarding', /\bconditionEvaluator\s*\.\s*evaluate\s*\(/g],
+        ['resource capability forwarding', /\bresourceCommitCapability\s*\.\s*commitResourceChanges\s*\(/g],
+        ['resource executor forwarding', /\bresourceCommitExecutor\s*\.\s*commit\s*\(/g],
+        ['command bus dispatch', /\bcommandBus\s*\.\s*dispatch\s*\(/g],
+    ]){
+        const count = (code.match(pattern) || []).length;
+        if (count !== 1){
+            violations.push(`${RUNTIME}: reviewed ${label} call must occur exactly once; found ${count}`);
+        }
+    }
+
     const forbidden = [
         ['legacy rebinding authority', /\bsetGlobal\b/],
         ['direct legacy resource mutation', /\b(?:modRes|payCosts)\b/],

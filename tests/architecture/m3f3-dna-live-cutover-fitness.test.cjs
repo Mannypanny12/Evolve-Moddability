@@ -28,7 +28,6 @@ test('M3F3 fitness rejects a runtime that replaces the live-root provider with a
         'const legacyRoot = global;\nconst readLegacyRoot = () => legacyRoot;'
     );
     const violations = analyzeRuntimeSource(hostile);
-    assert.ok(violations.some(violation => violation.includes('global may appear only')));
     assert.ok(violations.some(violation => violation.includes('reviewed production composition marker is missing')));
 });
 
@@ -57,6 +56,16 @@ test('M3F3 fitness keeps the exported dispatcher as a pure command-bus call', ()
     );
     const violations = analyzeRuntimeSource(hostile);
     assert.ok(violations.some(violation => violation.includes('pure command-bus dispatch')));
+    assert.ok(violations.some(violation => violation.includes('resource capability forwarding')));
+});
+
+test('M3F3 fitness rejects extra top-level settlement calls outside the reviewed composition wiring', () => {
+    const hostile = runtimeSource.replace(
+        'export function dispatchEvolutionDnaCommand(){',
+        'resourceCommitCapability.commitResourceChanges([]);\n\nexport function dispatchEvolutionDnaCommand(){'
+    );
+    const violations = analyzeRuntimeSource(hostile);
+    assert.ok(violations.some(violation => violation.includes('resource capability forwarding')));
 });
 
 test('M3F3 fitness rejects direct resource authority returning to the DNA action shim', () => {

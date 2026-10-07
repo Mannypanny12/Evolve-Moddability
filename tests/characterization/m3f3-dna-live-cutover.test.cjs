@@ -137,7 +137,7 @@ test('M3F3 expected gameplay refusal keeps the legacy false return and leaves st
     assert.equal(snapshotState(), fullBefore);
 });
 
-test('M3F3 contract failures propagate instead of being disguised as legacy refusal', () => {
+test('M3F3 contract failures preserve the public condition-read diagnostic chain instead of becoming legacy refusal', () => {
     installDnaState({ rna: 10, dna: 0, dnaMax: 'broken-capacity' });
     const beforeRna = legacy.legacyState().resource.RNA.amount;
     const beforeDna = legacy.legacyState().resource.DNA.amount;
@@ -146,7 +146,12 @@ test('M3F3 contract failures propagate instead of being disguised as legacy refu
         () => legacy.executeAction('evolution', 'dna'),
         error => error
             && error.name === 'EngineContractError'
-            && error.code === 'INVALID_LEGACY_CONDITION_STATE'
+            && error.code === 'CONDITION_READ_FAILURE'
+            && error.details
+            && error.details.readerCauseCode === 'INVALID_LEGACY_CONDITION_STATE'
+            && error.details.conditionKind === 'resource.below_capacity'
+            && error.details.commandId === 'evolve:command/evolution/dna'
+            && error.details.phase === 'execute'
     );
     assert.equal(legacy.legacyState().resource.RNA.amount, beforeRna);
     assert.equal(legacy.legacyState().resource.DNA.amount, beforeDna);
