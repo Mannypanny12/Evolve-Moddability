@@ -18,6 +18,7 @@ import { defineGovernor, govActive, removeTask, gov_tasks } from './governor.js'
 import { bioseed } from './resets.js';
 import { loadTab } from './index.js';
 import { hasLegacyAchievement, legacyAchievementRank } from './legacy/bridge/achievement-state-reader.mjs';
+import { dispatchEvolutionDnaCommand } from './application/evolve/evolution-dna-command-runtime.mjs';
 
 export const actions = {
     evolution: {
@@ -44,10 +45,7 @@ export const actions = {
             condition(){ return global.resource.hasOwnProperty('DNA') && global.resource.DNA.display && global.resource.DNA.amount < global.resource.DNA.max && !global.race['evoFinalMenu']; },
             cost: { RNA(){ return 2; } },
             action(args){
-                if (global['resource']['RNA'].amount >= 2 && global['resource']['DNA'].amount < global['resource']['DNA'].max){
-                    modRes('RNA',-2,true);
-                    modRes('DNA',1,true);
-                }
+                dispatchEvolutionDnaCommand();
                 return false;
             },
             effect: loc('evo_dna_effect'),
