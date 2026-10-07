@@ -16,8 +16,6 @@ const imports = {
     conditionEvaluator: import(pathToFileURL(path.join(root, 'src/engine/conditions/condition-evaluator.mjs')).href),
     coreRequirements: import(pathToFileURL(path.join(root, 'src/engine/conditions/core-requirements.mjs')).href),
     conditionAdapter: import(pathToFileURL(path.join(root, 'src/legacy/bridge/evolve-condition-read-adapter.mjs')).href),
-    paymentAssessor: import(pathToFileURL(path.join(root, 'src/engine/costs/payment-assessor.mjs')).href),
-    paymentAdapter: import(pathToFileURL(path.join(root, 'src/legacy/bridge/evolve-payment-read-adapter.mjs')).href),
     commitExecutor: import(pathToFileURL(path.join(root, 'src/engine/execution/resource-commit.mjs')).href),
     commitAdapter: import(pathToFileURL(path.join(root, 'src/legacy/bridge/evolve-resource-commit-adapter.mjs')).href),
 };
@@ -52,6 +50,10 @@ function installDnaState({
     return legacy.legacyState();
 }
 
+function snapshotLegacyState(){
+    return JSON.stringify(legacy.legacyState());
+}
+
 async function createDnaBus(){
     const [
         { createEvolutionDnaCommandRegistration },
@@ -59,8 +61,6 @@ async function createDnaBus(){
         { createConditionEvaluator },
         { createCoreRequirementRegistrations },
         { createEvolveLegacyConditionReadProvider },
-        { createPaymentAssessor },
-        { createEvolveLegacyPaymentReadProvider },
         { createResourceCommitExecutor },
         { createEvolveLegacyResourceCommitCapability },
     ] = await Promise.all([
@@ -69,8 +69,6 @@ async function createDnaBus(){
         imports.conditionEvaluator,
         imports.coreRequirements,
         imports.conditionAdapter,
-        imports.paymentAssessor,
-        imports.paymentAdapter,
         imports.commitExecutor,
         imports.commitAdapter,
     ]);
@@ -80,8 +78,6 @@ async function createDnaBus(){
     const conditionEvaluator = createConditionEvaluator({
         registrations: createCoreRequirementRegistrations(conditionReads),
     });
-    const paymentReads = createEvolveLegacyPaymentReadProvider({ readLegacyRoot });
-    const paymentAssessor = createPaymentAssessor(paymentReads);
     const commitCapability = createEvolveLegacyResourceCommitCapability({ readLegacyRoot });
     const commitExecutor = createResourceCommitExecutor({
         commitResourceChanges: changes => commitCapability.commitResourceChanges(changes),
@@ -89,7 +85,6 @@ async function createDnaBus(){
 
     const registration = createEvolutionDnaCommandRegistration({
         evaluateCondition: condition => conditionEvaluator.evaluate(condition),
-        assessCurrentAffordability: quote => paymentAssessor.assessCurrentAffordability(quote),
         commitResourcePlans: (paymentPlan, effectPlan) => commitExecutor.commit(paymentPlan, effectPlan),
     });
     return createCommandBus({ registrations: [registration] });
@@ -100,61 +95,90 @@ async function dispatchDna(){
     return bus.dispatch({ id: 'evolve:command/evolution/dna', payload: {} });
 }
 
-test('M3F2 integrated DNA command matches the successful legacy RNA/DNA mutation', async () => {
-    const state = installDnaState({ rna: 2, dna: 9, dnaMax: 10 });
-    const result = await dispatchDna();
+async function compareDirectLegacyAndCommand(options, expectedStatus, expectedReason = null){
+    installDnaState(options);
+    const legacyReturn = legacy.executeAction('evolution', 'dna');
+    const legacyAfter = snapshotLegacyState();
 
-    assert.equal(result.status, 'succeeded');
-    assert.equal(state.resource.RNA.amount, 0);
-    assert.equal(state.resource.DNA.amount, 10);
+    installDnaState(options);
+    const commandResult = await dispatchDna();
+    const commandAfter = snapshotLegacyState();
+
+    assert.equal(legacyReturn, false);
+    assert.equal(commandResult.status, expectedStatus);
+    if (expectedReason !== null){
+        assert.equal(commandResult.reasons[0]?.code, expectedReason);
+    }
+    assert.equal(commandAfter, legacyAfter);
+}
+
+test('M3F2 DNA command is state-equivalent to direct legacy execution across the reviewed execution matrix', async () => {
+    const scenarios = [
+        {
+            label: 'normal success',
+            options: { rna: 2, dna: 9, dnaMax: 10 },
+            status: 'succeeded',
+        },
+        {
+            label: 'insufficient RNA',
+            options: { rna: 1, dna: 0, dnaMax: 10 },
+            status: 'rejected',
+            reason: 'insufficient_resource',
+        },
+        {
+            label: 'DNA at capacity',
+            options: { rna: 10, dna: 10, dnaMax: 10 },
+            status: 'rejected',
+            reason: 'condition.resource.at_capacity',
+        },
+        {
+            label: 'hidden DNA presentation state',
+            options: { rna: 10, dna: 0, dnaDisplay: false },
+            status: 'succeeded',
+        },
+        {
+            label: 'final-menu presentation state',
+            options: { rna: 10, dna: 0, evoFinalMenu: true },
+            status: 'succeeded',
+        },
+        {
+            label: 'hidden RNA presentation state',
+            options: { rna: 10, rnaMax: 10, rnaDisplay: false, dna: 0 },
+            status: 'succeeded',
+        },
+        {
+            label: 'RNA capacity below price but holdings sufficient',
+            options: { rna: 10, rnaMax: 1, rnaDisplay: true, dna: 0 },
+            status: 'succeeded',
+        },
+        {
+            label: 'DNA grant clamps at capacity like modRes',
+            options: { rna: 10, dna: 9.5, dnaMax: 10 },
+            status: 'succeeded',
+        },
+    ];
+
+    for (const scenario of scenarios){
+        await test.step(scenario.label, async () => {
+            await compareDirectLegacyAndCommand(scenario.options, scenario.status, scenario.reason || null);
+        });
+    }
 });
 
-test('M3F2 integrated DNA command rejects insufficient RNA with complete non-mutation', async () => {
-    installDnaState({ rna: 1, dna: 0, dnaMax: 10 });
-    const before = JSON.stringify(legacy.legacyState());
-    const result = await dispatchDna();
-
-    assert.equal(result.status, 'rejected');
-    assert.equal(result.reasons[0].code, 'payment.current.resource.amount_insufficient');
-    assert.equal(JSON.stringify(legacy.legacyState()), before);
-});
-
-test('M3F2 integrated DNA command rejects full DNA capacity before payment', async () => {
-    installDnaState({ rna: 10, dna: 10, dnaMax: 10 });
-    const before = JSON.stringify(legacy.legacyState());
-    const result = await dispatchDna();
-
-    assert.equal(result.status, 'rejected');
-    assert.equal(result.reasons[0].code, 'condition.resource.at_capacity');
-    assert.equal(JSON.stringify(legacy.legacyState()), before);
-});
-
-test('M3F2 command execution deliberately ignores DNA display and evoFinalMenu presentation state', async () => {
-    const hiddenDna = installDnaState({ rna: 10, dna: 0, dnaDisplay: false });
-    assert.equal(legacy.actionCondition('evolution', 'dna'), false);
-    assert.equal((await dispatchDna()).status, 'succeeded');
-    assert.equal(hiddenDna.resource.RNA.amount, 8);
-    assert.equal(hiddenDna.resource.DNA.amount, 1);
-
-    const finalMenu = installDnaState({ rna: 10, dna: 0, evoFinalMenu: true });
-    assert.equal(legacy.actionCondition('evolution', 'dna'), false);
-    assert.equal((await dispatchDna()).status, 'succeeded');
-    assert.equal(finalMenu.resource.RNA.amount, 8);
-    assert.equal(finalMenu.resource.DNA.amount, 1);
-});
-
-test('M3F2 current RNA affordability ignores display but preserves the legacy bounded-capacity rule', async () => {
-    const hiddenRna = installDnaState({ rna: 10, rnaMax: 10, rnaDisplay: false, dna: 0 });
-    assert.equal(legacy.actionAffordable('evolution', 'dna'), true);
-    assert.equal((await dispatchDna()).status, 'succeeded');
-    assert.equal(hiddenRna.resource.RNA.amount, 8);
-    assert.equal(hiddenRna.resource.DNA.amount, 1);
-
-    installDnaState({ rna: 10, rnaMax: 1, rnaDisplay: true, dna: 0 });
+test('M3F2 keeps presentation/current-affordability observations separate from direct execution authority', async () => {
+    installDnaState({ rna: 10, rnaMax: 1, dna: 0 });
     assert.equal(legacy.actionAffordable('evolution', 'dna'), false);
-    const before = JSON.stringify(legacy.legacyState());
+    assert.equal(legacy.executeAction('evolution', 'dna'), false);
+    assert.equal(legacy.legacyState().resource.RNA.amount, 8);
+    assert.equal(legacy.legacyState().resource.DNA.amount, 1);
+
+    installDnaState({ rna: 10, rnaMax: 1, dna: 0 });
     const result = await dispatchDna();
-    assert.equal(result.status, 'rejected');
-    assert.equal(result.reasons[0].code, 'payment.current.resource.capacity_insufficient');
-    assert.equal(JSON.stringify(legacy.legacyState()), before);
+    assert.equal(result.status, 'succeeded');
+    assert.equal(legacy.legacyState().resource.RNA.amount, 8);
+    assert.equal(legacy.legacyState().resource.DNA.amount, 1);
+
+    installDnaState({ rna: 10, dna: 0, dnaDisplay: false, evoFinalMenu: true });
+    assert.equal(legacy.actionCondition('evolution', 'dna'), false);
+    assert.equal((await dispatchDna()).status, 'succeeded');
 });
