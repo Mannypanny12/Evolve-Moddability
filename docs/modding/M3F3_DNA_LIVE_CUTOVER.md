@@ -96,6 +96,10 @@ A separate M3F3 characterization executes the actual production `actions.evoluti
 
 The cumulative M3F2 gate now permits exactly one reviewed production consumer of the DNA registration: the M3F3 application runtime.
 
+M3F3 also advances the M3F1 commit-authority lifecycle guard. M3F1 originally prohibited every production consumer because the resource commit seam was foundation-only at that point. After the reviewed live cutover, that blanket pre-cutover prohibition is replaced by a stricter steady-state rule: `src/application/evolve/evolution-dna-command-runtime.mjs` is the sole reviewed production consumer of both `resource-commit.mjs` and `evolve-resource-commit-adapter.mjs`. Any second production consumer is rejected, and removing either reviewed dependency from the DNA runtime is also rejected.
+
+The M3F1 consumer boundary now has direct `node:test` coverage as well as the standalone architecture command. This keeps the lifecycle invariant visible in the ordinary `npm test` suite instead of allowing a stale consumer rule to surface only in the later architecture-fitness stage.
+
 The new M3F3 fitness gate additionally enforces that:
 
 - the application runtime exports only `dispatchEvolutionDnaCommand()`;
@@ -106,7 +110,7 @@ The new M3F3 fitness gate additionally enforces that:
 - the DNA action body remains exactly dispatch plus historical `return false`;
 - direct state access, embedded RNA/DNA rules, direct mutation, queue behavior, and exception swallowing cannot return to that action body.
 
-Negative-control architecture tests prove the gate rejects stale-root capture, direct `modRes` reintroduction, and exception swallowing.
+Negative-control architecture tests prove the gate rejects stale-root capture, direct `modRes` reintroduction, exception swallowing, and unreviewed consumers of the M3F1 commit seam.
 
 ## Characterization matrix
 
