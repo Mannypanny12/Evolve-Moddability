@@ -146,4 +146,6 @@ Those remain owned by their later roadmap slices. Resource authority migration r
 
 After M3F3, `evolution.dna` is the first real vanilla action whose successful gameplay mutation no longer lives in its legacy action callback. The callback crosses a narrow compatibility seam into the reviewed M3 command, condition, payment/effect planning, and atomic settlement path while preserving legacy outward behavior.
 
+`ROADMAP.md` and `BACKLOG.md` are synchronized with this slice: M3F1-M3F3 are complete, M3F4 is next, and M3G remains the later whole-M3 hardening/closure audit.
+
 M3F4 remains the next slice for whole-cutover proof, architecture ratchet reconciliation, full CI/browser evidence, and M3F closure. M3G remains the later whole-M3 hardening/closure audit.
