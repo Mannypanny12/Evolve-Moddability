@@ -62,11 +62,21 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
-      - name: Run test suite
+      - name: Configure test output capture
         shell: bash
         run: |
-          set -o pipefail
-          npm test 2>&1 | tee test-output.log
+          capture_env="$RUNNER_TEMP/evolve-test-capture.bash"
+          cat > "$capture_env" <<'EOF'
+          if [[ "${EVOLVE_CAPTURE_TEST_OUTPUT:-}" == "1" ]]; then
+            exec > >(tee "$GITHUB_WORKSPACE/test-output.log") 2>&1
+          fi
+          EOF
+          echo "BASH_ENV=$capture_env" >> "$GITHUB_ENV"
+
+      - name: Run test suite
+        env:
+          EVOLVE_CAPTURE_TEST_OUTPUT: "1"
+        run: npm test
 
       - name: Upload test log
         if: always()
