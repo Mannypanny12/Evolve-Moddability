@@ -1,8 +1,5 @@
 import { EngineContractError } from '../../../engine/identity.mjs';
-import {
-    inspectDenseInertArray,
-    inspectPlainInertObject,
-} from '../../../engine/contracts/inert-data.mjs';
+import { inspectPlainInertObject } from '../../../engine/contracts/inert-data.mjs';
 import { normalizeConditionOutcome } from '../../../engine/conditions/result.mjs';
 import { commandRejected, commandSucceeded } from '../../../engine/commands/result.mjs';
 import { createPaymentQuote } from '../../../engine/costs/payment-quote.mjs';
@@ -16,7 +13,6 @@ const RNA_PRICE = 2;
 const DNA_GRANT = 1;
 const OPTION_FIELDS = Object.freeze([
     'evaluateCondition',
-    'assessCurrentAffordability',
     'commitResourcePlans',
 ]);
 
@@ -24,6 +20,8 @@ const DNA_EXECUTION_CONDITION = Object.freeze({
     kind: 'resource.below_capacity',
     params: Object.freeze({ resourceId: DNA_RESOURCE_ID }),
 });
+
+let dnaExecutionActive = false;
 
 function fail(code, message, details){
     throw new EngineContractError(code, message, details);
@@ -83,7 +81,6 @@ function readCapabilities(rawOptions){
     requireExactFields(fields, OPTION_FIELDS, path, 'INVALID_DNA_COMMAND_CONFIG');
     return Object.freeze({
         evaluateCondition: assertSynchronousCapability(fields.get('evaluateCondition'), `${path}.evaluateCondition`),
-        assessCurrentAffordability: assertSynchronousCapability(fields.get('assessCurrentAffordability'), `${path}.assessCurrentAffordability`),
         commitResourcePlans: assertSynchronousCapability(fields.get('commitResourcePlans'), `${path}.commitResourcePlans`),
     });
 }
@@ -101,54 +98,6 @@ function validatePayload(payload){
         });
     }
     return Object.freeze({});
-}
-
-function normalizeCurrentAffordability(rawAssessment){
-    const path = 'evolutionDnaCommand.currentAffordability';
-    const fields = inspectPlainInertObject(rawAssessment, {
-        path,
-        code: 'INVALID_DNA_PAYMENT_ASSESSMENT',
-        maxFields: 3,
-    });
-    requireExactFields(
-        fields,
-        ['assessment', 'status', 'reasons'],
-        path,
-        'INVALID_DNA_PAYMENT_ASSESSMENT'
-    );
-    if (fields.get('assessment') !== 'current-affordability'){
-        fail('INVALID_DNA_PAYMENT_ASSESSMENT', 'DNA command requires a current-affordability assessment.', {
-            path: `${path}.assessment`,
-            assessment: fields.get('assessment'),
-        });
-    }
-    const reasons = inspectDenseInertArray(fields.get('reasons'), {
-        path: `${path}.reasons`,
-        code: 'INVALID_DNA_PAYMENT_ASSESSMENT',
-        maxLength: 64,
-    });
-    const status = fields.get('status');
-    if (status === 'satisfied'){
-        if (reasons.length !== 0){
-            fail('INVALID_DNA_PAYMENT_ASSESSMENT', 'Satisfied affordability assessment may not contain reasons.', {
-                path: `${path}.reasons`,
-                reasonCount: reasons.length,
-            });
-        }
-        return Object.freeze({ status, reasons: Object.freeze([]) });
-    }
-    if (status === 'failed'){
-        if (reasons.length === 0){
-            fail('INVALID_DNA_PAYMENT_ASSESSMENT', 'Failed affordability assessment requires at least one reason.', {
-                path: `${path}.reasons`,
-            });
-        }
-        return Object.freeze({ status, reasons: Object.freeze(reasons) });
-    }
-    fail('INVALID_DNA_PAYMENT_ASSESSMENT', 'Affordability status must be satisfied or failed.', {
-        path: `${path}.status`,
-        status,
-    });
 }
 
 function normalizeCommitOutcome(rawOutcome){
@@ -186,40 +135,44 @@ function normalizeCommitOutcome(rawOutcome){
 export function createEvolutionDnaCommandRegistration(rawOptions){
     const capabilities = readCapabilities(rawOptions);
 
-    function execute(){
-        const condition = normalizeConditionOutcome(
-            Reflect.apply(capabilities.evaluateCondition, undefined, [DNA_EXECUTION_CONDITION]),
-            'evolutionDnaCommand.conditionOutcome'
-        );
-        if (condition.status === 'failed'){
-            return commandRejected(condition.reasons);
+    function execute(payload){
+        if (dnaExecutionActive){
+            fail('DNA_COMMAND_REENTRANCY', 'DNA command execution may not be nested.');
         }
+        dnaExecutionActive = true;
+        try {
+            validatePayload(payload);
 
-        const quote = createPaymentQuote([{
-            kind: 'resource',
-            resourceId: RNA_RESOURCE_ID,
-            amount: RNA_PRICE,
-        }]);
-        const affordability = normalizeCurrentAffordability(
-            Reflect.apply(capabilities.assessCurrentAffordability, undefined, [quote])
-        );
-        if (affordability.status === 'failed'){
-            return commandRejected(affordability.reasons);
-        }
+            const condition = normalizeConditionOutcome(
+                Reflect.apply(capabilities.evaluateCondition, undefined, [DNA_EXECUTION_CONDITION]),
+                'evolutionDnaCommand.conditionOutcome'
+            );
+            if (condition.status === 'failed'){
+                return commandRejected(condition.reasons);
+            }
 
-        const paymentPlan = createPaymentPlan(quote);
-        const effectPlan = createEffectPlan([{
-            kind: 'resource.grant',
-            resourceId: DNA_RESOURCE_ID,
-            amount: DNA_GRANT,
-        }]);
-        const committed = normalizeCommitOutcome(
-            Reflect.apply(capabilities.commitResourcePlans, undefined, [paymentPlan, effectPlan])
-        );
-        if (committed.status === 'rejected'){
-            return commandRejected([committed.reason]);
+            const quote = createPaymentQuote([{
+                kind: 'resource',
+                resourceId: RNA_RESOURCE_ID,
+                amount: RNA_PRICE,
+            }]);
+            const paymentPlan = createPaymentPlan(quote);
+            const effectPlan = createEffectPlan([{
+                kind: 'resource.grant',
+                resourceId: DNA_RESOURCE_ID,
+                amount: DNA_GRANT,
+            }]);
+            const committed = normalizeCommitOutcome(
+                Reflect.apply(capabilities.commitResourcePlans, undefined, [paymentPlan, effectPlan])
+            );
+            if (committed.status === 'rejected'){
+                return commandRejected([committed.reason]);
+            }
+            return commandSucceeded(null);
         }
-        return commandSucceeded(null);
+        finally {
+            dnaExecutionActive = false;
+        }
     }
 
     return Object.freeze({
