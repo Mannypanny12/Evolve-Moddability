@@ -112,7 +112,7 @@ For specific state contracts use:
 
 ## M3 authority: command architecture
 
-`M3_CLOSURE_REVIEW.md` is the combined authority for M3.
+`M3_CLOSURE_REVIEW.md` is the combined authority for M3. `M3_POST_CLOSURE_AUDIT.md` records the later whole-milestone review and hardening performed against the closed M3 head; where it strengthens an M3 implementation detail without changing milestone scope, it is the newer authority for that detail.
 
 The first live vanilla vertical is `evolve:command/evolution/dna`:
 
@@ -143,12 +143,12 @@ Current M3 laws:
 - conditions are read-only.
 - payment quotes/plans are contextual and are not durable authorization tokens.
 - effect plans are inert semantic operations without direct execution authority.
-- atomic settlement revalidates live resource state immediately before mutation and rolls partial writes back.
+- atomic settlement revalidates live resource/root state before and throughout mutation, verifies write/rollback readback, and rolls transaction writes back before an intra-commit verification failure escapes.
 - generic command/condition/cost/effect/execution/queue packages remain first-party-neutral and cannot depend upward on application/content/legacy/platform code.
 - the DNA content command has no direct `global`, DOM, queue or raw legacy-state access.
 - the application layer composes reviewed capabilities but does not reimplement gameplay semantics.
 - the legacy RNA/DNA write bridge remains temporary compatibility debt until the owning migration removes it.
-- `WorkQueue` remains deliberately non-authoritative in production at M3 exit.
+- `WorkQueue` remains deliberately non-authoritative in production at M3 exit, and the integrated M3G gate independently rejects premature production consumers.
 
 ## Architecture inspector
 
@@ -166,7 +166,7 @@ The versioned JSON report currently combines:
 - M2C state-boundary debt;
 - M2D authority/reader migration gates;
 - M2E ownership, write-capability, selector, and dependency gates;
-- M3 command-architecture closure, including the reviewed live DNA command/runtime/settlement seams, generic package roots, queue-production-consumer count, prerequisite gate counts and cross-layer violations.
+- M3 command-architecture closure, including the reviewed live DNA command/runtime, named command/condition/payment/effect/queue/settlement seams, generic package roots, queue authority/consumer state, explicit legacy compatibility debt/removal target, prerequisite gate counts and cross-layer violations.
 
 M2D3/M2D4 and the M3G closure gate expose composable scanner functions directly, so the report consumes the same rule implementations as their standalone CLI gates rather than maintaining a second architecture truth.
 
@@ -177,7 +177,7 @@ A slice design/review document describes what was true or being decided at that 
 When two documents appear to disagree:
 
 1. use this index to identify the current closure authority;
-2. prefer the latest milestone closure document over an earlier slice document;
+2. prefer the latest milestone closure or post-closure audit document over an earlier slice document;
 3. prefer machine-enforced contracts/tests over stale prose;
 4. update this index, the relevant closure authority, roadmap, and backlog when a later milestone intentionally changes a permanent rule.
 
