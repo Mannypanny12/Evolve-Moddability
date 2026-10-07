@@ -77,7 +77,7 @@ async function createHarness(state, { afterCondition = null } = {}){
     const registration = modules.dnaCommand.createEvolutionDnaCommandRegistration({
         evaluateCondition: condition => {
             const result = evaluator.evaluate(condition);
-            if (afterCondition && result.status === 'passed') afterCondition(state, result);
+            if (afterCondition && result.status === 'satisfied') afterCondition(state, result);
             return result;
         },
         commitResourcePlans: (paymentPlan, effectPlan) => executor.commit(paymentPlan, effectPlan),
