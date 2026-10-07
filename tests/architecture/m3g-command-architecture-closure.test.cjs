@@ -1,6 +1,8 @@
 'use strict';
 
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
 
@@ -11,6 +13,7 @@ const {
     REVIEWED_EXECUTION_AUTHORITY,
     REVIEWED_LEGACY_WRITE_CAPABILITY,
     analyzeGenericM3Dependency,
+    m3ArchitectureTestCoverageViolations,
     prerequisiteViolations,
     scanM3GCommandArchitecture,
 } = require('./m3g-command-architecture-closure.cjs');
@@ -37,6 +40,7 @@ test('M3G whole-M3 architecture closure composes all reviewed M3 boundaries', as
         cutover: 0,
     });
     assert.equal(result.summary.crossLayerViolationCount, 0);
+    assert.equal(result.summary.architectureTestCoverageViolationCount, 0);
     assert.equal(result.summary.violationCount, 0);
 });
 
@@ -66,6 +70,36 @@ test('M3G cross-layer ownership rejects first-party content identity inside gene
         ),
         ['src/engine/effects/example.mjs: generic M3 engine packages may not embed first-party Evolve content IDs']
     );
+});
+
+test('M3G architecture coverage fails closed on omitted, duplicate, stale and unwrapped M3 gates', () => {
+    const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'evolve-m3-coverage-'));
+    const architectureRoot = path.join(fixtureRoot, 'tests', 'architecture');
+    fs.mkdirSync(architectureRoot, { recursive: true });
+
+    fs.writeFileSync(path.join(architectureRoot, 'm3alpha.cjs'), "'use strict';\n");
+    fs.writeFileSync(path.join(architectureRoot, 'm3alpha.test.cjs'), "'use strict';\n");
+    fs.writeFileSync(path.join(architectureRoot, 'm3beta.cjs'), "'use strict';\n");
+    fs.writeFileSync(path.join(fixtureRoot, 'package.json'), JSON.stringify({
+        scripts: {
+            'test:architecture': [
+                'node tests/architecture/m3alpha.cjs',
+                'node tests/architecture/m3alpha.cjs',
+                'node tests/architecture/m3stale.cjs',
+            ].join(' && '),
+        },
+    }));
+
+    try {
+        const violations = m3ArchitectureTestCoverageViolations(fixtureRoot);
+        assert.ok(violations.some(item => item.includes('m3alpha.cjs: direct M3 architecture gate appears 2 times')));
+        assert.ok(violations.some(item => item.includes('m3beta.cjs: direct M3 architecture gate is missing from scripts.test:architecture')));
+        assert.ok(violations.some(item => item.includes('m3beta.cjs: direct M3 architecture gate is missing npm-test wrapper m3beta.test.cjs')));
+        assert.ok(violations.some(item => item.includes('m3stale.cjs')));
+    }
+    finally {
+        fs.rmSync(fixtureRoot, { recursive: true, force: true });
+    }
 });
 
 test('M3G prerequisite aggregation preserves slice identity in diagnostics', () => {
