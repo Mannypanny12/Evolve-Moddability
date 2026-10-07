@@ -296,6 +296,17 @@ function capacityValue(value, path){
     return Object.is(value, -0) ? 0 : value;
 }
 
+function resourceAmount(resource){
+    const descriptor = readResourceDescriptor(resource.record, 'amount', `legacy resource ${resource.resourceId}`);
+    if (descriptor === MISSING){
+        fail('INVALID_LEGACY_RESOURCE_COMMIT_STATE', 'Mapped legacy resource amount disappeared during commit.', {
+            resourceId: resource.resourceId,
+            statePath: resource.amountPath,
+        });
+    }
+    return finiteAmount(descriptor.value, resource.amountPath);
+}
+
 function resolveResource(root, index, resourceId){
     const mapping = index.get(resourceId);
     if (!mapping){
@@ -325,11 +336,14 @@ function resolveResource(root, index, resourceId){
             statePath: `${mapping.legacyPath}.amount`,
         });
     }
+    const amountPath = `${mapping.legacyPath}.amount`;
+    const original = finiteAmount(amountDescriptor.value, amountPath);
     return {
         record,
         resourceId,
-        original: finiteAmount(amountDescriptor.value, `${mapping.legacyPath}.amount`),
-        projected: finiteAmount(amountDescriptor.value, `${mapping.legacyPath}.amount`),
+        amountPath,
+        original,
+        projected: original,
         capacity: capacityValue(maxDescriptor.value, `${mapping.legacyPath}.max`),
     };
 }
@@ -405,7 +419,11 @@ function rollback(attempted){
     for (let index = attempted.length - 1; index >= 0; index--){
         const resource = attempted[index];
         try {
-            if (!Reflect.set(resource.record, 'amount', resource.original)) rollbackFailed = true;
+            if (!Reflect.set(resource.record, 'amount', resource.original)){
+                rollbackFailed = true;
+                continue;
+            }
+            if (!Object.is(resourceAmount(resource), resource.original)) rollbackFailed = true;
         }
         catch {
             rollbackFailed = true;
@@ -416,20 +434,82 @@ function rollback(attempted){
     }
 }
 
-function applyProjected(order){
+function failStateDrift(attempted, resourceId, phase, expected, actual){
+    rollback(attempted);
+    fail('LEGACY_RESOURCE_COMMIT_STATE_DRIFT', 'Legacy resource state changed during atomic commit.', {
+        resourceId,
+        phase,
+        expected,
+        actual,
+    });
+}
+
+function verifyRoot(readLegacyRoot, expectedRoot, attempted, resourceId, phase){
+    if (currentRoot(readLegacyRoot) !== expectedRoot){
+        rollback(attempted);
+        fail('LEGACY_RESOURCE_COMMIT_STATE_DRIFT', 'Legacy resource root changed during atomic commit.', {
+            resourceId,
+            phase,
+            expected: 'same_root',
+            actual: 'different_root',
+        });
+    }
+}
+
+function applyProjected(root, readLegacyRoot, order){
     const attempted = [];
-    try {
-        for (const resource of order){
-            if (Object.is(resource.original, resource.projected)) continue;
-            attempted.push(resource);
+    for (const resource of order){
+        if (Object.is(resource.original, resource.projected)) continue;
+
+        verifyRoot(readLegacyRoot, root, attempted, resource.resourceId, 'before_write');
+        const current = resourceAmount(resource);
+        if (!Object.is(current, resource.original)){
+            failStateDrift(
+                attempted,
+                resource.resourceId,
+                'before_write',
+                resource.original,
+                current
+            );
+        }
+
+        attempted.push(resource);
+        try {
             if (!Reflect.set(resource.record, 'amount', resource.projected)){
                 throw new Error('resource amount write rejected');
             }
         }
+        catch {
+            rollback(attempted);
+            fail('LEGACY_RESOURCE_COMMIT_WRITE_FAILURE', 'Resource commit could not apply all resource amount changes atomically.');
+        }
+
+        verifyRoot(readLegacyRoot, root, attempted, resource.resourceId, 'after_write');
+        const written = resourceAmount(resource);
+        if (!Object.is(written, resource.projected)){
+            failStateDrift(
+                attempted,
+                resource.resourceId,
+                'after_write',
+                resource.projected,
+                written
+            );
+        }
     }
-    catch {
-        rollback(attempted);
-        fail('LEGACY_RESOURCE_COMMIT_WRITE_FAILURE', 'Resource commit could not apply all resource amount changes atomically.');
+
+    verifyRoot(readLegacyRoot, root, attempted, null, 'final');
+    for (const resource of order){
+        if (Object.is(resource.original, resource.projected)) continue;
+        const current = resourceAmount(resource);
+        if (!Object.is(current, resource.projected)){
+            failStateDrift(
+                attempted,
+                resource.resourceId,
+                'final',
+                resource.projected,
+                current
+            );
+        }
     }
 }
 
@@ -450,7 +530,7 @@ export function createEvolveLegacyResourceCommitCapability(rawOptions){
         const root = currentRoot(readLegacyRoot);
         const prepared = preflight(root, index, changes);
         if (prepared.result) return prepared.result;
-        applyProjected(prepared.order);
+        applyProjected(root, readLegacyRoot, prepared.order);
         return committed();
     }
 
