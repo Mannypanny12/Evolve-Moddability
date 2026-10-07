@@ -2,16 +2,16 @@
 
 This is the short navigation index for the architecture that is true **now**.
 
-Slice documents remain valuable migration history, but when an older slice note conflicts with a later closure or final-review document, use the newest authority listed here.
+Slice documents remain valuable migration history, but when an older slice note conflicts with a later closure, final-review or cumulative retrospective document, use the newest authority listed here.
 
 ## Milestone status
 
 | Milestone | Status | Current authority |
 | --- | --- | --- |
-| M0 Safety and reproducibility | complete | `ROADMAP.md`, `M0E5_ARCHITECTURE_GUARDRAILS.md`, `TEST_STRATEGY.md` |
-| M1 Engine kernel and seams | complete | `M1_CLOSURE_REVIEW.md` |
-| M2 Explicit state architecture | complete | `M2_CLOSURE_REVIEW.md` |
-| M3 Commands, conditions, effects and costs | complete | `M3_CLOSURE_REVIEW.md`, `M3_FINAL_REVIEW_HARDENING.md` |
+| M0 Safety and reproducibility | complete | `M0_CLOSURE_REVIEW.md`, `M0_M3_RETROSPECTIVE_HARDENING.md` |
+| M1 Engine kernel and seams | complete | `M1_CLOSURE_REVIEW.md`, `M0_M3_RETROSPECTIVE_HARDENING.md` |
+| M2 Explicit state architecture | complete | `M2_CLOSURE_REVIEW.md`, `M0_M3_RETROSPECTIVE_HARDENING.md` |
+| M3 Commands, conditions, effects and costs | complete | `M3_CLOSURE_REVIEW.md`, `M3_FINAL_REVIEW_HARDENING.md`, `M0_M3_RETROSPECTIVE_HARDENING.md` |
 | M4 Calculation and modifier engine | next | `ROADMAP.md` |
 
 ## Current dependency direction
@@ -55,7 +55,9 @@ Permanent direction rules:
 
 ## M0 authority: safety net
 
-Read these when changing test/build/refactor safety:
+`M0_CLOSURE_REVIEW.md` is the combined M0 exit authority added by the pre-M4 retrospective.
+
+Read these for the underlying safety contracts:
 
 - `M0E5_ARCHITECTURE_GUARDRAILS.md` for engine/legacy dependency and ratchet rules.
 - `M0D_SIMULATION.md` for deterministic differential simulation.
@@ -63,11 +65,11 @@ Read these when changing test/build/refactor safety:
 - `BROWSER_SMOKE.md` for real-browser startup and interaction smoke coverage.
 - `TEST_STRATEGY.md` for the complete regression strategy.
 
-The full Node suite recursively discovers every `*.test.cjs` file. Architecture gates then run as a cumulative command chain in CI. M3G additionally self-audits the direct M3 architecture-test manifest so M3 gates cannot silently fall out of either test surface.
+The full Node suite recursively discovers every `*.test.cjs` file. Architecture gates then run as a cumulative explicit command chain in CI. The repository-wide architecture-test coverage gate requires every direct command in that chain to exist exactly once and to have an independently discovered same-name `*.test.cjs` wrapper. M3G additionally self-audits the direct M3 gate inventory so M3-specific gates cannot silently fall out of its milestone closure.
 
 ## M1 authority: engine kernel
 
-`M1_CLOSURE_REVIEW.md` is the combined authority for M1.
+`M1_CLOSURE_REVIEW.md` is the combined authority for M1. The later `M0_M3_RETROSPECTIVE_HARDENING.md` records the pre-M4 revalidation against the enlarged M2/M3 repository.
 
 Current M1 structure is also emitted by `npm run inspect:architecture`:
 
@@ -83,7 +85,7 @@ Detailed historical design remains in `M1A_*`, `M1B_*`, `M1C_*`, and `M1D_*` not
 
 ## M2 authority: state architecture
 
-`M2_CLOSURE_REVIEW.md` is the combined authority for M2.
+`M2_CLOSURE_REVIEW.md` is the combined authority for M2. The later `M0_M3_RETROSPECTIVE_HARDENING.md` records the pre-M4 revalidation and the cross-milestone test-wiring hardening.
 
 The current authoritative root is GameState schema version 2:
 
@@ -112,7 +114,7 @@ For specific state contracts use:
 
 ## M3 authority: command architecture
 
-Read `M3_CLOSURE_REVIEW.md` for the integrated milestone design/exit authority and `M3_FINAL_REVIEW_HARDENING.md` for the later whole-M3 audit and post-closure hardening.
+Read `M3_CLOSURE_REVIEW.md` for the integrated milestone design/exit authority, `M3_FINAL_REVIEW_HARDENING.md` for the later whole-M3 audit, and `M0_M3_RETROSPECTIVE_HARDENING.md` for the subsequent cross-milestone pre-M4 revalidation.
 
 The first live vanilla vertical is `evolve:command/evolution/dna`:
 
@@ -177,10 +179,14 @@ A slice design/review document describes what was true or being decided at that 
 
 When two documents appear to disagree:
 
-1. use this index to identify the current closure/final-review authority;
-2. prefer the latest milestone authority over an earlier slice document;
+1. use this index to identify the current closure/final-review/retrospective authority;
+2. prefer the latest milestone or cumulative authority over an earlier slice document;
 3. prefer machine-enforced contracts/tests over stale prose;
-4. update this index, the relevant closure/final-review authority, roadmap, and backlog when a later milestone intentionally changes a permanent rule.
+4. update this index, the relevant closure/final-review/retrospective authority, roadmap, and backlog when a later milestone intentionally changes a permanent rule.
+
+## Cumulative pre-M4 verification
+
+`M0_M3_RETROSPECTIVE_HARDENING.md` records the later whole-stack audit of all completed milestones. It does not replace the detailed milestone designs; it records that their current implementations, test surfaces and cross-milestone assumptions were rechecked together before M4.
 
 ## Next architectural work
 
