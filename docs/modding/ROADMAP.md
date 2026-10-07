@@ -293,7 +293,7 @@ Adds the frozen `createWorkQueueSelector()` readiness/selection boundary with tr
 
 Closes M3E with executable legacy build/research queue evidence, a zero-execution `prepare -> WorkItem -> WorkQueue -> selection` integration proof, and a cumulative architecture gate that pins the four-file generic queue package, keeps it first-party-neutral, and prevents any production consumer before reviewed cutover. Command-specific admission, execution progress, reconciliation, prediction, scheduling and persistence remain deferred to their owning later milestones. See `M3E4_QUEUE_CLOSURE.md`.
 
-M3E is closed without modifying vanilla build/research gameplay. M3F and M3G are closed; M4A is next.
+M3E is closed without modifying vanilla build/research gameplay. M3F and M3G are closed; M4A is complete and M4B is next.
 
 ### M3F First real vanilla cutover - complete
 
@@ -321,17 +321,29 @@ Reconciles the first live cutover as a complete vertical, including the real-bro
 
 Audits the complete M3 path for atomicity, failure semantics, boundary ownership, diagnostics, legacy compatibility and architecture regressions. M3G adds a cumulative whole-M3 architecture gate, extends the architecture report with command-architecture state, and proves stale-state settlement plus rollback behavior through the production composition boundary. See `M3_CLOSURE_REVIEW.md`.
 
-Exit achieved: at least one real vanilla action validates, checks execution conditions, constructs fresh payment/effect plans, mutates through atomic settlement, and emits structured results through the new engine without using a DOM element as gameplay authority or leaving mutation authority in the legacy callback.
+Exit achieved: at least one real vanilla action validates, checks its execution condition, constructs fresh payment/effect plans, mutates through atomic settlement, and emits structured results through the new engine without using a DOM element as gameplay authority or leaving mutation authority in the legacy callback.
 
 ---
 
 ## M4: Calculation and modifier engine
 
-### M4A Calculation context and trace - next
+### M4A Calculation context and trace - complete
 
-Define named calculations with explicit inputs and traceable outputs.
+M4A establishes a generic, state-free calculation kernel with:
 
-### M4B Modifier pipeline
+- canonical namespaced `calculation` IDs;
+- closed explicit inert `{ id, inputs }` contexts;
+- fixed synchronous `{ id, validateInputs, calculateBase }` registrations;
+- finite numerical base results;
+- a cheap `calculate()` path and opt-in `explain()` path sharing the same runner;
+- a frozen base trace that records validated inputs and `before: null -> after: value`;
+- hostile-input, async/thenable, reentrancy and error-phase hardening;
+- a dedicated architecture gate that keeps calculations first-party-neutral and free of state, mutation, legacy, platform, runtime and M3 semantic-package dependencies;
+- zero production consumers at M4A exit.
+
+No vanilla production calculation is cut over in M4A. See `M4A_CALCULATION_CONTEXT_TRACE.md`.
+
+### M4B Modifier pipeline - next
 
 Support operations such as:
 
