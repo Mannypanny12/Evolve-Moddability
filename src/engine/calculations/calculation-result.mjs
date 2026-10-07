@@ -1,5 +1,5 @@
 import { EngineContractError } from '../identity.mjs';
-import { canonicalizeCalculationInputs } from './common.mjs';
+import { assertCalculationId, canonicalizeCalculationInputs } from './common.mjs';
 
 function fail(code, message, details){
     throw new EngineContractError(code, message, details);
@@ -30,9 +30,13 @@ function createBaseTrace(inputs, value){
 }
 
 export function createCalculationResult(calculationId, rawValue, options = {}){
+    const canonicalCalculationId = assertCalculationId(
+        calculationId,
+        'calculationResult.calculationId'
+    );
     const value = normalizeCalculationValue(rawValue);
     const trace = options.trace === true
         ? createBaseTrace(options.inputs, value)
         : null;
-    return Object.freeze({ calculationId, value, trace });
+    return Object.freeze({ calculationId: canonicalCalculationId, value, trace });
 }
