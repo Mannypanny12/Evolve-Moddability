@@ -18,6 +18,7 @@ test('M3G architecture report is complete, JSON-safe, and reflects the guarded r
     const report = await buildArchitectureReport(root);
 
     assert.equal(report.reportVersion, ARCHITECTURE_REPORT_VERSION);
+    assert.equal(report.reportVersion, 5);
     assert.equal(report.legacy.moduleCount > 0, true);
     assert.equal(report.legacy.counters.global > 0, true);
     assert.equal(report.legacy.largestSccSize > 0, true);
@@ -82,6 +83,7 @@ test('M3G architecture report is complete, JSON-safe, and reflects the guarded r
         cutover: 0,
     });
     assert.equal(report.commandArchitecture.crossLayerViolationCount, 0);
+    assert.equal(report.commandArchitecture.architectureTestCoverageViolationCount, 0);
     assert.equal(report.commandArchitecture.violationCount, 0);
 
     assert.equal(report.legacyMappings.size, report.legacyMappings.mappings.length);
