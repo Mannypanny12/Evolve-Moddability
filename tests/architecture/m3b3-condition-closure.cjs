@@ -11,6 +11,7 @@ const ALLOWED_IMPORTS = new Set([
     '../../engine/identity.mjs',
     '../../engine/conditions/common.mjs',
     './evolve-mappings.mjs',
+    './reviewed-reactive-resource-field.mjs',
 ]);
 
 function normalize(relativePath){
