@@ -86,11 +86,41 @@ M3F2 therefore does not:
 - introduce a general PaymentExecutor or EffectExecutor;
 - execute prestige or special-payment families.
 
+## Review and hardening
+
+The implementation was reviewed against the M3A0 DNA evidence, M3B condition contract, M3D payment semantics and M3F1 commit boundary before closure.
+
+Two issues were caught before the production commit was created:
+
+- an unrelated package-script typo introduced while editing `package.json` was removed so the only package change is the intended M3F2 architecture-gate addition;
+- the first architecture-gate draft incorrectly expected the generated `payment.resource.debit` operation literal to appear in the command-composition source. The gate now pins the actual composition contract instead: fresh PaymentQuote/PaymentPlan construction plus the reviewed DNA grant effect.
+
+The committed implementation then passed the complete repository safety net without requiring further production changes.
+
+## Verification
+
+Implementation commit:
+
+```text
+c3524f4dae7adeb37745d1d0a215ea25a8c085aa
+```
+
+GitHub Actions run `37567605539` passed on that implementation head, including:
+
+- the full test suite, including the new M3F2 orchestration and integrated DNA differential tests;
+- the cumulative architecture fitness suite including `m3f2-dna-command-fitness.cjs`;
+- game and wiki builds;
+- generated-output cleanliness;
+- the real-browser startup-failure negative control;
+- the real-browser smoke test.
+
+The final documentation-only closure head must preserve the same complete safety net.
+
 ## M3F3 handoff
 
 M3F3 owns the live caller cutover. It must create the reviewed production composition root, wire the real legacy read/commit adapters to the DNA command, replace the bounded legacy DNA caller, and explicitly translate structured command results into the historical caller/queue lifecycle without making the UI authoritative again.
 
-## Verification requirements
+## Definition of done
 
 M3F2 is complete when:
 
