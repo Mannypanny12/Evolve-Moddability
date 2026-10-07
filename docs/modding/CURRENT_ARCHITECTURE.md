@@ -11,35 +11,47 @@ Slice documents remain valuable migration history, but when an older slice note 
 | M0 Safety and reproducibility | complete | `ROADMAP.md`, `M0E5_ARCHITECTURE_GUARDRAILS.md`, `TEST_STRATEGY.md` |
 | M1 Engine kernel and seams | complete | `M1_CLOSURE_REVIEW.md` |
 | M2 Explicit state architecture | complete | `M2_CLOSURE_REVIEW.md` |
-| M3 Commands, conditions, effects and costs | next | `ROADMAP.md` |
+| M3 Commands, conditions, effects and costs | complete | `M3_CLOSURE_REVIEW.md` |
+| M4 Calculation and modifier engine | next | `ROADMAP.md` |
 
 ## Current dependency direction
 
 ```text
-legacy gameplay / compatibility
+legacy gameplay / compatibility caller
             |
             v
-legacy bridge (temporary)
+application composition
             |
             v
-engine semantic APIs
+first-party content commands
+            |
+            v
+generic engine semantic APIs
             |
             +-- identity + registries + definitions       [M1]
             +-- runtime ports                             [M1]
             +-- GameState selectors / mutation services  [M2]
-            |
-            v
-platform adapters stay outside engine
+            +-- commands / conditions                    [M3]
+            +-- costs / effects / execution              [M3]
+            +-- inert queue model                        [M3]
+
+legacy bridge (temporary) may adapt legacy state to reviewed
+engine contracts, but generic engine packages never depend back
+on application, first-party content, legacy or platform layers.
 ```
 
 Permanent direction rules:
 
-- `src/engine/**` does not depend on legacy gameplay, DOM/browser globals, or platform implementations.
+- `src/engine/**` does not depend on legacy gameplay, DOM/browser globals, platform implementations, application composition or first-party Evolve content.
 - platform code may depend on engine contracts but not on the legacy bridge.
 - the legacy bridge may depend on reviewed engine APIs while it exists; engine/platform may not depend back on it.
 - definitions and registries describe content identity/static data and do not own mutable save state.
 - authoritative GameState domains have explicit owners, semantic selectors, and semantic mutation services.
 - raw mutation authority and raw whole-state reads are infrastructure capabilities, not ordinary gameplay APIs.
+- command dispatch orchestrates reviewed semantic capabilities rather than becoming generic state-mutation authority.
+- conditions remain read-only and distinct from payment/affordability.
+- effect and payment plans are inert data, not stored mutation authority.
+- `WorkQueue` remains an inert queue model at M3 exit and has no production gameplay execution consumer.
 
 ## M0 authority: safety net
 
@@ -98,6 +110,46 @@ For specific state contracts use:
 - `M2D3_ACHIEVEMENT_AUTHORITY_CUTOVER.md` and `M2D4_ACHIEVEMENT_READER_CUTOVER.md` for the first real migration;
 - `M2E1_STATE_DOMAIN_OWNERSHIP.md`, `M2E2_MUTATION_BOUNDARY.md`, and `M2E3_SELECTOR_STATE_DEPENDENCIES.md` for machine-enforced ownership/read/write rules.
 
+## M3 authority: command architecture
+
+`M3_CLOSURE_REVIEW.md` is the combined authority for M3.
+
+The first live vanilla vertical is `evolve:command/evolution/dna`:
+
+```text
+src/actions.js compatibility shim
+        |
+        v
+src/application/evolve/evolution-dna-command-runtime.mjs
+        |
+        v
+CommandBus -> DNA command
+        |
+        +--> execution condition
+        +--> fresh payment/effect plans
+        |
+        v
+src/engine/execution/resource-commit.mjs
+        |
+        v
+bounded legacy RNA/DNA commit capability
+```
+
+Current M3 laws:
+
+- `CommandBus` validates and orchestrates but owns no generic raw mutation authority.
+- command results are structured success/rejection data; broken contracts/infrastructure remain hard diagnostics.
+- availability/execution conditions, affordability/payment and queue readiness remain distinct concepts.
+- conditions are read-only.
+- payment quotes/plans are contextual and are not durable authorization tokens.
+- effect plans are inert semantic operations without direct execution authority.
+- atomic settlement revalidates live resource state immediately before mutation and rolls partial writes back.
+- generic command/condition/cost/effect/execution/queue packages remain first-party-neutral and cannot depend upward on application/content/legacy/platform code.
+- the DNA content command has no direct `global`, DOM, queue or raw legacy-state access.
+- the application layer composes reviewed capabilities but does not reimplement gameplay semantics.
+- the legacy RNA/DNA write bridge remains temporary compatibility debt until the owning migration removes it.
+- `WorkQueue` remains deliberately non-authoritative in production at M3 exit.
+
 ## Architecture inspector
 
 Run:
@@ -113,9 +165,10 @@ The versioned JSON report currently combines:
 - legacy mapping inspection;
 - M2C state-boundary debt;
 - M2D authority/reader migration gates;
-- M2E ownership, write-capability, selector, and dependency gates.
+- M2E ownership, write-capability, selector, and dependency gates;
+- M3 command-architecture closure, including the reviewed live DNA command/runtime/settlement seams, generic package roots, queue-production-consumer count, prerequisite gate counts and cross-layer violations.
 
-M2D3 and M2D4 now expose composable scanner functions directly, so the report consumes the same rule implementations as their standalone CLI gates without subprocess indirection.
+M2D3/M2D4 and the M3G closure gate expose composable scanner functions directly, so the report consumes the same rule implementations as their standalone CLI gates rather than maintaining a second architecture truth.
 
 ## Historical documents
 
@@ -130,4 +183,6 @@ When two documents appear to disagree:
 
 ## Next architectural work
 
-M3 begins with the command bus. It should extend the existing M0-M2 safety floor rather than bypass or replace it. New M3 architecture gates may be appended to the cumulative report/CI chain without weakening the permanent M0-M2 requirements.
+M4A is next: **Calculation context and trace**.
+
+It should build traceable named calculations on top of the existing M0-M3 safety floor without moving modifier logic into commands, conditions or the compatibility bridge. M3's first command vertical remains the proof that execution can be cleanly composed while M4 introduces the calculation/modifier substrate needed for broader production migration.
