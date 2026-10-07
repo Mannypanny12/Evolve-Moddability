@@ -1,6 +1,7 @@
 import { EngineContractError, parseContentId } from '../../engine/identity.mjs';
 import { inspectDenseInertArray, inspectPlainInertObject } from '../../engine/contracts/inert-data.mjs';
 import { createEvolveLegacyMappingCatalog } from './evolve-mappings.mjs';
+import { readReviewedReactiveResourceField } from './reviewed-reactive-resource-field.mjs';
 
 const MAX_RESOURCE_CHANGES = 256;
 const SUPPORTED_RESOURCE_MAPPING_IDS = Object.freeze([
@@ -146,6 +147,36 @@ function readDataDescriptor(record, field, path){
     return descriptor;
 }
 
+function readResourceDescriptor(record, field, path){
+    let descriptor;
+    try {
+        descriptor = Object.getOwnPropertyDescriptor(record, field);
+    }
+    catch {
+        fail('INVALID_LEGACY_RESOURCE_COMMIT_STATE', `${path}.${field} could not be safely inspected.`, {
+            path: `${path}.${field}`,
+        });
+    }
+    if (!descriptor) return MISSING;
+    if (Object.prototype.hasOwnProperty.call(descriptor, 'value')) return descriptor;
+
+    let reviewed;
+    try {
+        reviewed = readReviewedReactiveResourceField(record, field);
+    }
+    catch {
+        fail('INVALID_LEGACY_RESOURCE_COMMIT_STATE', `${path}.${field} could not be safely read.`, {
+            path: `${path}.${field}`,
+        });
+    }
+    if (!reviewed){
+        fail('INVALID_LEGACY_RESOURCE_COMMIT_STATE', `${path}.${field} must be a data field or reviewed reactive resource field.`, {
+            path: `${path}.${field}`,
+        });
+    }
+    return reviewed;
+}
+
 function readLegacyPath(root, legacyPath){
     let current = assertPlainRecord(root, 'legacyResourceCommitRoot');
     const segments = legacyPath.split('.').slice(1);
@@ -280,8 +311,8 @@ function resolveResource(root, index, resourceId){
         });
     }
     const record = assertPlainRecord(recordValue, `legacy resource ${resourceId}`);
-    const amountDescriptor = readDataDescriptor(record, 'amount', `legacy resource ${resourceId}`);
-    const maxDescriptor = readDataDescriptor(record, 'max', `legacy resource ${resourceId}`);
+    const amountDescriptor = readResourceDescriptor(record, 'amount', `legacy resource ${resourceId}`);
+    const maxDescriptor = readResourceDescriptor(record, 'max', `legacy resource ${resourceId}`);
     if (amountDescriptor === MISSING || maxDescriptor === MISSING){
         fail('INVALID_LEGACY_RESOURCE_COMMIT_STATE', 'Mapped legacy resource requires amount and max data fields.', {
             resourceId,
