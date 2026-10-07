@@ -62,6 +62,7 @@ function analyzeDnaSource(source){
         ['GameState mutation authority', /\b(?:mutationAuthority|createMutationScope|beginTransaction|GameStateStore|StateStore)\b/],
         ['queue authority', /\b(?:WorkQueue|WorkItem|enqueue|dequeue|isQueue)\b/],
         ['presentation qualification', /\b(?:evoFinalMenu|display)\b/],
+        ['current-affordability authorization', /\b(?:assessCurrentAffordability|payment\.current\.)\b/],
         ['async control flow', /\b(?:async|await)\b|\bnew\s+Promise\b/],
         ['dynamic loading/code construction', /\bimport\s*\(|\brequire\s*\(|\beval\b|\bnew\s+Function\b|\bFunction\s*\(/],
     ];
@@ -81,11 +82,15 @@ function analyzeDnaSource(source){
         'createPaymentQuote',
         'createPaymentPlan',
         'createEffectPlan',
+        'DNA_COMMAND_REENTRANCY',
     ]){
         if (!source.includes(required)) violations.push(`${relativePath}: reviewed M3F2 contract marker is missing: ${required}`);
     }
     if (!/\bRNA_PRICE\s*=\s*2\b/.test(code)) violations.push(`${relativePath}: reviewed RNA price must remain exactly 2`);
     if (!/\bDNA_GRANT\s*=\s*1\b/.test(code)) violations.push(`${relativePath}: reviewed DNA grant must remain exactly 1`);
+    if (!/\bfunction\s+execute\s*\(\s*payload\s*\)/.test(code) || !/\bvalidatePayload\s*\(\s*payload\s*\)/.test(code)){
+        violations.push(`${relativePath}: exposed execute(payload) must revalidate the closed DNA payload defensively`);
+    }
 
     for (const reference of extractModuleReferences(source, relativePath)){
         if (reference.kind !== 'import-statement'){
