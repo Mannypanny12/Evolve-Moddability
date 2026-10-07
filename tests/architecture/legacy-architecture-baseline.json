@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "sourceCommit": "f2ebf4564171137b4340cf33e5361c2330d7dadc",
+  "sourceCommit": "a223bd4e1c878e57777e1c8626ec929065d73d25",
   "measurement": {
     "global": "global dot-or-bracket access",
     "browser": "jQuery/$ calls plus document, window, Vue, and navigator references",
@@ -41,7 +41,7 @@
       "random": 0
     },
     "actions.js": {
-      "global": 2667,
+      "global": 2664,
       "browser": 338,
       "storage": 2,
       "clock": 4,
