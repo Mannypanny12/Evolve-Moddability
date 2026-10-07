@@ -169,5 +169,5 @@ test('M3F2 DNA rejects direct execution reentrancy and releases the lock after f
         () => registration.execute({}),
         error => error instanceof EngineContractError && error.code === 'DNA_COMMAND_REENTRANCY'
     );
-    assert.deepEqual(registration.execute({}), { status: 'succeeded', data: null, reasons: [] });
+    assert.deepEqual(registration.execute({}), { status: 'succeeded', data: null });
 });
