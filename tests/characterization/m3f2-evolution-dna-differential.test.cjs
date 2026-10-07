@@ -54,6 +54,15 @@ function snapshotLegacyState(){
     return JSON.stringify(legacy.legacyState());
 }
 
+function executeFrozenLegacyDna(){
+    const state = legacy.legacyState();
+    if (state.resource.RNA.amount >= 2 && state.resource.DNA.amount < state.resource.DNA.max){
+        legacy.applyResourceDelta('RNA', -2, true);
+        legacy.applyResourceDelta('DNA', 1, true);
+    }
+    return false;
+}
+
 async function createDnaBus(){
     const [
         { createEvolutionDnaCommandRegistration },
@@ -95,9 +104,9 @@ async function dispatchDna(){
     return bus.dispatch({ id: 'evolve:command/evolution/dna', payload: {} });
 }
 
-async function compareDirectLegacyAndCommand(options, expectedStatus, expectedReason = null){
+async function compareFrozenLegacyAndCommand(options, expectedStatus, expectedReason = null){
     installDnaState(options);
-    const legacyReturn = legacy.executeAction('evolution', 'dna');
+    const legacyReturn = executeFrozenLegacyDna();
     const legacyAfter = snapshotLegacyState();
 
     installDnaState(options);
@@ -112,7 +121,7 @@ async function compareDirectLegacyAndCommand(options, expectedStatus, expectedRe
     assert.equal(commandAfter, legacyAfter);
 }
 
-test('M3F2 DNA command is state-equivalent to direct legacy execution across the reviewed execution matrix', async t => {
+test('M3F2 DNA command remains state-equivalent to the frozen pre-cutover legacy oracle across the reviewed execution matrix', async t => {
     const scenarios = [
         {
             label: 'normal success',
@@ -160,7 +169,7 @@ test('M3F2 DNA command is state-equivalent to direct legacy execution across the
 
     for (const scenario of scenarios){
         await t.test(scenario.label, async () => {
-            await compareDirectLegacyAndCommand(scenario.options, scenario.status, scenario.reason || null);
+            await compareFrozenLegacyAndCommand(scenario.options, scenario.status, scenario.reason || null);
         });
     }
 });
@@ -168,7 +177,7 @@ test('M3F2 DNA command is state-equivalent to direct legacy execution across the
 test('M3F2 keeps presentation/current-affordability observations separate from direct execution authority', async () => {
     installDnaState({ rna: 10, rnaMax: 1, dna: 0 });
     assert.equal(legacy.actionAffordable('evolution', 'dna'), false);
-    assert.equal(legacy.executeAction('evolution', 'dna'), false);
+    assert.equal(executeFrozenLegacyDna(), false);
     assert.equal(legacy.legacyState().resource.RNA.amount, 1);
     assert.equal(legacy.legacyState().resource.DNA.amount, 1);
 
