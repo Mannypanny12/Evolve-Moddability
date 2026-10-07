@@ -2,7 +2,7 @@
 
 GitHub Issues #2 through #9 track the original M0/M1 implementation work. Post-M0 audit completion work is tracked by M0E (#16) and its bounded slices #17-#21. The roadmap targets a full engine refactor rather than a permanent wrapper around legacy Evolve.
 
-See [ROADMAP.md](ROADMAP.md) for the complete M0-M14 plan.
+See [ROADMAP.md](ROADMAP.md) for the complete M0-M14 plan and [EXECUTION_PROTOCOL.md](EXECUTION_PROTOCOL.md) for the bounded review/implementation/closure workflow used by future slices.
 
 ## M0: Safety and reproducibility
 
@@ -248,7 +248,7 @@ Established the first production command primitive from the M3A0 laws:
 - payloads are detached, canonicalized, deeply frozen and hostile-input hardened before validation/execution;
 - each registration has one synchronous payload validator and one synchronous handler;
 - registrations are fixed at construction and duplicate/malformed registrations fail closed;
-- the public bus exposes only `dispatch`, `has`, and deterministic `ids`;
+- the public bus exposes only `prepare`, `dispatch`, `has`, and deterministic `ids`;
 - success/rejection results are normalized into one frozen structured result contract;
 - rejected results use machine-readable reason codes/details rather than localized strings;
 - legacy `false`/`0`/truthy callback results are rejected as invalid command results;
@@ -296,18 +296,18 @@ The quote/payment milestone is complete: deterministic quotes, current-affordabi
 
 The generic queue package is complete through prepared commands, inert WorkItems, pure WorkQueue operations, transient readiness/selection, legacy queue evidence, and cumulative architecture closure. It remains deliberately free of scheduler/execution/persistence authority.
 
-### M3F - First real vanilla cutover - active
+### M3F - First real vanilla cutover - complete
 
 - M3F1 atomic resource commit - complete;
 - M3F2 `evolve:command/evolution/dna` - complete;
 - M3F3 live `actions.evolution.dna.action()` cutover - complete;
-- M3F4 cutover proof and M3F closure - next.
+- M3F4 cutover proof and M3F closure - complete;
 
-The live DNA callback now delegates gameplay authority through the command/condition/payment/effect/atomic-settlement path while retaining its historical legacy return protocol. See [M3F3_DNA_LIVE_CUTOVER.md](M3F3_DNA_LIVE_CUTOVER.md).
+The live DNA callback delegates gameplay authority through the command/condition/payment/effect/atomic-settlement path while retaining its historical legacy return protocol. The full vertical is closed by the cumulative production/browser proof. See [M3F4_CUTOVER_CLOSURE.md](M3F4_CUTOVER_CLOSURE.md).
 
-### M3G - Whole-M3 hardening and closure - later
+### M3G - Whole-M3 hardening and closure - next
 
-After M3F closes, audit the complete M3 command/condition/effect/payment/queue/cutover architecture as one milestone and record the whole-M3 closure review.
+Audit the complete M3 command/condition/effect/payment/queue/cutover architecture as one milestone and record the whole-M3 closure review.
 
 ## Immediate sequence
 
@@ -320,11 +320,9 @@ M2A-M2E explicit state architecture - complete
    |
 M3A0-M3E command/condition/effect/payment/queue foundations - complete
    |
-M3F1-M3F3 first DNA vertical - complete
+M3F1-M3F4 first DNA vertical - complete
    |
-M3F4 cutover proof and M3F closure - next
-   |
-M3G whole-M3 hardening and closure
+M3G whole-M3 hardening and closure - next
 ```
 
 Do not jump directly to mod loading, total conversions, or bulk content conversion. Those would lock in legacy assumptions before the engine is ready.
