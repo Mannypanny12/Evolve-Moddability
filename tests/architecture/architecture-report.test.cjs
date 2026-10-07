@@ -68,11 +68,25 @@ test('M3G architecture report is complete, JSON-safe, and reflects the guarded r
     assert.deepEqual(report.commandArchitecture.reviewedLiveCommandIds, ['evolve:command/evolution/dna']);
     assert.deepEqual(report.commandArchitecture.reviewedCommandModules, ['src/content/evolve/commands/evolution-dna.mjs']);
     assert.deepEqual(report.commandArchitecture.productionRuntimes, ['src/application/evolve/evolution-dna-command-runtime.mjs']);
+    assert.deepEqual(report.commandArchitecture.semanticBoundaries, {
+        commandBus: 'src/engine/commands/command-bus.mjs',
+        conditions: 'src/engine/conditions/condition-evaluator.mjs',
+        payments: 'src/engine/costs/payment-plan.mjs',
+        effects: 'src/engine/effects/effect-plan.mjs',
+        queueModel: 'src/engine/queue/work-queue.mjs',
+        settlement: 'src/engine/execution/resource-commit.mjs',
+    });
     assert.deepEqual(report.commandArchitecture.executionAuthorities, ['src/engine/execution/resource-commit.mjs']);
     assert.deepEqual(report.commandArchitecture.legacyWriteCapabilities, ['src/legacy/bridge/evolve-resource-commit-adapter.mjs']);
+    assert.deepEqual(report.commandArchitecture.legacyCompatibilityDebt, [{
+        capability: 'src/legacy/bridge/evolve-resource-commit-adapter.mjs',
+        removalTarget: 'M6B',
+    }]);
     assert.equal(report.commandArchitecture.genericPackageRoots.length, 6);
+    assert.equal(report.commandArchitecture.queueAuthority, 'inert-no-production-consumers');
     assert.equal(report.commandArchitecture.queueProductionConsumerCount, 0);
     assert.deepEqual(report.commandArchitecture.queueProductionConsumers, []);
+    assert.equal(report.commandArchitecture.queueAuthorityViolationCount, 0);
     assert.deepEqual(report.commandArchitecture.prerequisiteViolationCounts, {
         command: 0,
         condition: 0,
