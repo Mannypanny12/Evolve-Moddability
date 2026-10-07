@@ -2,6 +2,8 @@
 
 Every milestone must keep vanilla behavior protected by tests. The roadmap deliberately builds internal engine contracts before promising external Mod API stability.
 
+Use `EXECUTION_PROTOCOL.md` for the bounded review, hardening, targeted-proof, CI, documentation, and final-checkpoint workflow used by M3G and later slices.
+
 ## M0: Safety and reproducibility
 
 ### M0A Reproducible baseline - complete
@@ -291,9 +293,9 @@ Adds the frozen `createWorkQueueSelector()` readiness/selection boundary with tr
 
 Closes M3E with executable legacy build/research queue evidence, a zero-execution `prepare -> WorkItem -> WorkQueue -> selection` integration proof, and a cumulative architecture gate that pins the four-file generic queue package, keeps it first-party-neutral, and prevents any production consumer before reviewed cutover. Command-specific admission, execution progress, reconciliation, prediction, scheduling and persistence remain deferred to their owning later milestones. See `M3E4_QUEUE_CLOSURE.md`.
 
-M3E is closed without modifying vanilla build/research gameplay. M3F is the active milestone.
+M3E is closed without modifying vanilla build/research gameplay. M3F is closed; M3G is the active milestone.
 
-### M3F First real vanilla cutover
+### M3F First real vanilla cutover - complete
 
 Cut over one bounded vanilla action end to end through the new command architecture. `evolution.dna` is the first selected evidence vertical because its mutation is small while its legacy availability, execution, affordability, capacity, and return-value semantics are usefully distinct.
 
@@ -311,11 +313,11 @@ Adds `evolve:command/evolution/dna` as the first first-party command registratio
 
 Cuts the real `actions.evolution.dna.action()` callback over to the reviewed command path through a tiny application composition root. The legacy callback no longer owns RNA/DNA checks or mutation; it only dispatches the command and preserves the historical `false` return expected by legacy control flow. Differential coverage retains a frozen pre-cutover oracle, production composition follows live `setGlobal()` rebinding, and architecture fitness prevents direct mutation or swallowed contract failures from returning to the shim. See `M3F3_DNA_LIVE_CUTOVER.md`.
 
-#### M3F4 Cutover proof and closure - next
+#### M3F4 Cutover proof and closure - complete
 
-Reconcile the first live cutover as a complete vertical: confirm downward architecture ratchets, run the complete CI/build/browser proof on the final M3F head, close any integration-only gaps exposed by production composition, and record M3F closure without broadening into M3G's whole-milestone audit.
+Reconciles the first live cutover as a complete vertical, including the real-browser Vue-reactive resource compatibility gap, cumulative architecture ratchets, and final CI/build/browser proof. See `M3F4_CUTOVER_CLOSURE.md`.
 
-### M3G Hardening and closure
+### M3G Hardening and closure - next
 
 Audit the complete M3 path for atomicity, failure semantics, boundary ownership, diagnostics, legacy compatibility, and architecture regressions. Extend CI/fitness guards where needed and record the M3 closure review.
 
