@@ -73,6 +73,29 @@ test('M1D legacy mapping catalog rejects family mismatch, malformed contextual m
     assert.equal(catalog.size, 1);
 });
 
+test('M1D lifecycle validation supports ordered implementation sub-slices', async () => {
+    const [{ LegacyMappingCatalog }, { EngineContractError }] = await Promise.all([catalogPromise, identityPromise]);
+
+    for (const [introducedIn, removeBy] of [
+        ['M3D4', 'M3D4A'],
+        ['M3D4A', 'M3D4B'],
+        ['M3D4B', 'M3D5'],
+    ]){
+        const mapping = new LegacyMappingCatalog().register(directRecord({ introducedIn, removeBy }));
+        assert.equal(mapping.introducedIn, introducedIn);
+        assert.equal(mapping.removeBy, removeBy);
+    }
+
+    assert.throws(
+        () => new LegacyMappingCatalog().register(directRecord({ introducedIn: 'M3D4B', removeBy: 'M3D4A' })),
+        error => error instanceof EngineContractError && error.code === 'INVALID_LEGACY_MAPPING_LIFECYCLE'
+    );
+    assert.throws(
+        () => new LegacyMappingCatalog().register(directRecord({ introducedIn: 'M3DA', removeBy: 'M6B' })),
+        error => error instanceof EngineContractError && error.code === 'INVALID_LEGACY_MAPPING_FIELD'
+    );
+});
+
 test('M1D mapping validation and inspection are safe for prototype-shaped keys', async () => {
     const [{ LegacyMappingCatalog }, { inspectLegacyMappings }, { EngineContractError }] = await Promise.all([
         catalogPromise,
@@ -102,16 +125,19 @@ test('M1D mapping validation and inspection are safe for prototype-shaped keys',
     assert.deepEqual(snapshot.byDomain.constructor, ['evolve.resource.constructor_domain']);
 });
 
-test('M1D seeded Evolve mappings expose explicit lifecycle and contextual semantics', async () => {
+test('M1D seeded Evolve mappings retain the original lifecycle and contextual semantics as later milestones extend the catalog', async () => {
     const [{ createEvolveLegacyMappingCatalog }, { inspectLegacyMappings }] = await Promise.all([
         evolvePromise,
         inspectorPromise,
     ]);
     const snapshot = inspectLegacyMappings(createEvolveLegacyMappingCatalog());
 
-    assert.equal(snapshot.size, 2);
+    assert.equal(snapshot.size, snapshot.mappings.length);
+    assert.equal(snapshot.size >= 2, true, 'later milestones may extend the M1D mapping catalog but may not remove its original entries');
     const food = snapshot.mappings.find(mapping => mapping.id === 'evolve.resource.food_state');
     const primitive = snapshot.mappings.find(mapping => mapping.id === 'evolve.technology.primitive_progression');
+    assert.ok(food, 'M1D Food mapping must remain present');
+    assert.ok(primitive, 'M1D primitive progression mapping must remain present');
 
     assert.equal(food.mode, 'direct');
     assert.equal(food.removeBy, 'M6B');

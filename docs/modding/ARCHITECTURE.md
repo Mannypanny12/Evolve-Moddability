@@ -134,7 +134,7 @@ The same split applies to:
 
 The eventual authoritative state is an explicit `GameState`, not the legacy `global` object.
 
-Candidate domains:
+Candidate explicitly owned domains include:
 
 ```text
 GameState
@@ -161,9 +161,12 @@ GameState
 |-- events
 |-- achievements
 |-- statistics
-|-- prestige
-+-- modData
++-- prestige
 ```
+
+This is a conceptual destination, not a license to add roots speculatively. M2 established that every real GameState root must be explicitly classified and owned before it exists. There is deliberately no unrestricted `modData` or package-specific catch-all state bucket. Future package-specific persistent state must enter through reviewed domain/ownership and persistence contracts rather than bypassing them through a generic object.
+
+At M2 exit the concrete GameState remains intentionally much smaller: `schemaVersion` metadata plus the authoritative `achievements` domain. Later domains are added only through the same ownership/read/write rules.
 
 User preferences and UI layout belong in a separate settings/application model unless they materially affect simulation.
 
@@ -469,6 +472,8 @@ CI should grow these checks over time:
 - content schema validation.
 
 Budgets only move downward.
+
+M2 additionally establishes machine-enforced GameState root ownership, mutation capability confinement, semantic selector surfaces, and a state-layer dependency DAG. New state domains must satisfy those gates from their first commit rather than relying on convention.
 
 ## Completion gate
 

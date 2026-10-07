@@ -22,6 +22,7 @@ import { index, mainVue, initTabs, loadTab } from './index.js';
 import { setWeather, seasonDesc, astrologySign, astroVal } from './seasons.js';
 import { getTopChange } from './wiki/change.js';
 import { enableDebug, updateDebugData } from './debug.js';
+import { hasLegacyAchievement, legacyAchievementRank } from './legacy/bridge/achievement-state-reader.mjs';
 
 {
     $(document).ready(function() {
@@ -773,7 +774,7 @@ drawPet();
 
 if (global.race.species === 'protoplasm'){
     global.resource.RNA.display = true;
-    let perk_rank = global.stats.feat['master'] && global.stats.achieve['ascended'] && global.stats.achieve.ascended.l > 0 ? Math.min(global.stats.achieve.ascended.l,global.stats.feat['master']) : 0;
+    let perk_rank = global.stats.feat['master'] && hasLegacyAchievement('ascended') && legacyAchievementRank('ascended') > 0 ? Math.min(legacyAchievementRank('ascended'),global.stats.feat['master']) : 0;
     if (global['sim']){ perk_rank = 5; }
     if (perk_rank > 0 && !global.evolution['mloaded']){
         let evolve_actions = ['dna','membrane','organelles','nucleus','eukaryotic_cell','mitochondria'];
@@ -792,7 +793,7 @@ if (global.race.species === 'protoplasm'){
         global.tech['evo'] = 2;
         global.evolution['mloaded'] = 1;
     }
-    let grand_rank = global.stats.feat['grandmaster'] && global.stats.achieve['corrupted'] && global.stats.achieve.corrupted.l > 0 ? Math.min(global.stats.achieve.corrupted.l,global.stats.feat['grandmaster']) : 0;
+    let grand_rank = global.stats.feat['grandmaster'] && hasLegacyAchievement('corrupted') && legacyAchievementRank('corrupted') > 0 ? Math.min(legacyAchievementRank('corrupted'),global.stats.feat['grandmaster']) : 0;
     if (global['sim']){ grand_rank = 5; }
     if (grand_rank >= 5 && !global.evolution['gmloaded']){
         global.tech['evo'] = 6;
@@ -1051,7 +1052,7 @@ function fastLoop(){
     }
     if (global.race['unfathomable'] && global.city['surfaceDwellers'] && global.city['captive_housing']){
         let thralls = 0;
-        let rank = global.stats.achieve['nightmare'] && global.stats.achieve.nightmare['mg'] ? global.stats.achieve.nightmare.mg : 0;
+        let rank = hasLegacyAchievement('nightmare') && legacyAchievementRank('nightmare', 'mg') ? legacyAchievementRank('nightmare', 'mg') : 0;
         if (global.city.hasOwnProperty('surfaceDwellers')){
             for (let i = 0; i < global.city.surfaceDwellers.length; i++){
                 thralls += global.city.captive_housing[`race${i}`];
@@ -1241,8 +1242,8 @@ function fastLoop(){
             modRes('RNA',global.evolution['organelles'].count * rna_multiplier * global_multiplier * time_multiplier);
         }
 
-        if (((global.stats.feat['novice'] && global.stats.achieve['apocalypse'] && global.stats.achieve.apocalypse.l > 0) || global['sim']) && global.race.universe !== 'bigbang' && (!global.race.seeded || (global.race.seeded && global.race['chose']))){
-            let rank = global['sim'] ? 5 : Math.min(global.stats.achieve.apocalypse.l,global.stats.feat['novice']);
+        if (((global.stats.feat['novice'] && hasLegacyAchievement('apocalypse') && legacyAchievementRank('apocalypse') > 0) || global['sim']) && global.race.universe !== 'bigbang' && (!global.race.seeded || (global.race.seeded && global.race['chose']))){
+            let rank = global['sim'] ? 5 : Math.min(legacyAchievementRank('apocalypse'),global.stats.feat['novice']);
             modRes('RNA', (rank / 2) * time_multiplier * global_multiplier);
             if (global.resource.DNA.display){
                 modRes('DNA', (rank / 4) * time_multiplier * global_multiplier);
@@ -1252,7 +1253,7 @@ function fastLoop(){
         if (global['resource']['RNA'].amount >= 2 && !global.evolution['dna']){
             global.evolution['dna'] = 1;
             global.resource.DNA.display = true;
-            if (global.stats.achieve['mass_extinction'] && global.stats.achieve['mass_extinction'].l > 1){
+            if (hasLegacyAchievement('mass_extinction') && legacyAchievementRank('mass_extinction') > 1){
                 modRes('RNA', global.resource.RNA.max);
                 modRes('DNA', global.resource.RNA.max);
             }
@@ -1585,8 +1586,8 @@ function fastLoop(){
                                 rate *= 1 + (coiled / (coiled + 500));
                             }
                         }
-                        if (global.stats.achieve.hasOwnProperty('trade')){
-                            let rank = global.stats.achieve.trade.l * 2;
+                        if (hasLegacyAchievement('trade')){
+                            let rank = legacyAchievementRank('trade') * 2;
                             if (rank > 10){ rank = 10; }
                             rate *= 1 + (rank / 100);
                         }
@@ -1604,8 +1605,8 @@ function fastLoop(){
                     used_trade -= routes;
 
                     let rate = tradeRatio[res];
-                    if (global.stats.achieve.hasOwnProperty('trade')){
-                        let rank = global.stats.achieve.trade.l;
+                    if (hasLegacyAchievement('trade')){
+                        let rank = legacyAchievementRank('trade');
                         if (rank > 5){ rank = 5; }
                         rate *= 1 - (rank / 100);
                     }
@@ -1647,8 +1648,8 @@ function fastLoop(){
                     if (trasmute >= time_multiplier){
                         let rate = global.resource[res].basic && global.tech.alchemy >= 2 ? tradeRatio[res] * 8 : tradeRatio[res] * 2;
                         if (global.race['witch_hunter']){ rate *= 3; }
-                        if (global.stats.achieve['soul_sponge'] && global.stats.achieve.soul_sponge['mg']){
-                            rate *= global.stats.achieve.soul_sponge.mg + 1;
+                        if (hasLegacyAchievement('soul_sponge') && legacyAchievementRank('soul_sponge', 'mg')){
+                            rate *= legacyAchievementRank('soul_sponge', 'mg') + 1;
                         }
                         modRes(res,trasmute * time_multiplier * rate);
                         modRes('Mana', -(trasmute * time_multiplier));
@@ -1707,8 +1708,8 @@ function fastLoop(){
                     let mastery = calc_mastery();
                     imprt_vol *= 1 + (mastery / 100);
                 }
-                if (global.stats.achieve.hasOwnProperty('trade')){
-                    let rank = global.stats.achieve.trade.l;
+                if (hasLegacyAchievement('trade')){
+                    let rank = legacyAchievementRank('trade');
                     if (rank > 5){ rank = 5; }
                     imprt_vol *= 1 + (rank / 50);
                     exprt_vol *= 1 - (rank / 100);
@@ -1988,7 +1989,7 @@ function fastLoop(){
             if (global.tech.swarm >= 4){
                 solar += 0.15 * (global.tech.swarm - 3);
             }
-            if (global.stats.achieve['iron_will'] && global.stats.achieve.iron_will.l >= 1){ solar += 0.15; }
+            if (hasLegacyAchievement('iron_will') && legacyAchievementRank('iron_will') >= 1){ solar += 0.15; }
             if (global.blood['illuminate']){
                 solar += 0.01 * global.blood.illuminate;
             }
@@ -3214,8 +3215,8 @@ function fastLoop(){
             moraleCap += 10 - Math.floor(global.civic.taxes.tax_rate / 2);
         }
 
-        if (global.stats.achieve['joyless']){
-            moraleCap += global.stats.achieve['joyless'].l * 2;
+        if (hasLegacyAchievement('joyless')){
+            moraleCap += legacyAchievementRank('joyless') * 2;
         }
 
         if (global.race['motivated']){
@@ -3357,7 +3358,7 @@ function fastLoop(){
             let total = 0;
             let supply = 0;
             let bireme_rating = global.blood['spire'] && global.blood.spire >= 2 ? 0.8 : 0.85;
-            let cargoSize = global.stats.achieve['what_is_best'] && global.stats.achieve.what_is_best.e >= 4 ? 8 : 5;
+            let cargoSize = hasLegacyAchievement('what_is_best') && legacyAchievementRank('what_is_best', 'e') >= 4 ? 8 : 5;
             Object.keys(global.portal.transport.cargo).forEach(function (res){
                 if (supplyValue[res]){
                     let shipped = global.portal.transport.cargo[res];
@@ -4161,7 +4162,7 @@ function fastLoop(){
             if (global.race['ancient_ruins']){
                 sundial_base++;
             }
-            if (global.stats.achieve['extinct_junker'] && global.stats.achieve['extinct_junker'].l >= 1){
+            if (hasLegacyAchievement('extinct_junker') && legacyAchievementRank('extinct_junker') >= 1){
                 sundial_base++;
             }
             if (global.city.ptrait.includes('magnetic')){
@@ -4769,7 +4770,7 @@ function fastLoop(){
             if (global.city.biome === 'ashland'){
                 cement_base *= biomes.ashland.vars()[1];
             }
-            if (global.stats.achieve['lamentis'] && global.stats.achieve.lamentis.l >= 3){
+            if (hasLegacyAchievement('lamentis') && legacyAchievementRank('lamentis') >= 3){
                 cement_base *= 1.1;
             }
 
@@ -5082,11 +5083,11 @@ function fastLoop(){
                 modRes('Coal', -(coal_consume * time_multiplier));
 
                 let steel_base = 1;
-                if (global.stats.achieve['steelen'] && global.stats.achieve['steelen'].l >= 1){
-                    let steelen_bonus = (global.stats.achieve['steelen'].l * 2) / 100;
+                if (hasLegacyAchievement('steelen') && legacyAchievementRank('steelen') >= 1){
+                    let steelen_bonus = (legacyAchievementRank('steelen') * 2) / 100;
                     steel_base *= (1 + steelen_bonus);
                 }
-                if (global.stats.achieve['lamentis'] && global.stats.achieve.lamentis.l >= 2){
+                if (hasLegacyAchievement('lamentis') && legacyAchievementRank('lamentis') >= 2){
                     steel_base *= 1.1;
                 }
                 for (i = 4; i <= 6; i++) {
@@ -7709,7 +7710,7 @@ function fastLoop(){
                 }
                 tourism += global.city['tourist_center'].on * monuments * 2 * amp;
             }
-            if (global.city['trade'] && global.stats.achieve['banana'] && global.stats.achieve.banana.l >= 4){
+            if (global.city['trade'] && hasLegacyAchievement('banana') && legacyAchievementRank('banana') >= 4){
                 tourism += global.city['tourist_center'].on * global.city.trade.count * 3 * amp;
             }
             let piousVal = govActive('pious',1);
@@ -8134,8 +8135,8 @@ function midLoop(){
     const astroSign = astrologySign();
     if (global.race.species === 'protoplasm'){
         let base = 100;
-        if (global.stats.achieve['mass_extinction'] && global.stats.achieve['mass_extinction'].l > 1){
-            base += 50 * (global.stats.achieve['mass_extinction'].l - 1);
+        if (hasLegacyAchievement('mass_extinction') && legacyAchievementRank('mass_extinction') > 1){
+            base += 50 * (legacyAchievementRank('mass_extinction') - 1);
         }
         var caps = {
             RNA: base,
@@ -8192,7 +8193,7 @@ function midLoop(){
             Mana: 0,
             Energy: 100,
             Sus: 100,
-            Knowledge: global.stats.achieve['extinct_junker'] && global.stats.achieve['extinct_junker'].l >= 1 ? 1000 : 100,
+            Knowledge: hasLegacyAchievement('extinct_junker') && legacyAchievementRank('extinct_junker') >= 1 ? 1000 : 100,
             Omniscience: 0,
             Zen: 0,
             Food: 1000,
@@ -8589,7 +8590,7 @@ function midLoop(){
         }
         if (global.city['storage_yard']){
             let size = global.tech.container >= 3 ? 20 : 10;
-            if (global.stats.achieve['pathfinder'] && global.stats.achieve.pathfinder.l >= 1){
+            if (hasLegacyAchievement('pathfinder') && legacyAchievementRank('pathfinder') >= 1){
                 size += 10;
             }
             if (global.tech['world_control']){
@@ -8621,7 +8622,7 @@ function midLoop(){
         }
         if (global.city['warehouse']){
             let volume = global.tech['steel_container'] >= 2 ? 20 : 10;
-            if (global.stats.achieve['pathfinder'] && global.stats.achieve.pathfinder.l >= 2){
+            if (hasLegacyAchievement('pathfinder') && legacyAchievementRank('pathfinder') >= 2){
                 volume += 10;
             }
             if (global.tech['world_control']){
@@ -9911,7 +9912,7 @@ function midLoop(){
             else {
                 routes = global.city['storage_yard'] ? Math.floor(global.city.storage_yard.count / 6) : 0;
             }
-            if (global.stats.achieve['banana'] && global.stats.achieve.banana.l >= 2){
+            if (hasLegacyAchievement('banana') && legacyAchievementRank('banana') >= 2){
                 routes++;
             }
             global.city.market.mtrade += global.tech['railway'] * routes;
@@ -10196,7 +10197,7 @@ function midLoop(){
 
                 if (Math.rand(0,10) < global.tauceti.womling_lab.scientist){
                     global.tauceti.womling_lab.tech += Math.rand(0,global.tauceti.womling_lab.scientist + 1);
-                    let expo = global.stats.achieve['overlord'] && global.stats.achieve.overlord.l >= 5 ? 4.9 : 5;
+                    let expo = hasLegacyAchievement('overlord') && legacyAchievementRank('overlord') >= 5 ? 4.9 : 5;
                     if (global.race['lone_survivor']){ expo -= 0.1; }
                     if (global.tauceti.womling_lab.tech >= Math.round((global.tech.womling_tech + 2) ** expo)){
                         global.tech.womling_tech++;
@@ -10506,7 +10507,7 @@ function midLoop(){
         if (global.portal.hasOwnProperty('transport')){
             let max = 0;
             if (gal_on['transport']){
-                max = gal_on['transport'] * (global.stats.achieve['what_is_best'] && global.stats.achieve.what_is_best.e >= 4 ? 8 : 5);
+                max = gal_on['transport'] * (hasLegacyAchievement('what_is_best') && legacyAchievementRank('what_is_best', 'e') >= 4 ? 8 : 5);
             }
             global.portal.transport.cargo.max = max;
         }
@@ -10805,8 +10806,8 @@ function midLoop(){
                     let trait = randomMinorTrait(1);
                     let gene_multi = 1 + (global.genes['synthesis'] ? global.genes['synthesis'] : 0);
                     let gene = (2 ** (global.race.mutation - 1)) * gene_multi;
-                    if (global.stats.achieve['creator']){
-                        gene = Math.round(gene * (1 + (global.stats.achieve['creator'].l * 0.5)));
+                    if (hasLegacyAchievement('creator')){
+                        gene = Math.round(gene * (1 + (legacyAchievementRank('creator') * 0.5)));
                     }
                     global.resource.Genes.amount += gene;
                     global.resource.Genes.display = true;
@@ -11693,8 +11694,8 @@ function longLoop(){
             else if (global.race['artifical'] && global.city['boot_camp']){
                 hc = global.city.boot_camp.count;
             }
-            if (global.race['rejuvenated'] && global.stats.achieve['lamentis']){
-                let bonus = global.stats.achieve.lamentis.l;
+            if (global.race['rejuvenated'] && hasLegacyAchievement('lamentis')){
+                let bonus = legacyAchievementRank('lamentis');
                 if (bonus > 5){ bonus = 5; }
                 hc += bonus;
             }
@@ -12226,10 +12227,10 @@ function longLoop(){
         if (!global.race['warlord'] && (global.stats.matrix > 0 || global.stats.retire > 0) && !global.race['servants'] && Math.rand(0,25) === 0){
             let womlings = Math.min(global.stats.matrix,100) + Math.min(global.stats.retire,100) + Math.min(global.stats.eden,100);
             let skilled = Math.min(Math.min(global.stats.matrix, global.stats.retire),100);
-            skilled += global.stats.achieve['pathfinder'] && global.stats.achieve.pathfinder.l >= 5 ? 2 : 0;
-            if (global.stats.achieve['overlord'] && global.stats.achieve.overlord.l >= 5){
+            skilled += hasLegacyAchievement('pathfinder') && legacyAchievementRank('pathfinder') >= 5 ? 2 : 0;
+            if (hasLegacyAchievement('overlord') && legacyAchievementRank('overlord') >= 5){
                 universe_affixes.forEach(function(uni){
-                    if (global.stats.achieve.overlord[uni] >= 5){
+                    if (legacyAchievementRank('overlord', uni) >= 5){
                         skilled++;
                         womlings += 2;
                     }
@@ -12775,7 +12776,7 @@ function longLoop(){
                 messageQueue(msg,false,false,['events','minor_events']);
             }
         }
-        if(global.stats.achieve['endless_hunger'] && global.city.banquet && global.city.banquet.on){
+        if(hasLegacyAchievement('endless_hunger') && global.city.banquet && global.city.banquet.on){
             global.city.banquet.strength++;
         }
 

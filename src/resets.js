@@ -2,6 +2,7 @@ import { global, save, seededRandom, webWorker, clearSavedMessages, clearStates 
 import { tagEvent, calcPrestige, updateResetStats } from './functions.js';
 import { races, planetTraits } from './races.js';
 import { unlockAchieve, unlockFeat, checkAchievements, universeAffix, alevel } from './achieve.js';
+import { hasLegacyAchievement, legacyAchievementRank } from './legacy/bridge/achievement-state-reader.mjs';
 
 // Mutual Assured Destruction
 export function warhead(){
@@ -191,8 +192,8 @@ export function bioseed(){
     let corruption = global.race.hasOwnProperty('corruption') && global.race.corruption > 1 ? global.race.corruption - 1 : 0;
     let probes = global.starDock.probes.count + 1;
     let gecks = global.starDock.hasOwnProperty('geck') ? global.starDock.geck.count : 0;
-    if (global.stats.achieve['explorer']){
-        probes += global.stats.achieve['explorer'].l;
+    if (hasLegacyAchievement('explorer')){
+        probes += legacyAchievementRank('explorer');
     }
     global['race'] = {
         species : 'protoplasm',

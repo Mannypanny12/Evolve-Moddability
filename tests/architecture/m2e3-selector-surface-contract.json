@@ -1,0 +1,16 @@
+{
+  "contractVersion": 1,
+  "domains": {
+    "achievements": {
+      "selectors": [
+        "achievementLevel",
+        "achievementRank",
+        "achievementTotalRank",
+        "achievementUniverseLevel",
+        "achievementUniverseRank",
+        "hasAchievement",
+        "hasAchievementUniverseRank"
+      ]
+    }
+  }
+}

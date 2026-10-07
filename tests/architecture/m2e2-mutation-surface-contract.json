@@ -1,0 +1,11 @@
+{
+  "contractVersion": 1,
+  "domains": {
+    "achievements": {
+      "publicMethods": [
+        "advance",
+        "removeUniverseRank"
+      ]
+    }
+  }
+}

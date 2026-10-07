@@ -62,11 +62,44 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
+      - name: Configure test output capture
+        shell: bash
+        run: |
+          capture_env="$RUNNER_TEMP/evolve-test-capture.bash"
+          cat > "$capture_env" <<'EOF'
+          if [[ "${EVOLVE_CAPTURE_TEST_OUTPUT:-}" == "1" ]]; then
+            exec > >(tee "$GITHUB_WORKSPACE/test-output.log") 2>&1
+          elif [[ "${EVOLVE_CAPTURE_ARCHITECTURE_OUTPUT:-}" == "1" ]]; then
+            exec > >(tee "$GITHUB_WORKSPACE/architecture-output.log") 2>&1
+          elif [[ "${EVOLVE_CAPTURE_BROWSER_OUTPUT:-}" == "1" ]]; then
+            exec > >(tee "$GITHUB_WORKSPACE/browser-output.log") 2>&1
+          fi
+          EOF
+          echo "BASH_ENV=$capture_env" >> "$GITHUB_ENV"
+
       - name: Run test suite
+        env:
+          EVOLVE_CAPTURE_TEST_OUTPUT: "1"
         run: npm test
 
+      - name: Upload test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-output
+          path: test-output.log
+
       - name: Run architecture fitness gate
+        env:
+          EVOLVE_CAPTURE_ARCHITECTURE_OUTPUT: "1"
         run: npm run test:architecture
+
+      - name: Upload architecture log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: architecture-output
+          path: architecture-output.log
 
       - name: Build game and wiki
         run: npm run build
@@ -118,4 +151,13 @@ jobs:
           grep -q "M0E4_INJECTED_STARTUP_FAILURE" /tmp/m0e4-negative-control.log
 
       - name: Run real-browser smoke test
+        env:
+          EVOLVE_CAPTURE_BROWSER_OUTPUT: "1"
         run: npm run test:browser
+
+      - name: Upload browser log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-output
+          path: browser-output.log

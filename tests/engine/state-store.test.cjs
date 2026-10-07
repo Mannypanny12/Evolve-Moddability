@@ -414,9 +414,10 @@ test('M2B GameState integration exposes immutable reads without exposing authori
     const { createGameStateStore } = await modules();
     const store = createGameStateStore();
 
-    assert.deepEqual(store.read(), { schemaVersion: 1 });
+    assert.deepEqual(store.read(), { achievements: {}, schemaVersion: 2 });
     assert.equal(Object.isFrozen(store.read()), true);
-    assert.deepEqual(store.snapshot(), { schemaVersion: 1 });
+    assert.equal(Object.isFrozen(store.read().achievements), true);
+    assert.deepEqual(store.snapshot(), { achievements: {}, schemaVersion: 2 });
     assert.equal(store.getRevision(), 0);
     assert.equal(store.createMutationScope, undefined);
     assert.deepEqual(Object.keys(store).sort(), [

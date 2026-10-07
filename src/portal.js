@@ -17,6 +17,7 @@ import { loc } from './locale.js';
 import { defineIndustry, addSmelter } from './industry.js';
 import { arpa } from './arpa.js';
 import { jobName } from './jobs.js';
+import { hasLegacyAchievement, legacyAchievementRank } from './legacy/bridge/achievement-state-reader.mjs';
 
 const fortressModules = {
     prtl_fortress: {
@@ -979,7 +980,7 @@ const fortressModules = {
                 desc = desc + `<div class="has-text-caution">${loc('minus_power',[$(this)[0].powered()])}</div>`;
                 return desc;
             },
-            powered(){ return powerCostMod(global.stats.achieve['dissipated'] && global.stats.achieve['dissipated'].l >= 2 ? 2 : 3); },
+            powered(){ return powerCostMod(hasLegacyAchievement('dissipated') && legacyAchievementRank('dissipated') >= 2 ? 2 : 3); },
             action(args){
                 if (!args.isQueue && global.portal['throne'] && global.portal.throne.skill && global.portal.throne.points > 0 && global.portal.hell_casino.rank < 5){
                     global.portal.throne.points--;
@@ -1524,7 +1525,7 @@ const fortressModules = {
                     let cap = global.tech.hell_pit >= 6 ? 750000 : 1000000;
                     let num_s_attractor_on = (wiki ? global.portal.soul_attractor.on : p_on['soul_attractor']);
                     if (global.tech.hell_pit >= 7 && num_s_attractor_on > 0){
-                        cap *= (global.stats.achieve['what_is_best'] && global.stats.achieve.what_is_best.e >= 3 ? 0.96 : 0.97) ** num_s_attractor_on;
+                        cap *= (hasLegacyAchievement('what_is_best') && legacyAchievementRank('what_is_best', 'e') >= 3 ? 0.96 : 0.97) ** num_s_attractor_on;
                     }
                     if (global.race['ghostly'] && global.race['warlord']){
                         cap *= 2 - traits.ghostly.vars()[1];
@@ -1616,7 +1617,7 @@ const fortressModules = {
 
                 let desc = `<div>${loc('portal_soul_attractor_effect',[low, high])}</div>`;
                 if (global.tech.hell_pit >= 7){
-                    desc += `<div>${loc('portal_soul_attractor_effect2',[global.stats.achieve['what_is_best'] && global.stats.achieve.what_is_best.e >= 3 ? 4 : 3])}</div>`;
+                    desc += `<div>${loc('portal_soul_attractor_effect2',[hasLegacyAchievement('what_is_best') && legacyAchievementRank('what_is_best', 'e') >= 3 ? 4 : 3])}</div>`;
                 }
                 if (global.tech['pitspawn']){
                     desc += `<div>${loc('production',[global.tech.pitspawn >= 3 ? 20 : 10,loc('portal_shadow_mine_title')])}</div>`;
@@ -2156,7 +2157,7 @@ const fortressModules = {
             effect(wiki){
                 let sup = hellSupression('ruins', 0, wiki);
                 let craft = +(75 * sup.supress).toFixed(1);
-                let reactor = global.tech['inferno_power'] ? `<div>${loc('portal_hell_forge_effect2',[global.stats.achieve['what_is_best'] && global.stats.achieve.what_is_best.e >= 1 ? 12 : 10,loc(`portal_inferno_power_title`)])}</div>` : ``;
+                let reactor = global.tech['inferno_power'] ? `<div>${loc('portal_hell_forge_effect2',[hasLegacyAchievement('what_is_best') && legacyAchievementRank('what_is_best', 'e') >= 1 ? 12 : 10,loc(`portal_inferno_power_title`)])}</div>` : ``;
                 return `<div>${loc('portal_hell_forge_effect',[jobScale(1)])}</div>${reactor}<div>${loc('interstellar_stellar_forge_effect3',[$(this)[0].smelting()])}</div><div>${loc('interstellar_stellar_forge_effect',[craft])}</div><div class="has-text-caution">${loc('minus_power',[$(this)[0].powered()])}</div>`;
             },
             action(args){
@@ -2199,7 +2200,7 @@ const fortressModules = {
                 let power = 20;
                 let infernal_forges_on = wiki ? (global.portal?.hell_forge?.on ?? 0) : p_on['hell_forge'];
                 if (infernal_forges_on){
-                    power += infernal_forges_on * (global.stats.achieve['what_is_best'] && global.stats.achieve.what_is_best.e >= 1 ? 12 : 10); 
+                    power += infernal_forges_on * (hasLegacyAchievement('what_is_best') && legacyAchievementRank('what_is_best', 'e') >= 1 ? 12 : 10); 
                 }
                 return powerModifier(-(power));
             },
@@ -2792,7 +2793,7 @@ const fortressModules = {
                 let rating = global.blood['spire'] && global.blood.spire >= 2 ? 0.8 : 0.85;
                 let num_on = wiki ? (global.portal?.bireme?.on ?? 0) : gal_on['bireme'];
                 let bireme = +((rating ** num_on) * 100).toFixed(1);
-                return `<div class="has-text-caution">${loc('space_used_support',[loc('lake')])}</div><div>${loc('portal_transport_effect',[global.stats.achieve['what_is_best'] && global.stats.achieve.what_is_best.e >= 4 ? 8 : 5])}</div><div class="has-text-danger">${loc('portal_transport_effect2',[bireme])}</div><div class="has-text-caution">${loc('galaxy_starbase_civ_crew',[$(this)[0].ship.civ()])}</div>`;
+                return `<div class="has-text-caution">${loc('space_used_support',[loc('lake')])}</div><div>${loc('portal_transport_effect',[hasLegacyAchievement('what_is_best') && legacyAchievementRank('what_is_best', 'e') >= 4 ? 8 : 5])}</div><div class="has-text-danger">${loc('portal_transport_effect2',[bireme])}</div><div class="has-text-caution">${loc('galaxy_starbase_civ_crew',[$(this)[0].ship.civ()])}</div>`;
             },
             special: true,
             sAction(){
@@ -3078,7 +3079,7 @@ const fortressModules = {
                 Money(offset){ return spaceCostMultiplier('purifier', offset, 85000000, spireCreep(1.15), 'portal'); },
                 Supply(offset){ return global.portal['purifier'] && global.portal.purifier.count === 0 ? 100 : spaceCostMultiplier('purifier', offset, 4200, spireCreep(1.2), 'portal'); },
             },
-            powered(){ return global.stats.achieve['what_is_best'] && global.stats.achieve.what_is_best.e >= 2 ? powerCostMod(100) : powerCostMod(125); },
+            powered(){ return hasLegacyAchievement('what_is_best') && legacyAchievementRank('what_is_best', 'e') >= 2 ? powerCostMod(100) : powerCostMod(125); },
             support(){
                 let base = global.tech['b_stone'] && global.tech.b_stone >= 3 ? 1.25 : 1;
                 if (global.tech['hell_spire'] && global.tech.hell_spire >= 11 && global.eden['asphodel_harvester'] && support_on['asphodel_harvester']){
@@ -4330,7 +4331,7 @@ export function bloodwar(){
         global.portal.fortress['pity'] = 0;
     }
 
-    let game_base = global.stats.achieve['technophobe'] && global.stats.achieve.technophobe.l >= 5 ? 9000 : 10000;
+    let game_base = hasLegacyAchievement('technophobe') && legacyAchievementRank('technophobe') >= 5 ? 9000 : 10000;
     let gem_chance = game_base - global.portal.fortress.pity;
     
     if (global.tech['portal'] >= 4 && p_on['attractor']){
@@ -4714,7 +4715,7 @@ export function bloodwar(){
             global.portal.soul_forge.kills += gunKills;
             soulCapacitor(gunKills);
             global.stats.dkills += gunKills;
-            let gun_base = global.stats.achieve['technophobe'] && global.stats.achieve.technophobe.l >= 5 ? 6750 : 7500;
+            let gun_base = hasLegacyAchievement('technophobe') && legacyAchievementRank('technophobe') >= 5 ? 6750 : 7500;
             if (global.tech.hell_pit >= 7 && p_on['soul_attractor'] > 0){
                 gun_base *= 0.94 ** p_on['soul_attractor'];
             }
@@ -4738,7 +4739,7 @@ export function bloodwar(){
             if (global.race['ocular_power'] && global.race['ocularPowerConfig'] && global.race.ocularPowerConfig.p){
                 global.race.ocularPowerConfig.ds += Math.round(forgeKills * traits.ocular_power.vars()[1]);
             }
-            let forge_base = global.stats.achieve['technophobe'] && global.stats.achieve.technophobe.l >= 5 ? 4500 : 5000;
+            let forge_base = hasLegacyAchievement('technophobe') && legacyAchievementRank('technophobe') >= 5 ? 4500 : 5000;
             if (Math.rand(0,forge_base) === 0){
                 day_report.soul_forge.gem = true;
                 day_report.stats.gems.soul_forge++;
@@ -4748,7 +4749,7 @@ export function bloodwar(){
 
         let cap = global.tech.hell_pit >= 6 ? 750000 : 1000000;
         if (global.tech.hell_pit >= 7 && p_on['soul_attractor'] > 0){
-            cap *= (global.stats.achieve['what_is_best'] && global.stats.achieve.what_is_best.e >= 3 ? 0.96 : 0.97) ** p_on['soul_attractor'];
+            cap *= (hasLegacyAchievement('what_is_best') && legacyAchievementRank('what_is_best', 'e') >= 3 ? 0.96 : 0.97) ** p_on['soul_attractor'];
         }
         if (forgeOperating && global.portal.soul_forge.kills >= Math.round(cap)){
             day_report.soul_forge.gem_craft = true;
@@ -4788,7 +4789,7 @@ export function bloodwar(){
                 soulCapacitor(gunKills);
             }
             global.stats.dkills += gunKills;
-            let gun_base = global.stats.achieve['technophobe'] && global.stats.achieve.technophobe.l >= 5 ? 2700 : 3000;
+            let gun_base = hasLegacyAchievement('technophobe') && legacyAchievementRank('technophobe') >= 5 ? 2700 : 3000;
             for (let i=0; i<p_on['gate_turret']; i++){
                 if (Math.rand(0,Math.round(gun_base)) === 0){
                     day_report.gate_turrets[i+1].gem = true;
@@ -4948,7 +4949,7 @@ export function hellguard(){
 
         let cap = global.tech.hell_pit >= 6 ? 750000 : 1000000;
         if (global.tech.hell_pit >= 7 && p_on['soul_attractor'] > 0){
-            cap *= (global.stats.achieve['what_is_best'] && global.stats.achieve.what_is_best.e >= 3 ? 0.96 : 0.97) ** p_on['soul_attractor'];
+            cap *= (hasLegacyAchievement('what_is_best') && legacyAchievementRank('what_is_best', 'e') >= 3 ? 0.96 : 0.97) ** p_on['soul_attractor'];
         }
         if (global.race['ghostly']){
             cap *= 2 - traits.ghostly.vars()[1];
@@ -7637,8 +7638,8 @@ export function mechRating(mech,boss){
     }
 
     if (boss){
-        if (global.stats.achieve['gladiator'] && global.stats.achieve.gladiator.l > 0){
-            rating *= 1 + global.stats.achieve.gladiator.l * 0.1;
+        if (hasLegacyAchievement('gladiator') && legacyAchievementRank('gladiator') > 0){
+            rating *= 1 + legacyAchievementRank('gladiator') * 0.1;
         }
         if (mech.size === 'titan' || mech.size === 'archfiend'){
             rating *= 1.1;
@@ -7659,8 +7660,8 @@ export function mechRating(mech,boss){
         return damage;
     }
     else {
-        if (global.stats.achieve['gladiator'] && global.stats.achieve.gladiator.l > 0){
-            rating *= 1 + global.stats.achieve.gladiator.l * 0.2;
+        if (hasLegacyAchievement('gladiator') && legacyAchievementRank('gladiator') > 0){
+            rating *= 1 + legacyAchievementRank('gladiator') * 0.2;
         }
 
         if (global.portal.spire.type === 'concrete'){

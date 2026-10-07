@@ -5,6 +5,7 @@ import { vBind, challenge_multiplier, getResetConstants, calcPrestige, darkEffec
 import { jobScale } from './../jobs.js';
 import { races, traits } from './../races.js';
 import { infoBoxBuilder, sideMenu, createCalcSection } from './functions.js';
+import { hasLegacyAchievement, legacyAchievementRank } from './../legacy/bridge/achievement-state-reader.mjs';
 
 export function pResPage(content){
     let mainContent = sideMenu('create',content);
@@ -1283,7 +1284,7 @@ function darkBonusCalc(info){
                     inputs.uni.val = global.race.universe;
                     show[inputs.uni.val].vis = true;
                 }
-                inputs.sludge.val = global.stats.achieve['extinct_sludge'] && global.stats.achieve['extinct_sludge'][universeAffix(inputs.uni.val)] ? global.stats.achieve['extinct_sludge'][universeAffix(inputs.uni.val)] : 0;
+                inputs.sludge.val = hasLegacyAchievement('extinct_sludge') && legacyAchievementRank('extinct_sludge', universeAffix(inputs.uni.val)) ? legacyAchievementRank('extinct_sludge', universeAffix(inputs.uni.val)) : 0;
             }
         },
         filters: {
@@ -1398,7 +1399,7 @@ function harmonyCreepCalc(info){
             },
             importInputs(){
                 inputs.harmony.val = global.prestige.Harmony.count;
-                inputs.ascended.val = global.stats.achieve['ascended'] && global.stats.achieve['ascended'][universeAffix(global.race.universe || 'standard')] ? global.stats.achieve['ascended'][universeAffix(global.race.universe || 'standard')] : 0;
+                inputs.ascended.val = hasLegacyAchievement('ascended') && legacyAchievementRank('ascended', universeAffix(global.race.universe || 'standard')) ? legacyAchievementRank('ascended', universeAffix(global.race.universe || 'standard')) : 0;
             }
         },
         filters: {

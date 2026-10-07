@@ -9,6 +9,7 @@ import { fortressTech } from './portal.js';
 import { edenicTech } from './edenic.js';
 import { checkPathRequirements } from './truepath.js';
 import { highPopAdjust, production } from './prod.js';
+import { hasLegacyAchievement, legacyAchievementRank } from './legacy/bridge/achievement-state-reader.mjs';
 
 export function loadIndustry(industry,parent,bind){
     switch (industry){
@@ -801,7 +802,7 @@ export function luxGoodPrice(demand){
     if (global.civic.govern.type === 'socialist'){
         demand *= 0.8;
     }
-    if (global.stats.achieve['iron_will'] && global.stats.achieve.iron_will.l >= 2){
+    if (hasLegacyAchievement('iron_will') && legacyAchievementRank('iron_will') >= 2){
         demand *= 1.1;
     }
     if (global.race['inflation']){
@@ -810,7 +811,7 @@ export function luxGoodPrice(demand){
     if (global.tech['isolation']){
         demand *= 1 + ((support_on['colony'] || 0) * 0.5);
     }
-    if(global.stats.achieve['endless_hunger'] && global.stats.achieve['endless_hunger'].l >= 4 && global.city.banquet && global.city.banquet.level >= 4 && global.city.banquet.strength){
+    if(hasLegacyAchievement('endless_hunger') && legacyAchievementRank('endless_hunger') >= 4 && global.city.banquet && global.city.banquet.level >= 4 && global.city.banquet.strength){
         demand *= 1 + (global.city.banquet.strength ** 0.75) / 100;
     }
     demand *= production('psychic_cash');

@@ -6,6 +6,7 @@ import { ascendLab } from './../space.js';
 import { actions } from './../actions.js';
 import { sideMenu } from './functions.js';
 import { customRaceMechanics } from './mechanics.js';
+import { hasLegacyAchievement, legacyAchievementRank } from './../legacy/bridge/achievement-state-reader.mjs';
 
 const hallowed = getHalloween();
 
@@ -62,8 +63,8 @@ Object.keys(evolutionPath).forEach(function (key) {
 export function racesPage(content){
     content = sideMenu('create',content);
 
-    let genus_trank_pri = (global.stats.achieve['pathfinder'] && global.stats.achieve.pathfinder.l >= 4) ? 2 : 1;
-    let genus_trank_sec = (global.stats.achieve['pathfinder'] && global.stats.achieve.pathfinder.l >= 4) ? 1 : 0.5;
+    let genus_trank_pri = (hasLegacyAchievement('pathfinder') && legacyAchievementRank('pathfinder') >= 4) ? 2 : 1;
+    let genus_trank_sec = (hasLegacyAchievement('pathfinder') && legacyAchievementRank('pathfinder') >= 4) ? 1 : 0.5;
     let list = [];
     Object.keys(races).forEach(function (race){
         if ((race === 'custom' && !global.custom.hasOwnProperty('race0')) 

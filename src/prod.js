@@ -5,6 +5,7 @@ import { jobScale, teamsterCap } from './jobs.js';
 import { hellSupression } from './portal.js';
 import { flib } from './functions.js';
 import { govActive } from './governor.js';
+import { hasLegacyAchievement, legacyAchievementRank } from './legacy/bridge/achievement-state-reader.mjs';
 
 export function highPopAdjust(v){
     if (global.race['high_pop']){
@@ -144,7 +145,7 @@ export function production(id,val,wiki){
                 n: 0
             };
             if (global.tech['drone']){
-                let rate = global.stats.achieve['iron_will'] && global.stats.achieve.iron_will.l >= 3 ? 0.12 : 0.06;
+                let rate = hasLegacyAchievement('iron_will') && legacyAchievementRank('iron_will') >= 3 ? 0.12 : 0.06;
                 vals.d = global.space.drone.count * rate;
                 vals.n = vals.b * (1 + (vals.d));
             }
@@ -378,7 +379,7 @@ export function production(id,val,wiki){
             if (global.tech['womling_mining']){
                 boost += global.tech.womling_mining * 0.15;
             }
-            if (global.stats.achieve['overlord'] && global.stats.achieve.overlord.l >= 5){
+            if (hasLegacyAchievement('overlord') && legacyAchievementRank('overlord') >= 5){
                 boost *= 1.1;
             }
             if (global.tech['womling_gene']){
@@ -499,7 +500,7 @@ export function production(id,val,wiki){
                     boost += traits.psychic.vars()[3] / 100;
                 }
                 if (global.tech.psychic >= 4 && global.race.psychicPowers['channel']){
-                    let rank = global.stats.achieve['nightmare'] && global.stats.achieve.nightmare['mg'] ? global.stats.achieve.nightmare.mg : 0;
+                    let rank = hasLegacyAchievement('nightmare') && legacyAchievementRank('nightmare', 'mg') ? legacyAchievementRank('nightmare', 'mg') : 0;
                     boost += +(traits.psychic.vars()[3] / 50000 * rank * global.race.psychicPowers.channel.boost).toFixed(3);
                 }
                 return 1 + boost;
@@ -514,7 +515,7 @@ export function production(id,val,wiki){
                     boost += traits.psychic.vars()[3] / 100;
                 }
                 if (global.tech.psychic >= 4 && global.race.psychicPowers['channel']){
-                    let rank = global.stats.achieve['nightmare'] && global.stats.achieve.nightmare['mg'] ? global.stats.achieve.nightmare.mg : 0;
+                    let rank = hasLegacyAchievement('nightmare') && legacyAchievementRank('nightmare', 'mg') ? legacyAchievementRank('nightmare', 'mg') : 0;
                     boost += +(traits.psychic.vars()[3] / 50000 * rank * global.race.psychicPowers.channel.cash).toFixed(3);
                 }
                 return 1 + boost;
@@ -569,7 +570,7 @@ export function factoryBonus(factory){
     if (global.civic.govern.type === 'socialist'){
         factory *= 1 + (govEffect.socialist()[1] / 100);
     }
-    if (global.stats.achieve['iron_will'] && global.stats.achieve.iron_will.l >= 2){
+    if (hasLegacyAchievement('iron_will') && legacyAchievementRank('iron_will') >= 2){
         factory *= 1.1;
     }
     if (global.race['elemental'] && traits.elemental.vars()[0] === 'acid'){

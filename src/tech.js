@@ -14,6 +14,7 @@ import { arpa } from './arpa.js';
 import { setPowerGrid, defineIndustry, addSmelter, setupRituals } from './industry.js';
 import { defineGovernor, removeTask } from './governor.js';
 import { big_bang, cataclysm_end, descension, aiApocalypse } from './resets.js';
+import { hasLegacyAchievement, legacyAchievementRank } from './legacy/bridge/achievement-state-reader.mjs';
 
 const techs = {
     club: {
@@ -1654,7 +1655,7 @@ const techs = {
         reqs: { high_tech: 2 },
         not_trait: ['fasting','cataclysm','lone_survivor','warlord'],
         grant: ['banquet',1],
-        condition(){ return global.stats.achieve['endless_hunger'] && global.stats.achieve['endless_hunger'].l >= 1 ? true : false; },
+        condition(){ return hasLegacyAchievement('endless_hunger') && legacyAchievementRank('endless_hunger') >= 1 ? true : false; },
         cost: {
             Knowledge(){ return 18500; }
         },
@@ -2231,7 +2232,7 @@ const techs = {
         era: 'early_space',
         path: ['standard'],
         reqs: { smelting: 6, space: 3 },
-        condition(){ return global.stats.achieve['pathfinder'] && global.stats.achieve.pathfinder.l >= 3 ? true : false; },
+        condition(){ return hasLegacyAchievement('pathfinder') && legacyAchievementRank('pathfinder') >= 3 ? true : false; },
         grant: ['irid_smelting',1],
         cost: {
             Knowledge(){ return 350000; },
@@ -4847,7 +4848,7 @@ const techs = {
         category: 'special',
         era: 'discovery',
         reqs: { high_tech: 2},
-        condition(){ return global.stats.achieve['adam_eve'] && global.stats.achieve.adam_eve.l >= 5 ? true : false; },
+        condition(){ return hasLegacyAchievement('adam_eve') && legacyAchievementRank('adam_eve') >= 5 ? true : false; },
         not_trait: ['lone_survivor'],
         grant: ['replicator',1],
         cost: {
@@ -9751,7 +9752,7 @@ const techs = {
         reqs: { genesis: 5 },
         grant: ['geck',1],
         condition(){
-            return global.stats.achieve['lamentis'] && global.stats.achieve.lamentis.l >= 5 ? true : false;
+            return hasLegacyAchievement('lamentis') && legacyAchievementRank('lamentis') >= 5 ? true : false;
         },
         cost: {
             Knowledge(){ return 500000; },

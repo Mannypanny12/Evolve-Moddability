@@ -9,6 +9,7 @@ import { govActive, defineGovernor } from './governor.js';
 import { govEffect } from './civics.js';
 import { highPopAdjust, production, teamster } from './prod.js';
 import { loc } from './locale.js';
+import { hasLegacyAchievement, legacyAchievementRank } from './legacy/bridge/achievement-state-reader.mjs';
 
 export const resource_values = {
     Food: 5,
@@ -461,7 +462,7 @@ export const craftingRatio = (function(){
                     auto: 1 + (traits.living_tool.vars()[1] / 100)
                 });
             }
-            if (global.stats.achieve['lamentis'] && global.stats.achieve.lamentis.l >= 1){
+            if (hasLegacyAchievement('lamentis') && legacyAchievementRank('lamentis') >= 1){
                 crafting.general.multi.push({
                     name: loc(`evo_challenge_orbit_decay`),
                     manual: 1,
@@ -674,8 +675,8 @@ export function drawResourceTab(tab){
 export function defineResources(wiki){
     if (global.race.species === 'protoplasm'){
         let base = 100;
-        if (global.stats.achieve['mass_extinction'] && global.stats.achieve['mass_extinction'].l > 1){
-            base += 50 * (global.stats.achieve['mass_extinction'].l - 1);
+        if (hasLegacyAchievement('mass_extinction') && legacyAchievementRank('mass_extinction') > 1){
+            base += 50 * (legacyAchievementRank('mass_extinction') - 1);
         }
         loadResource('RNA',wiki,base,1,false);
         loadResource('DNA',wiki,base,1,false);
@@ -1427,8 +1428,8 @@ export function marketItem(mount,market_item,name,color,full){
                 let unit = tradeRatio[res] === 1 ? loc('resource_market_unit') : loc('resource_market_units');
                 let price = tradeSellPrice(res);
                 let rate = tradeRatio[res];
-                if (global.stats.achieve.hasOwnProperty('trade')){
-                    let rank = global.stats.achieve.trade.l;
+                if (hasLegacyAchievement('trade')){
+                    let rank = legacyAchievementRank('trade');
                     if (rank > 5){ rank = 5; }
                     rate *= 1 - (rank / 100);
                 }
@@ -1465,8 +1466,8 @@ export function marketItem(mount,market_item,name,color,full){
                     let mastery = calc_mastery();
                     rate *= 1 + (mastery / 100);
                 }
-                if (global.stats.achieve.hasOwnProperty('trade')){
-                    let rank = global.stats.achieve.trade.l;
+                if (hasLegacyAchievement('trade')){
+                    let rank = legacyAchievementRank('trade');
                     if (rank > 5){ rank = 5; }
                     rate *= 1 + (rank / 50);
                 }
@@ -1798,8 +1799,8 @@ export function galacticTrade(modal){
                     let mastery = calc_mastery();
                     buy_vol *= 1 + (mastery / 100);
                 }
-                if (global.stats.achieve.hasOwnProperty('trade')){
-                    let rank = global.stats.achieve.trade.l;
+                if (hasLegacyAchievement('trade')){
+                    let rank = legacyAchievementRank('trade');
                     if (rank > 5){ rank = 5; }
                     buy_vol *= 1 + (rank / 50);
                 }
@@ -1809,8 +1810,8 @@ export function galacticTrade(modal){
             s_vol(idx){
                 let offers = galaxyOffers();
                 let sell_vol = offers[idx].sell.vol;
-                if (global.stats.achieve.hasOwnProperty('trade')){
-                    let rank = global.stats.achieve.trade.l;
+                if (hasLegacyAchievement('trade')){
+                    let rank = legacyAchievementRank('trade');
                     if (rank > 5){ rank = 5; }
                     sell_vol *= 1 - (rank / 100);
                 }
@@ -1983,7 +1984,7 @@ export function tradeSellPrice(res){
         price = price * (1 + (global.space['gps'].count * 0.01));
     }
     if (global.tech['railway']){
-        let boost = global.stats.achieve['banana'] && global.stats.achieve.banana.l >= 1 ? 0.03 : 0.02;
+        let boost = hasLegacyAchievement('banana') && legacyAchievementRank('banana') >= 1 ? 0.03 : 0.02;
         price = price * (1 + (global.tech['railway'] * boost));
     }
     if (global.race['truepath'] && !global.race['lone_survivor']){
@@ -2021,7 +2022,7 @@ export function tradeBuyPrice(res){
         price = price * (0.99 ** global.space['gps'].count);
     }
     if (global.tech['railway']){
-        let boost = global.stats.achieve['banana'] && global.stats.achieve.banana.l >= 1 ? 0.97 : 0.98;
+        let boost = hasLegacyAchievement('banana') && legacyAchievementRank('banana') >= 1 ? 0.97 : 0.98;
         price = price * (boost ** global.tech['railway']);
     }
     if (global.race['truepath'] && !global.race['lone_survivor']){
@@ -2659,10 +2660,10 @@ export function crateValue(){
     if (fathom > 0){
         create_value *= 1 + (traits.pack_rat.vars(1)[0] / 100 * fathom);
     }
-    if (global.stats.achieve['banana'] && global.stats.achieve.banana.l >= 3){
+    if (hasLegacyAchievement('banana') && legacyAchievementRank('banana') >= 3){
         create_value *= 1.1;
     }
-    create_value *= global.stats.achieve['blackhole'] ? 1 + (global.stats.achieve.blackhole.l * 0.05) : 1;
+    create_value *= hasLegacyAchievement('blackhole') ? 1 + (legacyAchievementRank('blackhole') * 0.05) : 1;
     return Math.round(spatialReasoning(create_value));
 }
 
@@ -2684,7 +2685,7 @@ export function containerValue(){
     if (fathom > 0){
         container_value *= 1 + (traits.pack_rat.vars(1)[0] / 100 * fathom);
     }
-    container_value *= global.stats.achieve['blackhole'] ? 1 + (global.stats.achieve.blackhole.l * 0.05) : 1;
+    container_value *= hasLegacyAchievement('blackhole') ? 1 + (legacyAchievementRank('blackhole') * 0.05) : 1;
     return Math.round(spatialReasoning(container_value));
 }
 
@@ -3008,8 +3009,8 @@ export function loadAlchemy(name,color,basic){
         popover(`alchemy${name}`,function(){
             let rate = basic && global.tech.alchemy >= 2 ? tradeRatio[name] * 8 : tradeRatio[name] * 2;
             if (global.race['witch_hunter']){ rate *= 3; }
-            if (global.stats.achieve['soul_sponge'] && global.stats.achieve.soul_sponge['mg']){
-                rate *= global.stats.achieve.soul_sponge.mg + 1;
+            if (hasLegacyAchievement('soul_sponge') && legacyAchievementRank('soul_sponge', 'mg')){
+                rate *= legacyAchievementRank('soul_sponge', 'mg') + 1;
             }
             return $(`<div>${loc('resource_alchemy',[1,loc(`resource_Mana_name`),0.15,loc(`resource_Crystal_name`),+rate.toFixed(2), global.resource[name].name])}</div>`);
         },

@@ -5,6 +5,8 @@ import { actions } from './actions.js';
 import { universe_affixes, universe_types, piracy } from './space.js';
 import { monsters } from './portal.js';
 import { loc } from './locale.js'
+import { advanceLegacyAchievement, removeLegacyAchievementUniverseRank } from './legacy/bridge/achievement-state-adapter.mjs';
+import { hasLegacyAchievement, hasLegacyAchievementTrack, legacyAchievementLevel, legacyAchievementRank, legacyAchievementUniverseLevel } from './legacy/bridge/achievement-state-reader.mjs';
 
 const achieve_list = {
     misc: [
@@ -293,18 +295,11 @@ export const feats = {
 
 export function universeLevel(universe){
     universe = universe || global.race.universe;
-    let affix = universeAffix(universe);
-    let lvl = 0;
-    let ulvl = 0;
-    Object.keys(achievements).forEach(function (achievement){
-        if (global.stats.achieve[achievement]){
-            lvl += global.stats.achieve[achievement].l > 5 ? 5 : global.stats.achieve[achievement].l;
-            if (global.stats.achieve[achievement][affix]){
-                ulvl += global.stats.achieve[achievement][affix] > 5 ? 5 : global.stats.achieve[achievement][affix];
-            }
-        }
-    });
-    return { aLvl: lvl, uLvl: ulvl };
+    const ids = Object.keys(achievements);
+    return {
+        aLvl: legacyAchievementLevel(ids),
+        uLvl: legacyAchievementUniverseLevel(universe, ids),
+    };
 }
 
 export function universeAffix(universe){
@@ -339,29 +334,27 @@ export function unlockAchieve(achievement,small,rank,universe){
     if (typeof rank === "undefined" || rank > a_level){
         rank = a_level;
     }
-    let upgrade = true;
-    if (typeof global.stats.achieve[achievement] === "undefined"){
-        global.stats.achieve[achievement] = { l: 0 };
-        upgrade = false;
+
+    const advanceBase = (global.race.universe === 'micro' && small === true)
+        || (global.race.universe !== 'micro' && small !== true);
+    const targetAffix = universe === 'l' ? null : (universe || universeAffix());
+    const mutation = advanceLegacyAchievement({
+        achievement,
+        rank,
+        advanceBase,
+        universeAffix: targetAffix,
+    });
+
+    if (mutation.baseRankChanged){
+        global.settings.showAchieve = true;
+        messageQueue(loc(mutation.recordExisted ? 'achieve_unlock_achieve_upgrade' : 'achieve_unlock_achieve', [achievements[achievement].name] ),'special',false,['achievements']);
+        redraw = true;
+        unlock = true;
     }
-    if ((global.race.universe === 'micro' && small === true) || (global.race.universe !== 'micro' && small !== true)){
-        if (global.stats.achieve[achievement] && global.stats.achieve[achievement].l < rank){
-            global.settings.showAchieve = true;
-            global.stats.achieve[achievement].l = rank;
-            messageQueue(loc(upgrade ? 'achieve_unlock_achieve_upgrade' : 'achieve_unlock_achieve', [achievements[achievement].name] ),'special',false,['achievements']);
-            redraw = true;
-            unlock = true;
-        }
-    }
-    if (global.stats.achieve[achievement] && universe !== 'l'){
-        let u_affix = universe || universeAffix();
-        if (!global.stats.achieve[achievement][u_affix] || (global.stats.achieve[achievement][u_affix] && global.stats.achieve[achievement][u_affix] < rank)){
-            let i_upgrade = global.stats.achieve[achievement][u_affix] ? true : false;
-            global.stats.achieve[achievement][u_affix] = rank;
-            redraw = true;
-            if (!unlock){
-                messageQueue(loc(i_upgrade ? 'achieve_unlock_achieve_icon_upgrade' : 'achieve_unlock_achieve_icon', [achievements[achievement].name] ),'special',false,['achievements']);
-            }
+    if (mutation.legacyUniverseWrite){
+        redraw = true;
+        if (!unlock){
+            messageQueue(loc(mutation.legacyUniverseUpgrade ? 'achieve_unlock_achieve_icon_upgrade' : 'achieve_unlock_achieve_icon', [achievements[achievement].name] ),'special',false,['achievements']);
         }
     }
     if (redraw){
@@ -429,17 +422,17 @@ export function drawAchieve(args){
     Object.keys(achievements).forEach(function (achievement){
         let baseIcon = getBaseIcon(achievement,'achievement');
         total++;
-        if (global.stats.achieve[achievement]){
+        if (hasLegacyAchievement(achievement)){
             earned++;
-            level += global.stats.achieve[achievement].l > 5 ? 5 : global.stats.achieve[achievement].l;
-            if (global.stats.achieve[achievement][affix]){
-                ulevel += global.stats.achieve[achievement][affix] > 5 ? 5 : global.stats.achieve[achievement][affix];
+            level += legacyAchievementRank(achievement) > 5 ? 5 : legacyAchievementRank(achievement);
+            if (legacyAchievementRank(achievement, affix)){
+                ulevel += legacyAchievementRank(achievement, affix) > 5 ? 5 : legacyAchievementRank(achievement, affix);
             }
             let emblem = format_emblem(achievement,16,baseIcon,fool);
-            if ((fool && global.stats.achieve[achievement].l > 1) || !fool){
+            if ((fool && legacyAchievementRank(achievement) > 1) || !fool){
                 achieve.append($(`<b-tooltip :label="flair('${achievement}')" position="is-bottom" size="is-small" animated><div class="achievement"><span class="has-text-warning">${achievements[achievement].name}</span><span>${achievements[achievement].desc}</span>${emblem}</div></b-tooltip>`));
             }
-            else if (fool && global.stats.achieve[achievement].l === 1){
+            else if (fool && legacyAchievementRank(achievement) === 1){
                 earned--;
             }
         }
@@ -741,7 +734,7 @@ export function checkAchievements(){
         ['l',uAffix].forEach(function (affix){
             let rank = 0;
             ['ashanddust','exodus','obsolete','bluepill','retired'].forEach(function (achieve){
-                if (global.stats.achieve[achieve] && global.stats.achieve[achieve][affix] && global.stats.achieve[achieve][affix] >= 5){
+                if (hasLegacyAchievement(achieve) && legacyAchievementRank(achieve, affix) && legacyAchievementRank(achieve, affix) >= 5){
                     rank++;
                 }
             });
@@ -861,7 +854,7 @@ export function checkAchievements(){
             let total = 0;
             const keys = Object.keys(achievements)
             for (const key of keys) {
-                if (global.stats.achieve[key] && global.stats.achieve[key].l >= t_level){
+                if (hasLegacyAchievement(key) && legacyAchievementRank(key) >= t_level){
                     total++;
                 }
             }
@@ -892,8 +885,8 @@ export function checkAchievements(){
 export function checkAdept(){
     let rank = 0;
     ['whitehole','eviltwin','canceled','heavy','pw_apocalypse'].forEach(function(x){
-        if (global.stats.achieve[x]){
-            rank = Math.max(global.stats.achieve[x].l, rank);
+        if (hasLegacyAchievement(x)){
+            rank = Math.max(legacyAchievementRank(x), rank);
         }
     });
 
@@ -902,12 +895,12 @@ export function checkAdept(){
 }
 
 function checkBigAchievement(frag, name, num, level){
-    if (!global.stats.achieve[name] || global.stats.achieve[name].l < level){
+    if (!hasLegacyAchievement(name) || legacyAchievementRank(name) < level){
         let total = 0;
         const keys = Object.keys(achievements)
         for (const key of keys) {
             if (key.includes(frag)){
-                if (global.stats.achieve[key] && global.stats.achieve[key].l >= level) {
+                if (hasLegacyAchievement(key) && legacyAchievementRank(key) >= level) {
                     total++;
                 }
             }
@@ -915,24 +908,9 @@ function checkBigAchievement(frag, name, num, level){
         if (total >= num){
             unlockAchieve(name,false,level);
             if (global.race.universe !== 'standard'){
-                switch (global.race.universe) {
-                    case 'evil':
-                        global.stats.achieve[name].e = undefined;
-                        break;
-                    case 'antimatter':
-                        global.stats.achieve[name].a = undefined;
-                        break;
-                    case 'heavy':
-                        global.stats.achieve[name].h = undefined;
-                        break;
-                    case 'micro':
-                        global.stats.achieve[name].m = undefined;
-                        break;
-                    case 'magic':
-                        global.stats.achieve[name].mg = undefined;
-                        break;
-                    default:
-                        break;
+                const affix = universeAffix();
+                if (affix !== 'l'){
+                    removeLegacyAchievementUniverseRank(name, affix, { preserveUndefined: true });
                 }
             }
         }
@@ -946,27 +924,27 @@ function checkBigAchievementUniverse(frag, name, num, level){
     let proceed = false;
     switch (global.race.universe) {
         case 'evil':
-            if (typeof global.stats.achieve[name] === "undefined" || typeof global.stats.achieve[name].e === "undefined" || global.stats.achieve[name].e < level){
+            if (!hasLegacyAchievement(name) || !hasLegacyAchievementTrack(name, 'e') || legacyAchievementRank(name, 'e') < level){
                 proceed = true;
             }
             break;
         case 'antimatter':
-            if (typeof global.stats.achieve[name] === "undefined" || typeof global.stats.achieve[name].a === "undefined" || global.stats.achieve[name].a < level){
+            if (!hasLegacyAchievement(name) || !hasLegacyAchievementTrack(name, 'a') || legacyAchievementRank(name, 'a') < level){
                 proceed = true;
             }
             break;
         case 'heavy':
-            if (typeof global.stats.achieve[name] === "undefined" || typeof global.stats.achieve[name].h === "undefined" || global.stats.achieve[name].h < level){
+            if (!hasLegacyAchievement(name) || !hasLegacyAchievementTrack(name, 'h') || legacyAchievementRank(name, 'h') < level){
                 proceed = true;
             }
             break;
         case 'micro':
-            if (typeof global.stats.achieve[name] === "undefined" || typeof global.stats.achieve[name].m === "undefined" || global.stats.achieve[name].m < level){
+            if (!hasLegacyAchievement(name) || !hasLegacyAchievementTrack(name, 'm') || legacyAchievementRank(name, 'm') < level){
                 proceed = true;
             }
             break;
         case 'magic':
-            if (typeof global.stats.achieve[name] === "undefined" || typeof global.stats.achieve[name].mg === "undefined" || global.stats.achieve[name].mg < level){
+            if (!hasLegacyAchievement(name) || !hasLegacyAchievementTrack(name, 'mg') || legacyAchievementRank(name, 'mg') < level){
                 proceed = true;
             }
             break;
@@ -980,27 +958,27 @@ function checkBigAchievementUniverse(frag, name, num, level){
             if (key.includes(frag)){
                 switch (global.race.universe){
                     case 'evil':
-                        if (global.stats.achieve[key] && global.stats.achieve[key]['e'] && global.stats.achieve[key].e >= level){
+                        if (hasLegacyAchievement(key) && legacyAchievementRank(key, 'e') && legacyAchievementRank(key, 'e') >= level){
                             total++;
                         }
                         break;
                     case 'antimatter':
-                        if (global.stats.achieve[key] && global.stats.achieve[key]['a'] && global.stats.achieve[key].a >= level){
+                        if (hasLegacyAchievement(key) && legacyAchievementRank(key, 'a') && legacyAchievementRank(key, 'a') >= level){
                             total++;
                         }
                         break;
                     case 'heavy':
-                        if (global.stats.achieve[key] && global.stats.achieve[key]['h'] && global.stats.achieve[key].h >= level){
+                        if (hasLegacyAchievement(key) && legacyAchievementRank(key, 'h') && legacyAchievementRank(key, 'h') >= level){
                             total++;
                         }
                         break;
                     case 'micro':
-                        if (global.stats.achieve[key] && global.stats.achieve[key]['m'] && global.stats.achieve[key].m >= level){
+                        if (hasLegacyAchievement(key) && legacyAchievementRank(key, 'm') && legacyAchievementRank(key, 'm') >= level){
                             total++;
                         }
                         break;
                     case 'magic':
-                        if (global.stats.achieve[key] && global.stats.achieve[key]['mg'] && global.stats.achieve[key].mg >= level){
+                        if (hasLegacyAchievement(key) && legacyAchievementRank(key, 'mg') && legacyAchievementRank(key, 'mg') >= level){
                             total++;
                         }
                         break;
@@ -1030,7 +1008,7 @@ export const perkList = {
                         </span>
                     </span>`;
                 }
-                else if (global.stats.achieve['whitehole']){
+                else if (hasLegacyAchievement('whitehole')){
                     desc += `
                     <span class="row">
                         <span class="has-text-caution">${universe_types[universe].name}</span>:
@@ -1054,11 +1032,11 @@ export const perkList = {
     blackhole: {
         name: loc(`achieve_blackhole_name`),
         desc(wiki){
-            let bonus = wiki ? "5/10/15/20/25" : global.stats.achieve['blackhole'] ? global.stats.achieve.blackhole.l * 5 : 5;
+            let bonus = wiki ? "5/10/15/20/25" : hasLegacyAchievement('blackhole') ? legacyAchievementRank('blackhole') * 5 : 5;
             return loc("achieve_perks_blackhole",[bonus]);
         },
         active(){
-            return global.stats.achieve['blackhole'] && global.stats.achieve.blackhole.l >= 1 ? true : false;
+            return hasLegacyAchievement('blackhole') && legacyAchievementRank('blackhole') >= 1 ? true : false;
         },
         notes: [
             loc(`wiki_perks_achievement_note`,[`<span class="has-text-caution">${loc(`achieve_blackhole_name`)}</span>`]),
@@ -1068,12 +1046,12 @@ export const perkList = {
     trade: {
         name: loc(`achieve_trade_name`),
         desc(wiki){
-            let bonus1 = wiki ? "2/4/6/8/10" : global.stats.achieve['trade'] ? global.stats.achieve.trade.l * 2 : 2;
-            let bonus2 = wiki ? "1/2/3/4/5" : global.stats.achieve['trade'] ? global.stats.achieve.trade.l : 1;
+            let bonus1 = wiki ? "2/4/6/8/10" : hasLegacyAchievement('trade') ? legacyAchievementRank('trade') * 2 : 2;
+            let bonus2 = wiki ? "1/2/3/4/5" : hasLegacyAchievement('trade') ? legacyAchievementRank('trade') : 1;
             return loc("achieve_perks_trade",[bonus1,bonus2]);
         },
         active(){
-            return global.stats.achieve['trade'] && global.stats.achieve.trade.l >= 1 ? true : false;
+            return hasLegacyAchievement('trade') && legacyAchievementRank('trade') >= 1 ? true : false;
         },
         notes: [
             loc(`wiki_perks_achievement_note`,[`<span class="has-text-caution">${loc(`achieve_trade_name`)}</span>`]),
@@ -1083,11 +1061,11 @@ export const perkList = {
     creator: {
         name: loc(`achieve_creator_name`),
         desc(wiki){
-            let bonus = wiki ? "1.5/2/2.5/3/3.5" : 1 + (global.stats.achieve['creator'] ? global.stats.achieve['creator'].l * 0.5 : 0.5);
+            let bonus = wiki ? "1.5/2/2.5/3/3.5" : 1 + (hasLegacyAchievement('creator') ? legacyAchievementRank('creator') * 0.5 : 0.5);
             return loc("achieve_perks_creator",[bonus]);
         },
         active(){
-            return global.stats.achieve['creator'] && global.stats.achieve.creator.l >= 1 ? true : false;
+            return hasLegacyAchievement('creator') && legacyAchievementRank('creator') >= 1 ? true : false;
         },
         notes: [
             loc(`wiki_perks_achievement_note`,[`<span class="has-text-caution">${loc(`achieve_creator_name`)}</span>`]),
@@ -1102,17 +1080,17 @@ export const perkList = {
                     return loc("achieve_perks_mass_extinction");
                 },
                 active(){
-                    return global.stats.achieve['mass_extinction'] && global.stats.achieve['mass_extinction'].l >= 1 ? true : false;
+                    return hasLegacyAchievement('mass_extinction') && legacyAchievementRank('mass_extinction') >= 1 ? true : false;
                 }
             },
             {
                 desc(wiki){
-                    let rank = global.stats.achieve['mass_extinction'] ? global.stats.achieve.mass_extinction.l : 1;
+                    let rank = hasLegacyAchievement('mass_extinction') ? legacyAchievementRank('mass_extinction') : 1;
                     let bonus = wiki ? "0/50/100/150/200" : (rank - 1) * 50;
                     return loc("achieve_perks_mass_extinction2",[bonus]);
                 },
                 active(){
-                    return global.stats.achieve['mass_extinction'] && global.stats.achieve.mass_extinction.l > 1 ? true : false;
+                    return hasLegacyAchievement('mass_extinction') && legacyAchievementRank('mass_extinction') > 1 ? true : false;
                 }
             }
         ],
@@ -1136,11 +1114,11 @@ export const perkList = {
     explorer: {
         name: loc(`achieve_explorer_name`),
         desc(wiki){
-            let bonus = wiki ? "1/2/3/4/5" : global.stats.achieve['explorer'] ? global.stats.achieve['explorer'].l : 1;
+            let bonus = wiki ? "1/2/3/4/5" : hasLegacyAchievement('explorer') ? legacyAchievementRank('explorer') : 1;
             return loc("achieve_perks_explorer",[bonus]);
         },
         active(){
-            return global.stats.achieve['explorer'] && global.stats.achieve.explorer.l >= 1 ? true : false;
+            return hasLegacyAchievement('explorer') && legacyAchievementRank('explorer') >= 1 ? true : false;
         },
         notes: [
             loc(`wiki_perks_achievement_note`,[`<span class="has-text-caution">${loc(`achieve_explorer_name`)}</span>`]),
@@ -1150,11 +1128,11 @@ export const perkList = {
     miners_dream: {
         name: loc(`achieve_miners_dream_name`),
         desc(wiki){
-            let numGeo = wiki ? "1/2/3/5/7" : global.stats.achieve['miners_dream'] ? global.stats.achieve['miners_dream'].l >= 4 ? global.stats.achieve['miners_dream'].l * 2 - 3 : global.stats.achieve['miners_dream'].l : 0;
+            let numGeo = wiki ? "1/2/3/5/7" : hasLegacyAchievement('miners_dream') ? legacyAchievementRank('miners_dream') >= 4 ? legacyAchievementRank('miners_dream') * 2 - 3 : legacyAchievementRank('miners_dream') : 0;
             return loc("achieve_perks_miners_dream",[numGeo]);
         },
         active(){
-            return global.stats.achieve['miners_dream'] && global.stats.achieve.miners_dream.l >= 1 ? true : false;
+            return hasLegacyAchievement('miners_dream') && legacyAchievementRank('miners_dream') >= 1 ? true : false;
         },
         notes: [
             loc(`wiki_perks_achievement_note`,[`<span class="has-text-caution">${loc(`achieve_miners_dream_name`)}</span>`]),
@@ -1167,7 +1145,7 @@ export const perkList = {
             return loc("achieve_perks_enlightened");
         },
         active(){
-            return global.stats.achieve['extinct_junker'] && global.stats.achieve.extinct_junker.l >= 1 ? true : false;
+            return hasLegacyAchievement('extinct_junker') && legacyAchievementRank('extinct_junker') >= 1 ? true : false;
         },
         notes: [
             loc(`wiki_perks_achievement_note`,[`<span class="has-text-caution">${loc(`achieve_extinct_junker_name`)}</span>`])
@@ -1176,11 +1154,11 @@ export const perkList = {
     joyless: {
         name: loc(`achieve_joyless_name`),
         desc(wiki){
-            let bonus = wiki ? "2/4/6/8/10" : global.stats.achieve['joyless'] ? global.stats.achieve['joyless'].l * 2 : 2;
+            let bonus = wiki ? "2/4/6/8/10" : hasLegacyAchievement('joyless') ? legacyAchievementRank('joyless') * 2 : 2;
             return loc("achieve_perks_joyless",[bonus]);
         },
         active(){
-            return global.stats.achieve['joyless'] && global.stats.achieve.joyless.l >= 1 ? true : false;
+            return hasLegacyAchievement('joyless') && legacyAchievementRank('joyless') >= 1 ? true : false;
         },
         notes: [
             loc(`wiki_perks_achievement_note`,[`<span class="has-text-caution">${loc(`achieve_joyless_name`)}</span>`]),
@@ -1190,11 +1168,11 @@ export const perkList = {
     steelen: {
         name: loc(`achieve_steelen_name`),
         desc(wiki){
-            let bonus = wiki ? "2/4/6/8/10" : global.stats.achieve['steelen'] ? global.stats.achieve['steelen'].l * 2 : 2;
+            let bonus = wiki ? "2/4/6/8/10" : hasLegacyAchievement('steelen') ? legacyAchievementRank('steelen') * 2 : 2;
             return loc("achieve_perks_steelen",[bonus]);
         },
         active(){
-            return global.stats.achieve['steelen'] && global.stats.achieve.steelen.l >= 1 ? true : false;
+            return hasLegacyAchievement('steelen') && legacyAchievementRank('steelen') >= 1 ? true : false;
         },
         notes: [
             loc(`wiki_perks_achievement_note`,[`<span class="has-text-caution">${loc(`achieve_steelen_name`)}</span>`]),
@@ -1204,11 +1182,11 @@ export const perkList = {
     wheelbarrow: {
         name: loc(`achieve_wheelbarrow_name`),
         desc(wiki){
-            let bonus = wiki ? "2/4/6/8/10" : global.stats.achieve['wheelbarrow'] ? global.stats.achieve['wheelbarrow'].l * 2 : 2;
+            let bonus = wiki ? "2/4/6/8/10" : hasLegacyAchievement('wheelbarrow') ? legacyAchievementRank('wheelbarrow') * 2 : 2;
             return loc("achieve_perks_wheelbarrow",[bonus]);
         },
         active(){
-            return global.stats.achieve['wheelbarrow'] && global.stats.achieve.wheelbarrow.l >= 1 ? true : false;
+            return hasLegacyAchievement('wheelbarrow') && legacyAchievementRank('wheelbarrow') >= 1 ? true : false;
         },
         notes: [
             loc(`wiki_perks_achievement_note`,[`<span class="has-text-caution">${loc(`achieve_wheelbarrow_name`)}</span>`]),
@@ -1220,56 +1198,56 @@ export const perkList = {
         group: [
             {
                 desc(wiki){
-                    let bonus = wiki ? "3/6/9/12/15" : (global.stats.achieve['extinct_sludge'] ? global.stats.achieve['extinct_sludge'].l * 3 : 3);
+                    let bonus = wiki ? "3/6/9/12/15" : (hasLegacyAchievement('extinct_sludge') ? legacyAchievementRank('extinct_sludge') * 3 : 3);
                     return loc("achieve_perks_extinct_sludge",[bonus,loc(`universe_standard`)]);
                 },
                 active(){
-                    return global.stats.achieve['extinct_sludge'] && global.stats.achieve.extinct_sludge.l >= 1 ? true : false;
+                    return hasLegacyAchievement('extinct_sludge') && legacyAchievementRank('extinct_sludge') >= 1 ? true : false;
                 },
             },
             {
                 desc(wiki){
-                    let bonus = wiki ? "3/6/9/12/15" : (global.stats.achieve['extinct_sludge'] ? global.stats.achieve['extinct_sludge'].h * 3 : 3);
+                    let bonus = wiki ? "3/6/9/12/15" : (hasLegacyAchievement('extinct_sludge') ? legacyAchievementRank('extinct_sludge', 'h') * 3 : 3);
                     return loc("achieve_perks_extinct_sludge",[bonus,loc(`universe_heavy`)]);
                 },
                 active(){
-                    return global.stats.achieve['extinct_sludge'] && global.stats.achieve.extinct_sludge.h >= 1 ? true : false;
+                    return hasLegacyAchievement('extinct_sludge') && legacyAchievementRank('extinct_sludge', 'h') >= 1 ? true : false;
                 },
             },
             {
                 desc(wiki){
-                    let bonus = wiki ? "3/6/9/12/15" : (global.stats.achieve['extinct_sludge'] ? global.stats.achieve['extinct_sludge'].a * 3 : 3);
+                    let bonus = wiki ? "3/6/9/12/15" : (hasLegacyAchievement('extinct_sludge') ? legacyAchievementRank('extinct_sludge', 'a') * 3 : 3);
                     return loc("achieve_perks_extinct_sludge",[bonus,loc(`universe_antimatter`)]);
                 },
                 active(){
-                    return global.stats.achieve['extinct_sludge'] && global.stats.achieve.extinct_sludge.a >= 1 ? true : false;
+                    return hasLegacyAchievement('extinct_sludge') && legacyAchievementRank('extinct_sludge', 'a') >= 1 ? true : false;
                 },
             },
             {
                 desc(wiki){
-                    let bonus = wiki ? "3/6/9/12/15" : (global.stats.achieve['extinct_sludge'] ? global.stats.achieve['extinct_sludge'].e * 3 : 3);
+                    let bonus = wiki ? "3/6/9/12/15" : (hasLegacyAchievement('extinct_sludge') ? legacyAchievementRank('extinct_sludge', 'e') * 3 : 3);
                     return loc("achieve_perks_extinct_sludge",[bonus,loc(`universe_evil`)]);
                 },
                 active(){
-                    return global.stats.achieve['extinct_sludge'] && global.stats.achieve.extinct_sludge.e >= 1 ? true : false;
+                    return hasLegacyAchievement('extinct_sludge') && legacyAchievementRank('extinct_sludge', 'e') >= 1 ? true : false;
                 },
             },
             {
                 desc(wiki){
-                    let bonus = wiki ? "3/6/9/12/15" : (global.stats.achieve['extinct_sludge'] ? global.stats.achieve['extinct_sludge'].m * 3 : 3);
+                    let bonus = wiki ? "3/6/9/12/15" : (hasLegacyAchievement('extinct_sludge') ? legacyAchievementRank('extinct_sludge', 'm') * 3 : 3);
                     return loc("achieve_perks_extinct_sludge",[bonus,loc(`universe_micro`)]);
                 },
                 active(){
-                    return global.stats.achieve['extinct_sludge'] && global.stats.achieve.extinct_sludge.m >= 1 ? true : false;
+                    return hasLegacyAchievement('extinct_sludge') && legacyAchievementRank('extinct_sludge', 'm') >= 1 ? true : false;
                 },
             },
             {
                 desc(wiki){
-                    let bonus = wiki ? "3/6/9/12/15" : (global.stats.achieve['extinct_sludge'] ? global.stats.achieve['extinct_sludge'].mg * 3 : 3);
+                    let bonus = wiki ? "3/6/9/12/15" : (hasLegacyAchievement('extinct_sludge') ? legacyAchievementRank('extinct_sludge', 'mg') * 3 : 3);
                     return loc("achieve_perks_extinct_sludge",[bonus,loc(`universe_magic`)]);
                 },
                 active(){
-                    return global.stats.achieve['extinct_sludge'] && global.stats.achieve.extinct_sludge.mg >= 1 ? true : false;
+                    return hasLegacyAchievement('extinct_sludge') && legacyAchievementRank('extinct_sludge', 'mg') >= 1 ? true : false;
                 },
             },
         ],
@@ -1286,25 +1264,25 @@ export const perkList = {
                     return loc("achieve_perks_whitehole");
                 },
                 active(){
-                    return global.stats.achieve['whitehole'] ? true : false;
+                    return hasLegacyAchievement('whitehole') ? true : false;
                 }
             },
             {
                 desc(wiki){
-                    let bonus = wiki ? "5/10/15/20/25" : global.stats.achieve['whitehole'] ? global.stats.achieve['whitehole'].l * 5 : 5;
+                    let bonus = wiki ? "5/10/15/20/25" : hasLegacyAchievement('whitehole') ? legacyAchievementRank('whitehole') * 5 : 5;
                     return loc("achieve_perks_whitehole2",[bonus]);
                 },
                 active(){
-                    return global.stats.achieve['whitehole'] ? true : false;
+                    return hasLegacyAchievement('whitehole') ? true : false;
                 }
             },
             {
                 desc(wiki){
-                    let bonus = wiki ? "1/2/3/4/5" : global.stats.achieve['whitehole'] ? global.stats.achieve['whitehole'].l : 1;
+                    let bonus = wiki ? "1/2/3/4/5" : hasLegacyAchievement('whitehole') ? legacyAchievementRank('whitehole') : 1;
                     return loc("achieve_perks_whitehole3",[bonus]);
                 },
                 active(){
-                    return global.stats.achieve['whitehole'] ? true : false;
+                    return hasLegacyAchievement('whitehole') ? true : false;
                 }
             }
         ],
@@ -1316,11 +1294,11 @@ export const perkList = {
     heavyweight: {
         name: loc(`achieve_heavyweight_name`),
         desc(wiki){
-            let bonus = wiki ? "4/8/12/16/20" : global.stats.achieve['heavyweight'] ? global.stats.achieve['heavyweight'].l * 4 : 4;
+            let bonus = wiki ? "4/8/12/16/20" : hasLegacyAchievement('heavyweight') ? legacyAchievementRank('heavyweight') * 4 : 4;
             return loc("achieve_perks_heavyweight",[bonus]);
         },
         active(){
-            return global.stats.achieve['heavyweight'] ? true : false;
+            return hasLegacyAchievement('heavyweight') ? true : false;
         },
         notes: [
             loc(`wiki_perks_achievement_note`,[`<span class="has-text-caution">${loc(`achieve_heavyweight_name`)}</span>`]),
@@ -1335,16 +1313,16 @@ export const perkList = {
                     return loc("achieve_perks_dissipated1",[1]);
                 },
                 active(){
-                    return global.stats.achieve['dissipated'] && global.stats.achieve['dissipated'].l >= 1 ? true : false;
+                    return hasLegacyAchievement('dissipated') && legacyAchievementRank('dissipated') >= 1 ? true : false;
                 }
             },
             {
                 desc(wiki){
-                    let bonus = wiki ? "1/2" : global.stats.achieve['dissipated'] && global.stats.achieve['dissipated'].l >= 5 ? 2 : 1;
+                    let bonus = wiki ? "1/2" : hasLegacyAchievement('dissipated') && legacyAchievementRank('dissipated') >= 5 ? 2 : 1;
                     return loc("achieve_perks_dissipated2",[bonus]);
                 },
                 active(){
-                    return global.stats.achieve['dissipated'] && global.stats.achieve['dissipated'].l >= 3 ? true : false;
+                    return hasLegacyAchievement('dissipated') && legacyAchievementRank('dissipated') >= 3 ? true : false;
                 }
             },
             {
@@ -1352,7 +1330,7 @@ export const perkList = {
                     return loc("achieve_perks_dissipated3",[1]);
                 },
                 active(){
-                    return global.stats.achieve['dissipated'] && global.stats.achieve['dissipated'].l >= 2 ? true : false;
+                    return hasLegacyAchievement('dissipated') && legacyAchievementRank('dissipated') >= 2 ? true : false;
                 }
             },
             {
@@ -1360,7 +1338,7 @@ export const perkList = {
                     return loc("achieve_perks_dissipated4",[1]);
                 },
                 active(){
-                    return global.stats.achieve['dissipated'] && global.stats.achieve['dissipated'].l >= 4 ? true : false;
+                    return hasLegacyAchievement('dissipated') && legacyAchievementRank('dissipated') >= 4 ? true : false;
                 }
             }
         ],
@@ -1377,7 +1355,7 @@ export const perkList = {
                     return loc("achieve_perks_banana1",[50]);
                 },
                 active(){
-                    return global.stats.achieve['banana'] && global.stats.achieve.banana.l >= 1 ? true : false;
+                    return hasLegacyAchievement('banana') && legacyAchievementRank('banana') >= 1 ? true : false;
                 }
             },
             {
@@ -1385,7 +1363,7 @@ export const perkList = {
                     return loc("achieve_perks_banana2",[1]);
                 },
                 active(){
-                    return global.stats.achieve['banana'] && global.stats.achieve.banana.l >= 2 ? true : false;
+                    return hasLegacyAchievement('banana') && legacyAchievementRank('banana') >= 2 ? true : false;
                 }
             },
             {
@@ -1393,7 +1371,7 @@ export const perkList = {
                     return loc("achieve_perks_banana3",[10]);
                 },
                 active(){
-                    return global.stats.achieve['banana'] && global.stats.achieve.banana.l >= 3 ? true : false;
+                    return hasLegacyAchievement('banana') && legacyAchievementRank('banana') >= 3 ? true : false;
                 }
             },
             {
@@ -1401,7 +1379,7 @@ export const perkList = {
                     return loc("achieve_perks_banana4",[3]);
                 },
                 active(){
-                    return global.stats.achieve['banana'] && global.stats.achieve.banana.l >= 4 ? true : false;
+                    return hasLegacyAchievement('banana') && legacyAchievementRank('banana') >= 4 ? true : false;
                 }
             },
             {
@@ -1409,7 +1387,7 @@ export const perkList = {
                     return loc("achieve_perks_banana5",[0.01]);
                 },
                 active(){
-                    return global.stats.achieve['banana'] && global.stats.achieve.banana.l >= 5 ? true : false;
+                    return hasLegacyAchievement('banana') && legacyAchievementRank('banana') >= 5 ? true : false;
                 }
             }
         ],
@@ -1426,11 +1404,11 @@ export const perkList = {
     anarchist: {
         name: loc(`achieve_anarchist_name`),
         desc(wiki){
-            let bonus = wiki ? "10/20/30/40/50" : global.stats.achieve['anarchist'] ? global.stats.achieve['anarchist'].l * 10 : 10;
+            let bonus = wiki ? "10/20/30/40/50" : hasLegacyAchievement('anarchist') ? legacyAchievementRank('anarchist') * 10 : 10;
             return loc("achieve_perks_anarchist",[bonus]);
         },
         active(){
-            return global.stats.achieve['anarchist'] && global.stats.achieve['anarchist'].l >= 1 ? true : false;
+            return hasLegacyAchievement('anarchist') && legacyAchievementRank('anarchist') >= 1 ? true : false;
         },
         notes: [
             loc(`wiki_perks_achievement_note`,[`<span class="has-text-caution">${loc(`achieve_anarchist_name`)}</span>`]),
@@ -1448,10 +1426,10 @@ export const perkList = {
                     }
                     else {
                         genes = 0;
-                        if (global.stats.achieve['ascended']){
+                        if (hasLegacyAchievement('ascended')){
                             for (let i=0; i<universe_affixes.length; i++){
-                                if (global.stats.achieve.ascended.hasOwnProperty(universe_affixes[i])){
-                                    genes += global.stats.achieve.ascended[universe_affixes[i]];
+                                if (hasLegacyAchievementTrack('ascended', universe_affixes[i])){
+                                    genes += legacyAchievementRank('ascended', universe_affixes[i]);
                                 }
                             }
                         }
@@ -1459,7 +1437,7 @@ export const perkList = {
                     return loc("achieve_perks_ascended1",[genes]);
                 },
                 active(){
-                    return global.stats.achieve['ascended'] && global.stats.achieve['ascended'].l >= 1 ? true : false;
+                    return hasLegacyAchievement('ascended') && legacyAchievementRank('ascended') >= 1 ? true : false;
                 }
             },
             {
@@ -1467,7 +1445,7 @@ export const perkList = {
                     return loc("achieve_perks_ascended2",[harmonyEffect()]);
                 },
                 active(){
-                    return global.stats.achieve['ascended'] && global.stats.achieve['ascended'][universeAffix()] >= 1 ? true : false;
+                    return hasLegacyAchievement('ascended') && legacyAchievementRank('ascended', universeAffix()) >= 1 ? true : false;
                 }
             }
         ],
@@ -1485,7 +1463,7 @@ export const perkList = {
                     return loc("achieve_perks_technophobe1",[25]);
                 },
                 active(){
-                    return global.stats.achieve['technophobe'] && global.stats.achieve['technophobe'].l >= 1 ? true : false;
+                    return hasLegacyAchievement('technophobe') && legacyAchievementRank('technophobe') >= 1 ? true : false;
                 }
             },
             {
@@ -1495,9 +1473,9 @@ export const perkList = {
                         bonus = "10/25/30/35/40/45/50";
                     }
                     else {
-                        bonus = global.stats.achieve['technophobe'] && global.stats.achieve.technophobe.l >= 4 ? 25 : 10;
+                        bonus = hasLegacyAchievement('technophobe') && legacyAchievementRank('technophobe') >= 4 ? 25 : 10;
                         for (let i=1; i<universe_affixes.length; i++){
-                            if (global.stats.achieve['technophobe'] && global.stats.achieve.technophobe[universe_affixes[i]] && global.stats.achieve.technophobe[universe_affixes[i]] >= 5){
+                            if (hasLegacyAchievement('technophobe') && legacyAchievementRank('technophobe', universe_affixes[i]) && legacyAchievementRank('technophobe', universe_affixes[i]) >= 5){
                                 bonus += 5;
                             }
                         }
@@ -1505,7 +1483,7 @@ export const perkList = {
                     return loc("achieve_perks_technophobe2",[bonus]);
                 },
                 active(){
-                    return global.stats.achieve['technophobe'] && global.stats.achieve.technophobe.l >= 2 ? true : false;
+                    return hasLegacyAchievement('technophobe') && legacyAchievementRank('technophobe') >= 2 ? true : false;
                 }
             },
             {
@@ -1517,7 +1495,7 @@ export const perkList = {
                     else {
                         gems = 1;
                         for (let i=1; i<universe_affixes.length; i++){
-                            if (global.stats.achieve['technophobe'] && global.stats.achieve.technophobe[universe_affixes[i]] && global.stats.achieve.technophobe[universe_affixes[i]] >= 5){
+                            if (hasLegacyAchievement('technophobe') && legacyAchievementRank('technophobe', universe_affixes[i]) && legacyAchievementRank('technophobe', universe_affixes[i]) >= 5){
                                 gems += 1;
                             }
                         }
@@ -1525,7 +1503,7 @@ export const perkList = {
                     return wiki || gems > 1 ? loc("achieve_perks_technophobe3a",[gems]) : loc("achieve_perks_technophobe3",[gems]);
                 },
                 active(){
-                    return global.stats.achieve['technophobe'] && global.stats.achieve.technophobe.l >= 3 ? true : false;
+                    return hasLegacyAchievement('technophobe') && legacyAchievementRank('technophobe') >= 3 ? true : false;
                 }
             },
             {
@@ -1533,16 +1511,16 @@ export const perkList = {
                     return loc("achieve_perks_technophobe4",[10]);
                 },
                 active(){
-                    return global.stats.achieve['technophobe'] && global.stats.achieve.technophobe.l >= 5 ? true : false;
+                    return hasLegacyAchievement('technophobe') && legacyAchievementRank('technophobe') >= 5 ? true : false;
                 }
             },
             {
                 desc(wiki){
-                    let bonus = wiki ? "4/8/12/16/20" : global.stats.achieve['technophobe'] ? global.stats.achieve.technophobe.l : 0;
+                    let bonus = wiki ? "4/8/12/16/20" : hasLegacyAchievement('technophobe') ? legacyAchievementRank('technophobe') : 0;
                     return loc("achieve_perks_technophobe5",[bonus]);
                 },
                 active(){
-                    return global.stats.achieve['technophobe'] && global.stats.achieve.technophobe.l >= 1 ? true : false;
+                    return hasLegacyAchievement('technophobe') && legacyAchievementRank('technophobe') >= 1 ? true : false;
                 }
             }
         ],
@@ -1560,7 +1538,7 @@ export const perkList = {
                     return loc("achieve_perks_iron_will1",[0.15]);
                 },
                 active(){
-                    return global.stats.achieve['iron_will'] && global.stats.achieve.iron_will.l >= 1 ? true : false;
+                    return hasLegacyAchievement('iron_will') && legacyAchievementRank('iron_will') >= 1 ? true : false;
                 }
             },
             {
@@ -1568,7 +1546,7 @@ export const perkList = {
                     return loc("achieve_perks_iron_will2",[10]);
                 },
                 active(){
-                    return global.stats.achieve['iron_will'] && global.stats.achieve.iron_will.l >= 2 ? true : false;
+                    return hasLegacyAchievement('iron_will') && legacyAchievementRank('iron_will') >= 2 ? true : false;
                 }
             },
             {
@@ -1576,7 +1554,7 @@ export const perkList = {
                     return loc("achieve_perks_iron_will3",[6]);
                 },
                 active(){
-                    return global.stats.achieve['iron_will'] && global.stats.achieve.iron_will.l >= 3 ? true : false;
+                    return hasLegacyAchievement('iron_will') && legacyAchievementRank('iron_will') >= 3 ? true : false;
                 }
             },
             {
@@ -1584,7 +1562,7 @@ export const perkList = {
                     return loc("achieve_perks_iron_will4",[1]);
                 },
                 active(){
-                    return global.stats.achieve['iron_will'] && global.stats.achieve.iron_will.l >= 4 ? true : false;
+                    return hasLegacyAchievement('iron_will') && legacyAchievementRank('iron_will') >= 4 ? true : false;
                 }
             },
             {
@@ -1592,7 +1570,7 @@ export const perkList = {
                     return loc("achieve_perks_iron_will5");
                 },
                 active(){
-                    return global.stats.achieve['iron_will'] && global.stats.achieve.iron_will.l >= 5 ? true : false;
+                    return hasLegacyAchievement('iron_will') && legacyAchievementRank('iron_will') >= 5 ? true : false;
                 }
             }
         ],
@@ -1612,7 +1590,7 @@ export const perkList = {
             return loc("achieve_perks_failed_history",[2]);
         },
         active(){
-            return global.stats.achieve['failed_history'] && global.stats.achieve.failed_history.l >= 5 ? true : false;
+            return hasLegacyAchievement('failed_history') && legacyAchievementRank('failed_history') >= 5 ? true : false;
         },
         notes: [
             loc(`wiki_perks_achievement_note`,[`<span class="has-text-caution">${loc(`achieve_failed_history_name`)}</span>`]),
@@ -1627,7 +1605,7 @@ export const perkList = {
                     return loc("achieve_perks_lamentis1",[`10%`]);
                 },
                 active(){
-                    return global.stats.achieve['lamentis'] && global.stats.achieve.lamentis.l >= 1 ? true : false;
+                    return hasLegacyAchievement('lamentis') && legacyAchievementRank('lamentis') >= 1 ? true : false;
                 }
             },
             {
@@ -1635,7 +1613,7 @@ export const perkList = {
                     return loc("achieve_perks_lamentis2",[`10%`]);
                 },
                 active(){
-                    return global.stats.achieve['lamentis'] && global.stats.achieve.lamentis.l >= 2 ? true : false;
+                    return hasLegacyAchievement('lamentis') && legacyAchievementRank('lamentis') >= 2 ? true : false;
                 }
             },
             {
@@ -1643,7 +1621,7 @@ export const perkList = {
                     return loc("achieve_perks_lamentis3",[`10%`]);
                 },
                 active(){
-                    return global.stats.achieve['lamentis'] && global.stats.achieve.lamentis.l >= 3 ? true : false;
+                    return hasLegacyAchievement('lamentis') && legacyAchievementRank('lamentis') >= 3 ? true : false;
                 }
             },
             {
@@ -1651,7 +1629,7 @@ export const perkList = {
                     return loc("achieve_perks_lamentis4");
                 },
                 active(){
-                    return global.stats.achieve['lamentis'] && global.stats.achieve.lamentis.l >= 4 ? true : false;
+                    return hasLegacyAchievement('lamentis') && legacyAchievementRank('lamentis') >= 4 ? true : false;
                 }
             },
             {
@@ -1659,7 +1637,7 @@ export const perkList = {
                     return loc("achieve_perks_lamentis5");
                 },
                 active(){
-                    return global.stats.achieve['lamentis'] && global.stats.achieve.lamentis.l >= 5 ? true : false;
+                    return hasLegacyAchievement('lamentis') && legacyAchievementRank('lamentis') >= 5 ? true : false;
                 }
             },
         ],
@@ -1671,11 +1649,11 @@ export const perkList = {
     soul_sponge: {
         name: loc(`achieve_soul_sponge_name`),
         desc(wiki){
-            let soul = wiki ? "100/200/300/400/500" : global.stats.achieve['soul_sponge'] ? global.stats.achieve.soul_sponge.mg * 100 : 100;
+            let soul = wiki ? "100/200/300/400/500" : hasLegacyAchievement('soul_sponge') ? legacyAchievementRank('soul_sponge', 'mg') * 100 : 100;
             return loc("achieve_perks_soul_sponge",[soul]);
         },
         active(){
-            return global.stats.achieve['soul_sponge'] && global.stats.achieve.soul_sponge.mg >= 1 ? true : false;
+            return hasLegacyAchievement('soul_sponge') && legacyAchievementRank('soul_sponge', 'mg') >= 1 ? true : false;
         },
         notes: [
             loc(`wiki_perks_achievement_note`,[`<span class="has-text-caution">${loc(`achieve_soul_sponge_name`)}</span>`]),
@@ -1688,7 +1666,7 @@ export const perkList = {
             return loc("achieve_perks_nightmare");
         },
         active(){
-            return global.stats.achieve['nightmare'] && global.stats.achieve.nightmare.mg >= 1 ? true : false;
+            return hasLegacyAchievement('nightmare') && legacyAchievementRank('nightmare', 'mg') >= 1 ? true : false;
         },
         notes: [
             loc(`wiki_perks_achievement_note`,[`<span class="has-text-caution">${loc(`achieve_nightmare_name`)}</span>`]),
@@ -1698,11 +1676,11 @@ export const perkList = {
     escape_velocity: {
         name: loc(`achieve_escape_velocity_name`),
         desc(wiki){
-            let ev = wiki ? "2/4/6/8/10" : global.stats.achieve['escape_velocity'] ? global.stats.achieve.escape_velocity.h * 2 : 2;
+            let ev = wiki ? "2/4/6/8/10" : hasLegacyAchievement('escape_velocity') ? legacyAchievementRank('escape_velocity', 'h') * 2 : 2;
             return loc("achieve_perks_escape_velocity",[ev]);
         },
         active(){
-            return global.stats.achieve['escape_velocity'] && global.stats.achieve.escape_velocity.h >= 1 ? true : false;
+            return hasLegacyAchievement('escape_velocity') && legacyAchievementRank('escape_velocity', 'h') >= 1 ? true : false;
         },
         notes: [
             loc(`wiki_perks_achievement_note`,[`<span class="has-text-caution">${loc(`achieve_escape_velocity_name`)}</span>`]),
@@ -1717,7 +1695,7 @@ export const perkList = {
                     return loc("achieve_perks_endless_hunger1");
                 },
                 active(){
-                    return global.stats.achieve['endless_hunger'] && global.stats.achieve.endless_hunger.l >= 1 ? true : false;
+                    return hasLegacyAchievement('endless_hunger') && legacyAchievementRank('endless_hunger') >= 1 ? true : false;
                 }
             },
             {
@@ -1725,7 +1703,7 @@ export const perkList = {
                     return loc("achieve_perks_endless_hunger2");
                 },
                 active(){
-                    return global.stats.achieve['endless_hunger'] && global.stats.achieve.endless_hunger.l >= 2 ? true : false;
+                    return hasLegacyAchievement('endless_hunger') && legacyAchievementRank('endless_hunger') >= 2 ? true : false;
                 }
             },
             {
@@ -1733,7 +1711,7 @@ export const perkList = {
                     return loc("achieve_perks_endless_hunger3");
                 },
                 active(){
-                    return global.stats.achieve['endless_hunger'] && global.stats.achieve.endless_hunger.l >= 3 ? true : false;
+                    return hasLegacyAchievement('endless_hunger') && legacyAchievementRank('endless_hunger') >= 3 ? true : false;
                 }
             },
             {
@@ -1741,7 +1719,7 @@ export const perkList = {
                     return loc("achieve_perks_endless_hunger4");
                 },
                 active(){
-                    return global.stats.achieve['endless_hunger'] && global.stats.achieve.endless_hunger.l >= 4 ? true : false;
+                    return hasLegacyAchievement('endless_hunger') && legacyAchievementRank('endless_hunger') >= 4 ? true : false;
                 }
             },
             {
@@ -1749,7 +1727,7 @@ export const perkList = {
                     return loc("achieve_perks_endless_hunger5");
                 },
                 active(){
-                    return global.stats.achieve['endless_hunger'] && global.stats.achieve.endless_hunger.l >= 5 ? true : false;
+                    return hasLegacyAchievement('endless_hunger') && legacyAchievementRank('endless_hunger') >= 5 ? true : false;
                 }
             }
         ],
@@ -1766,11 +1744,11 @@ export const perkList = {
     gladiator: {
         name: loc(`achieve_gladiator_name`),
         desc(wiki){
-            let mech = wiki ? "20/40/60/80/100" : global.stats.achieve['gladiator'] ? global.stats.achieve.gladiator.l * 20 : 20;
+            let mech = wiki ? "20/40/60/80/100" : hasLegacyAchievement('gladiator') ? legacyAchievementRank('gladiator') * 20 : 20;
             return loc("achieve_perks_gladiator",[mech]);
         },
         active(){
-            return global.stats.achieve['gladiator'] && global.stats.achieve.gladiator.l >= 1 ? true : false;
+            return hasLegacyAchievement('gladiator') && legacyAchievementRank('gladiator') >= 1 ? true : false;
         },
         notes: [
             loc(`wiki_perks_achievement_note`,[`<span class="has-text-caution">${loc(`achieve_gladiator_name`)}</span>`]),
@@ -1785,7 +1763,7 @@ export const perkList = {
                     return loc("achieve_perks_what_is_best1",[actions.portal.prtl_ruins.hell_forge.title(),'20%']);
                 },
                 active(){
-                    return global.stats.achieve['what_is_best'] && global.stats.achieve.what_is_best.e >= 1 ? true : false;
+                    return hasLegacyAchievement('what_is_best') && legacyAchievementRank('what_is_best', 'e') >= 1 ? true : false;
                 }
             },
             {
@@ -1793,7 +1771,7 @@ export const perkList = {
                     return loc("achieve_perks_what_is_best2",[actions.portal.prtl_spire.purifier.title(),'25 MW']);
                 },
                 active(){
-                    return global.stats.achieve['what_is_best'] && global.stats.achieve.what_is_best.e >= 2 ? true : false;
+                    return hasLegacyAchievement('what_is_best') && legacyAchievementRank('what_is_best', 'e') >= 2 ? true : false;
                 }
             },
             {
@@ -1801,7 +1779,7 @@ export const perkList = {
                     return loc("achieve_perks_what_is_best3",[actions.portal.prtl_pit.soul_forge.title(),actions.portal.prtl_pit.soul_attractor.title(),'1%']);
                 },
                 active(){
-                    return global.stats.achieve['what_is_best'] && global.stats.achieve.what_is_best.e >= 3 ? true : false;
+                    return hasLegacyAchievement('what_is_best') && legacyAchievementRank('what_is_best', 'e') >= 3 ? true : false;
                 }
             },
             {
@@ -1809,7 +1787,7 @@ export const perkList = {
                     return loc("achieve_perks_what_is_best4",[actions.portal.prtl_lake.transport.title(),3]);
                 },
                 active(){
-                    return global.stats.achieve['what_is_best'] && global.stats.achieve.what_is_best.e >= 4 ? true : false;
+                    return hasLegacyAchievement('what_is_best') && legacyAchievementRank('what_is_best', 'e') >= 4 ? true : false;
                 }
             },
             {
@@ -1817,7 +1795,7 @@ export const perkList = {
                     return loc("achieve_perks_what_is_best5");
                 },
                 active(){
-                    return global.stats.achieve['what_is_best'] && global.stats.achieve.what_is_best.e >= 5 ? true : false;
+                    return hasLegacyAchievement('what_is_best') && legacyAchievementRank('what_is_best', 'e') >= 5 ? true : false;
                 }
             }
         ],
@@ -1839,7 +1817,7 @@ export const perkList = {
                     return loc("achieve_perks_pathfinder1",[10]);
                 },
                 active(){
-                    return global.stats.achieve['pathfinder'] && global.stats.achieve.pathfinder.l >= 1 ? true : false;
+                    return hasLegacyAchievement('pathfinder') && legacyAchievementRank('pathfinder') >= 1 ? true : false;
                 }
             },
             {
@@ -1847,7 +1825,7 @@ export const perkList = {
                     return loc("achieve_perks_pathfinder2",[10]);
                 },
                 active(){
-                    return global.stats.achieve['pathfinder'] && global.stats.achieve.pathfinder.l >= 2 ? true : false;
+                    return hasLegacyAchievement('pathfinder') && legacyAchievementRank('pathfinder') >= 2 ? true : false;
                 }
             },
             {
@@ -1855,7 +1833,7 @@ export const perkList = {
                     return loc("achieve_perks_pathfinder3");
                 },
                 active(){
-                    return global.stats.achieve['pathfinder'] && global.stats.achieve.pathfinder.l >= 3 ? true : false;
+                    return hasLegacyAchievement('pathfinder') && legacyAchievementRank('pathfinder') >= 3 ? true : false;
                 }
             },
             {
@@ -1863,7 +1841,7 @@ export const perkList = {
                     return loc("achieve_perks_pathfinder4");
                 },
                 active(){
-                    return global.stats.achieve['pathfinder'] && global.stats.achieve.pathfinder.l >= 4 ? true : false;
+                    return hasLegacyAchievement('pathfinder') && legacyAchievementRank('pathfinder') >= 4 ? true : false;
                 }
             },
             {
@@ -1871,18 +1849,18 @@ export const perkList = {
                     return loc("achieve_perks_pathfinder5");
                 },
                 active(){
-                    return global.stats.achieve['pathfinder'] && global.stats.achieve.pathfinder.l >= 5 ? true : false;
+                    return hasLegacyAchievement('pathfinder') && legacyAchievementRank('pathfinder') >= 5 ? true : false;
                 }
             },
         ],
         notes: [
             loc(`wiki_perks_achievement_note`,[`<span class="has-text-caution">${loc(`achieve_pathfinder_name`)}</span>`]),
             loc(`wiki_perks_achievement_note_pathfinder`,[`<span class="has-text-caution">${loc(`evo_challenge_truepath`)}</span>`]),
-            loc(`wiki_perks_achievement_note_pathfinder_reset`,[`<span class="has-text-${global.stats.achieve['ashanddust'] ? 'success' : 'danger'}">${loc(`wiki_resets_mad`)}</span>`]),
-            loc(`wiki_perks_achievement_note_pathfinder_reset`,[`<span class="has-text-${global.stats.achieve['exodus'] ? 'success' : 'danger'}">${loc(`wiki_resets_bioseed`)}</span>`]),
-            loc(`wiki_perks_achievement_note_pathfinder_reset`,[`<span class="has-text-${global.stats.achieve['obsolete'] ? 'success' : 'danger'}">${loc(`wiki_resets_ai`)}</span>`]),
-            loc(`wiki_perks_achievement_note_pathfinder_reset`,[`<span class="has-text-${global.stats.achieve['bluepill'] ? 'success' : 'danger'}">${loc(`wiki_resets_matrix`)}</span>`]),
-            loc(`wiki_perks_achievement_note_pathfinder_reset`,[`<span class="has-text-${global.stats.achieve['retired'] ? 'success' : 'danger'}">${loc(`wiki_resets_retired`)}</span>`]),
+            loc(`wiki_perks_achievement_note_pathfinder_reset`,[`<span class="has-text-${hasLegacyAchievement('ashanddust') ? 'success' : 'danger'}">${loc(`wiki_resets_mad`)}</span>`]),
+            loc(`wiki_perks_achievement_note_pathfinder_reset`,[`<span class="has-text-${hasLegacyAchievement('exodus') ? 'success' : 'danger'}">${loc(`wiki_resets_bioseed`)}</span>`]),
+            loc(`wiki_perks_achievement_note_pathfinder_reset`,[`<span class="has-text-${hasLegacyAchievement('obsolete') ? 'success' : 'danger'}">${loc(`wiki_resets_ai`)}</span>`]),
+            loc(`wiki_perks_achievement_note_pathfinder_reset`,[`<span class="has-text-${hasLegacyAchievement('bluepill') ? 'success' : 'danger'}">${loc(`wiki_resets_matrix`)}</span>`]),
+            loc(`wiki_perks_achievement_note_pathfinder_reset`,[`<span class="has-text-${hasLegacyAchievement('retired') ? 'success' : 'danger'}">${loc(`wiki_resets_retired`)}</span>`]),
         ]
     },
     overlord: {
@@ -1895,7 +1873,7 @@ export const perkList = {
             return desc;
         },
         active(){
-            return global.stats.achieve['overlord'] && global.stats.achieve.overlord.l >= 5 ? true : false;
+            return hasLegacyAchievement('overlord') && legacyAchievementRank('overlord') >= 5 ? true : false;
         },
         notes: [
             loc(`wiki_perks_achievement_note`,[`<span class="has-text-caution">${loc(`achieve_overlord_name`)}</span>`]),
@@ -1907,7 +1885,7 @@ export const perkList = {
             return loc(`achieve_perks_adam_eve`);
         },
         active(){
-            return global.stats.achieve['adam_eve'] && global.stats.achieve.adam_eve.l >= 5 ? true : false;
+            return hasLegacyAchievement('adam_eve') && legacyAchievementRank('adam_eve') >= 5 ? true : false;
         },
         notes: []
     },
@@ -2657,7 +2635,7 @@ export const perkList = {
     novice: {
         name: loc(`perk_novice`),
         desc(wiki){
-            let rank = global.stats.feat['novice'] && global.stats.achieve['apocalypse'] && global.stats.achieve.apocalypse.l > 0 ? Math.min(global.stats.achieve.apocalypse.l,global.stats.feat['novice']) : 1;
+            let rank = global.stats.feat['novice'] && hasLegacyAchievement('apocalypse') && legacyAchievementRank('apocalypse') > 0 ? Math.min(legacyAchievementRank('apocalypse'),global.stats.feat['novice']) : 1;
             let rna = wiki ? "0.5/1/1.5/2/2.5" : rank / 2;
             let dna = wiki ? "0.25/0.5/0.75/1/1.25" : rank / 4;
             return `<div>${loc("achieve_perks_novice",[rna,dna])}</div><div>${loc("achieve_perks_novice2")}</div>`;
@@ -2673,7 +2651,7 @@ export const perkList = {
     journeyman: {
         name: loc(`perk_journeyman`),
         desc(wiki){
-            let rank = global.stats.feat['journeyman'] && global.stats.achieve['seeder'] && global.stats.achieve.seeder.l > 0 ? Math.min(global.stats.achieve.seeder.l,global.stats.feat['journeyman']) : 1;
+            let rank = global.stats.feat['journeyman'] && hasLegacyAchievement('seeder') && legacyAchievementRank('seeder') > 0 ? Math.min(legacyAchievementRank('seeder'),global.stats.feat['journeyman']) : 1;
             if (wiki || rank > 1){
                 let rqueue = wiki ? "1/2/3" : rank >= 3 ? (rank >= 5 ? 3 : 2) : 1;
                 let queue = wiki ? "1/2" : rank >= 4 ? 2 : 1;
@@ -2710,13 +2688,13 @@ export const perkList = {
     master: {
         name: loc(`perk_master`),
         desc(wiki){
-            let rank = global.stats.feat['master'] && global.stats.achieve['ascended'] && global.stats.achieve.ascended.l > 0 ? Math.min(global.stats.achieve.ascended.l,global.stats.feat['master']) : 1;
+            let rank = global.stats.feat['master'] && hasLegacyAchievement('ascended') && legacyAchievementRank('ascended') > 0 ? Math.min(legacyAchievementRank('ascended'),global.stats.feat['master']) : 1;
             let boost1 = wiki ? "1/2/3/4/5" : rank;
             let boost2 = wiki ? "2/4/6/8/10" : rank * 2;
             return loc("achieve_perks_master",[boost1,boost2,loc('evo_mitochondria_title'),loc('evo_eukaryotic_title'),loc('evo_membrane_title'),loc('evo_organelles_title'),loc('evo_nucleus_title')]);
         },
         active(){
-            return global.stats.feat['master'] && global.stats.achieve['ascended'] && global.stats.achieve.ascended.l > 0 ? true : false;
+            return global.stats.feat['master'] && hasLegacyAchievement('ascended') && legacyAchievementRank('ascended') > 0 ? true : false;
         },
         notes: [
             loc(`wiki_perks_progress_note1`,[75,loc(`wiki_resets_ascension`)]),
@@ -2726,12 +2704,12 @@ export const perkList = {
     grandmaster: {
         name: loc(`perk_grandmaster`),
         desc(wiki){
-            let rank = global.stats.feat['grandmaster'] && global.stats.achieve['corrupted'] && global.stats.achieve.corrupted.l > 0 ? Math.min(global.stats.achieve.corrupted.l,global.stats.feat['grandmaster']) : 1;
+            let rank = global.stats.feat['grandmaster'] && hasLegacyAchievement('corrupted') && legacyAchievementRank('corrupted') > 0 ? Math.min(legacyAchievementRank('corrupted'),global.stats.feat['grandmaster']) : 1;
             let boost = wiki ? "1/2/3/4/5" : rank;
             return loc("achieve_perks_grandmaster",[boost]);
         },
         active(){
-            return global.stats.feat['grandmaster'] && global.stats.achieve['corrupted'] && global.stats.achieve.corrupted.l > 0 ? true : false;
+            return global.stats.feat['grandmaster'] && hasLegacyAchievement('corrupted') && legacyAchievementRank('corrupted') > 0 ? true : false;
         },
         notes: [
             loc(`wiki_perks_progress_note1`,[100,loc(`wiki_resets_infusion`)]),

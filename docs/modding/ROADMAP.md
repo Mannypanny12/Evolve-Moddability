@@ -2,6 +2,8 @@
 
 Every milestone must keep vanilla behavior protected by tests. The roadmap deliberately builds internal engine contracts before promising external Mod API stability.
 
+Use `EXECUTION_PROTOCOL.md` for the bounded review, hardening, targeted-proof, CI, documentation, and final-checkpoint workflow used by M3G and later slices.
+
 ## M0: Safety and reproducibility
 
 ### M0A Reproducible baseline - complete
@@ -146,13 +148,13 @@ The full M1 closure audit is recorded in `M1_CLOSURE_REVIEW.md`. It hardens M1A-
 
 ---
 
-## M2: Explicit state architecture
+## M2: Explicit state architecture - complete
 
 ### M2A GameState schema - complete
 
 Define the first explicit state root and domain ownership rules.
 
-M2A now provides an independent minimal `GameState` root, a hardened inert plain-data state-value contract, fail-closed validation, and explicit ownership/layer rules without cloning legacy `global` or moving gameplay/save authority. See `M2A_GAME_STATE_SCHEMA.md`.
+M2A provides an independent `GameState` root, a hardened inert plain-data state-value contract, fail-closed validation, and explicit ownership/layer rules without cloning legacy `global`. See `M2A_GAME_STATE_SCHEMA.md`.
 
 ### M2B State store and selectors - complete
 
@@ -164,79 +166,168 @@ Provide:
 - deterministic snapshots;
 - change diagnostics.
 
-M2B now separates the read-side store facade from the retained mutation-authority capability, so consumers that can query state cannot manufacture new write scopes. Transactions use detached validated drafts, rollback failed work atomically, and emit deterministic observational diagnostics. See `M2B_STATE_STORE_SELECTORS.md`.
+M2B separates the read-side store facade from the retained mutation-authority capability, so consumers that can query state cannot manufacture new write scopes. Transactions use detached validated drafts, rollback failed work atomically, and emit deterministic observational diagnostics. See `M2B_STATE_STORE_SELECTORS.md`.
 
 No generic public arbitrary-path setter.
 
-### M2C Settings and transient-state separation
+### M2C Settings and transient-state separation - complete
 
-Separate:
+Separated and machine-classified:
 
 - simulation state;
 - user preferences;
-- UI state;
-- derived/transient caches.
+- application control;
+- UI-session state;
+- derived/transient caches;
+- simulation/application working state;
+- runtime/platform services;
+- migration/debug concerns.
 
-Do not persist derived values merely because legacy `global` did.
+Legacy settings/runtime debt is ratcheted downward, and generic settings/UI/cache/transient/runtime/migration/debug catch-all roots are prohibited from becoming authoritative GameState domains. See `M2C3_STATE_BOUNDARY_CLOSURE.md`.
 
-### M2D First state-domain migration
+### M2D First state-domain migration - complete
 
-Migrate one small real domain end-to-end, likely achievements/statistics metadata or a constrained resource slice.
+Achievements are the first real domain migrated end to end.
 
-Use dual-read/write or translation only while necessary, then remove that adapter for the migrated slice.
+`GameState.achievements` is authoritative after hydration. Ordinary persistent writes use the semantic achievement mutation service; ordinary reads use the semantic facade backed by `store.select()`. `global.stats.achieve` remains only as historical pre-hydration migration state and a synchronous compatibility/save projection until persistence v2. See `M2D3_ACHIEVEMENT_AUTHORITY_CUTOVER.md` and `M2D4_ACHIEVEMENT_READER_CUTOVER.md`.
 
-### M2E State architecture guard expansion
+### M2E State architecture guard expansion - complete
 
-Extend the M0E5 architecture gate with explicit `GameState` ownership, mutation-boundary, selector, and state-layer dependency rules. Keep tightening the existing legacy-reference and dependency-cycle ratchets as migrated state leaves the legacy architecture.
+The M0E5 architecture gate is extended with explicit GameState ownership, mutation-boundary, selector, state-layer dependency, and whole-M2 closure rules.
 
-Exit: `GameState` is authoritative for at least one real domain, the migration pattern is proven, and CI enforces the new state boundary.
+M2E1 pins domain ownership and composition. M2E2 confines write capabilities and semantic mutation surfaces. M2E3 confines semantic reads and the state-layer dependency DAG. M2E4 integrates the M2C/M2D/M2E guards into a versioned JSON architecture report and cross-checks the complete state architecture as one closure gate.
+
+The full M2 exit audit is recorded in `M2_CLOSURE_REVIEW.md`.
+
+Exit achieved: `GameState` is authoritative for one real domain, the migration pattern is proven, and CI enforces the new state boundary.
 
 ---
 
-## M3: Commands, conditions, effects, and costs
+## M3: Commands, conditions, effects, and costs - complete
 
-### M3A Command bus
+M3 is deliberately split into small slices so legacy command semantics are characterized before new execution authority is introduced.
 
-Create command execution with:
+### M3A0 Command behavior contract - complete
 
-- typed command ID/payload;
-- validation;
-- success/failure result;
-- atomic mutation boundary;
-- diagnostic context.
+Freeze the legacy action lifecycle, requirement categories, cost/payment semantics, queue distinctions, and first vanilla evidence before implementing production command code.
 
-### M3B Condition engine
+M3A0 is an evidence/design-authority slice only. It does not add the command bus, condition engine, effect engine, cost engine, queue engine, a new GameState domain, or a public Mod API. See `M3A0_COMMAND_BEHAVIOR_CONTRACT.md`.
 
-Implement reusable conditions and structured failure reasons.
+### M3A1 Command contract and bus - complete
 
-Start with technology/resource/structure/trait requirements.
+The first production command primitive now provides:
 
-### M3C Effect engine
+- canonical namespaced `command` IDs using the M1 identity grammar;
+- closed inert `{ id, payload }` command envelopes;
+- detached/canonical/frozen payload validation;
+- fixed synchronous runtime registrations;
+- a shared non-executing `prepare()` path for validated command intent;
+- structured success/rejection results instead of overloaded legacy callback values;
+- deterministic command/phase contract diagnostics;
+- fail-closed async/thenable and reentrancy handling;
+- a sealed bus surface (`prepare`, `dispatch`, `has`, `ids`);
+- architecture enforcement preventing GameState/state-infrastructure imports, raw mutation authority, dynamic loading, or use of the inert M1 Registry as executable handler storage.
 
-Implement reusable state effects.
+M3A1 does not cut over vanilla gameplay and does not implement conditions, costs, effects or queues. Atomic gameplay mutation remains owned by semantic capabilities/domain services rather than the bus. See `M3A1_COMMAND_BUS.md`.
 
-### M3D Cost engine
+### M3B Condition engine - complete
 
-Migrate affordability and payment semantics from helpers such as:
+M3B now provides reusable machine-readable conditions while preserving the M3A0 distinction between availability, execution conditions, affordability and queue/prediction eligibility.
 
-- `checkCosts`;
-- `checkAffordable`;
-- `payCosts`;
-- max-affordable/queue quoting.
+The completed condition milestone includes:
 
-Support prestige/special currencies explicitly rather than hidden branches.
+- a hardened inert condition contract/evaluator foundation;
+- reusable technology, resource, structure and trait requirement primitives;
+- read-only legacy compatibility providers where authoritative state is not yet migrated;
+- representative differential evidence against legacy behavior, including DNA resource qualification;
+- cumulative architecture closure preventing conditions from acquiring mutation or payment authority.
 
-### M3E Queue command model
+M3B does not cut over vanilla gameplay and does not own affordability/payment semantics.
 
-Represent queued work as commands/work items independent of DOM action objects.
+### M3C Effect/operation planning - complete
 
-Exit: at least one real vanilla action can validate, quote, pay, mutate, and emit results without using a DOM element or directly changing legacy state.
+M3C now provides inert semantic effect planning without execution or mutation authority.
+
+The completed effect milestone includes:
+
+- the hardened explicit `EffectPlan` foundation;
+- closed `resource.grant` and `resource.consume` operations with canonical typed resource IDs and positive finite amounts;
+- exact operation-order and duplicate preservation;
+- cumulative architecture guards keeping the generic effect layer state-free, mutation-free, payment-free, presentation-free and free of first-party Evolve namespace knowledge;
+- DNA closure evidence proving the complete successful legacy mutation is `RNA -2` plus `DNA +1`, while the M3C representation is exactly one `resource.grant(evolve:resource/dna, 1)` operation;
+- post-implementation hardening proving failed direct execution is complete non-mutation and presentation qualification remains separate from effect planning.
+
+M3C deliberately adds no EffectExecutor and does not cut over vanilla gameplay. DNA's `2 RNA` payment remains M3D responsibility.
+
+### M3D Quote/cost/payment engine - complete
+
+M3D now owns the inert quote/assessment/payment-plan architecture needed to separate current affordability from durable command intent.
+
+The completed payment milestone covers:
+
+- deterministic payment quotes and affordability assessment;
+- fresh inert payment plans rather than stored authorization tokens;
+- queue-feasibility support that remains payment-side only;
+- explicit special/prestige payment families rather than hidden generic branches;
+- cumulative boundary hardening and closure evidence.
+
+Payment quotes and plans are contextual and must be recomputed when execution conditions change. M4 remains responsible for the broader calculation/modifier pipeline.
+
+### M3E Queue work-item model - complete
+
+Represent queued work as commands/work items independent of DOM action objects and overloaded action callback returns.
+
+#### M3E1 Prepared command + WorkItem foundation - complete
+
+Adds non-executing `CommandBus.prepare()` and one closed inert `{ command, remaining, unitsPerSlot }` WorkItem contract. No queue list behavior, readiness, scheduling, persistence, or vanilla cutover is introduced. See `M3E1_WORK_ITEM_FOUNDATION.md`.
+
+#### M3E2 Pure WorkQueue/list operations - complete
+
+Adds the frozen dense WorkQueue representation, safe slot accounting, explicit `never` / `adjacent` / `matching` merge policies, post-merge capacity checks, explicit normalization, whole-record and slot-chunk removal, pure reordering, and prefix-preserving capacity trimming. Review hardening pins the WorkQueue dependency closure, keeps the shared WorkItem contract queue-internal, and adds adversarial/result-shape/overflow coverage. No scheduler, readiness, payment, execution, persistence, or vanilla cutover authority is introduced. See `M3E2_WORK_QUEUE.md`.
+
+#### M3E3 Readiness and selection - complete
+
+Adds the frozen `createWorkQueueSelector()` readiness/selection boundary with transient `ready` / `waiting` / `bypass` results, explicit `ordered` / `first-ready` policies, deterministic short-circuit evaluation traces, synchronous evaluator hardening and a closed dependency set. Review hardening adds prototype-safe readiness-detail canonicalization, hostile-diagnostic sanitization, shared-identity/cycle rejection and adversarial tests. No readiness state is cached on WorkItems or WorkQueues, and no scheduler, prediction, payment, condition, execution, persistence or vanilla-cutover authority is introduced. See `M3E3_READINESS_SELECTION.md` and `M3E3_REVIEW_HARDENING.md`.
+
+#### M3E4 Evidence, hardening and closure - complete
+
+Closes M3E with executable legacy build/research queue evidence, a zero-execution `prepare -> WorkItem -> WorkQueue -> selection` integration proof, and a cumulative architecture gate that pins the four-file generic queue package, keeps it first-party-neutral, and prevents any production consumer before reviewed cutover. Command-specific admission, execution progress, reconciliation, prediction, scheduling and persistence remain deferred to their owning later milestones. See `M3E4_QUEUE_CLOSURE.md`.
+
+M3E is closed without modifying vanilla build/research gameplay. M3F and M3G are closed; M4A is next.
+
+### M3F First real vanilla cutover - complete
+
+Cut over one bounded vanilla action end to end through the new command architecture. `evolution.dna` is the first selected evidence vertical because its mutation is small while its legacy availability, execution, affordability, capacity, and return-value semantics are usefully distinct.
+
+The cutover must validate, quote/pay where applicable, mutate authoritative state, and return structured results without making UI code the gameplay authority.
+
+#### M3F1 Atomic resource commit - complete
+
+Adds the narrow synchronous resource-plan commit executor and bounded Evolve legacy resource write capability needed to settle reviewed resource payment/effect plans atomically while resource authority remains temporarily in legacy state. The boundary is semantic rather than an arbitrary legacy-state writer and retains M6B as its removal target. See `M3F1_ATOMIC_RESOURCE_COMMIT.md`.
+
+#### M3F2 DNA command - complete
+
+Adds `evolve:command/evolution/dna` as the first first-party command registration. It preserves the DNA execution/presentation distinction, represents the 2 RNA payment through M3D, represents the 1 DNA grant through M3C, and delegates the combined mutation to M3F1 atomic resource settlement. The registration remains independent of `global`, DOM/UI, queue authority and raw mutation. See `M3F2_DNA_COMMAND.md` and `M3F2_REVIEW_HARDENING.md`.
+
+#### M3F3 Vanilla DNA live cutover - complete
+
+Cuts the real `actions.evolution.dna.action()` callback over to the reviewed command path through a tiny application composition root. The legacy callback no longer owns RNA/DNA checks or mutation; it only dispatches the command and preserves the historical `false` return expected by legacy control flow. Differential coverage retains a frozen pre-cutover oracle, production composition follows live `setGlobal()` rebinding, and architecture fitness prevents direct mutation or swallowed contract failures from returning to the shim. See `M3F3_DNA_LIVE_CUTOVER.md`.
+
+#### M3F4 Cutover proof and closure - complete
+
+Reconciles the first live cutover as a complete vertical, including the real-browser Vue-reactive resource compatibility gap, cumulative architecture ratchets, and final CI/build/browser proof. See `M3F4_CUTOVER_CLOSURE.md`.
+
+### M3G Hardening and closure - complete
+
+Audits the complete M3 path for atomicity, failure semantics, boundary ownership, diagnostics, legacy compatibility and architecture regressions. M3G adds a cumulative whole-M3 architecture gate, extends the architecture report with command-architecture state, and proves stale-state settlement plus rollback behavior through the production composition boundary. See `M3_CLOSURE_REVIEW.md`.
+
+Exit achieved: at least one real vanilla action validates, checks execution conditions, constructs fresh payment/effect plans, mutates through atomic settlement, and emits structured results through the new engine without using a DOM element as gameplay authority or leaving mutation authority in the legacy callback.
 
 ---
 
 ## M4: Calculation and modifier engine
 
-### M4A Calculation context and trace
+### M4A Calculation context and trace - next
 
 Define named calculations with explicit inputs and traceable outputs.
 
@@ -325,7 +416,7 @@ This is intentionally a long milestone family. Each slice follows:
 
 ### M6A Achievements, feats, statistics
 
-A comparatively clean starting content family.
+A comparatively clean starting content family. M2 already proved authoritative achievement-state migration; M6A expands the broader achievement/feat/statistics content family onto the later command/calculation/simulation contracts rather than repeating the M2 state-foundation work.
 
 ### M6B Resources, crafting, trade
 

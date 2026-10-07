@@ -12,12 +12,22 @@ import {
     atrack,
     callback_queue,
     active_rituals,
+    message_logs,
+    message_filters,
     webWorker,
     intervals
 } from '../../src/vars.js';
 import '../../src/locale.js';
-import '../../src/achieve.js';
-import { modRes, loopTimers } from '../../src/functions.js';
+import { achievementStateSnapshot } from '../../src/legacy/bridge/achievement-state-adapter.mjs';
+import {
+    achievements,
+    unlockAchieve,
+    checkAchievements,
+    universeLevel,
+    universeAffix,
+    alevel
+} from '../../src/achieve.js';
+import { modRes, loopTimers, adjustCosts } from '../../src/functions.js';
 import '../../src/races.js';
 import '../../src/resources.js';
 import '../../src/jobs.js';
@@ -27,6 +37,7 @@ import {
     actions,
     checkCosts,
     payCosts,
+    checkAffordable,
     checkTechQualifications,
     checkTechRequirements
 } from '../../src/actions.js';
@@ -86,8 +97,36 @@ function numericCosts(costs){
     return result;
 }
 
+function evaluatedCosts(costs, offset = 0){
+    const result = {};
+    Object.keys(costs).forEach(resource => {
+        const value = costs[resource];
+        const evaluated = typeof value === 'function' ? value(offset) : value;
+        result[resource] = evaluated && typeof evaluated === 'object'
+            ? clone(evaluated)
+            : evaluated;
+    });
+    return result;
+}
+
+function actionDefinition(group, id){
+    const definition = actions[group] && actions[group][id];
+    if (!definition){
+        throw new Error(`Unknown legacy action: ${group}.${id}`);
+    }
+    return definition;
+}
+
 function clearObject(object){
     Object.keys(object).forEach(key => delete object[key]);
+}
+
+function resetMessageLogs(){
+    clearObject(message_logs);
+    message_logs.view = 'all';
+    message_filters.forEach(filter => {
+        message_logs[filter] = [];
+    });
 }
 
 let simulationModule = null;
@@ -114,6 +153,7 @@ function installLegacyState(state){
     [power_generated, p_on, support_on, int_on, gal_on, spire_on, active_rituals, intervals]
         .forEach(clearObject);
 
+    resetMessageLogs();
     callback_queue.clear();
     atrack.t = 0;
 
@@ -148,8 +188,44 @@ function canAfford(costs){
     return checkCosts(numericCosts(costs));
 }
 
+function canAffordMax(costs){
+    return checkAffordable({ cost: numericCosts(costs) }, true, true);
+}
+
 function pay(costs){
     return payCosts({}, numericCosts(costs));
+}
+
+function rawActionCosts(group, id, offset = 0){
+    const definition = actionDefinition(group, id);
+    return evaluatedCosts(definition.cost || {}, offset);
+}
+
+function adjustedActionCosts(group, id, offset = 0){
+    const definition = actionDefinition(group, id);
+    return evaluatedCosts(adjustCosts(definition, offset), offset);
+}
+
+function adjustedSyntheticCosts(costs, offset = 0){
+    const definition = { cost: numericCosts(costs) };
+    return evaluatedCosts(adjustCosts(definition, offset), offset);
+}
+
+function actionAffordable(group, id, options = {}){
+    const definition = actionDefinition(group, id);
+    return checkAffordable(
+        definition,
+        options.max === true,
+        options.raw === true
+    );
+}
+
+function executeAction(group, id, options = {}){
+    const definition = actionDefinition(group, id);
+    if (typeof definition.action !== 'function'){
+        throw new Error(`Legacy action has no executable action callback: ${group}.${id}`);
+    }
+    return definition.action({ isQueue: options.isQueue === true });
 }
 
 function technologyRequirements(id, predictionList){
@@ -169,10 +245,7 @@ function technologyDefinition(id){
 }
 
 function actionCondition(group, id){
-    const definition = actions[group] && actions[group][id];
-    if (!definition){
-        throw new Error(`Unknown legacy action: ${group}.${id}`);
-    }
+    const definition = actionDefinition(group, id);
     return definition.condition ? definition.condition() : true;
 }
 
@@ -181,6 +254,39 @@ function eventEffect(id){
         throw new Error(`Unknown legacy event: ${id}`);
     }
     return events[id].effect();
+}
+
+function unlockAchievement(id, small, rank, universe){
+    return unlockAchieve(id, small, rank, universe);
+}
+
+function checkAchievementProgress(){
+    return checkAchievements();
+}
+
+function achievementIds(){
+    return Object.keys(achievements).sort();
+}
+
+function achievementUniverseLevel(universe){
+    return universeLevel(universe);
+}
+
+function achievementUniverseAffix(universe){
+    return universeAffix(universe);
+}
+
+function achievementRankCap(){
+    return alevel();
+}
+
+function authoritativeAchievementState(){
+    return achievementStateSnapshot();
+}
+
+function rebindAchievementState(){
+    setGlobal(global);
+    return global;
 }
 
 function hydrateGarrisonDefaults(){
@@ -274,12 +380,26 @@ globalThis.__EVOLVE_LEGACY_TEST_API__ = {
     pristineLegacyState,
     applyResourceDelta,
     canAfford,
+    canAffordMax,
     pay,
+    rawActionCosts,
+    adjustedActionCosts,
+    adjustedSyntheticCosts,
+    actionAffordable,
+    executeAction,
     technologyRequirements,
     technologyQualifies,
     technologyDefinition,
     actionCondition,
     eventEffect,
+    unlockAchievement,
+    checkAchievementProgress,
+    achievementIds,
+    achievementUniverseLevel,
+    achievementUniverseAffix,
+    achievementRankCap,
+    authoritativeAchievementState,
+    rebindAchievementState,
     hydrateSimulationState,
     runGameLoops,
     transientSimulationState,

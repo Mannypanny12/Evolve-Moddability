@@ -10,6 +10,7 @@ import { jobScale } from './jobs.js';
 import { templeCount } from './actions.js';
 import { astrologySign, astroVal } from './seasons.js';
 import { warhead } from './resets.js';
+import { hasLegacyAchievement, legacyAchievementRank } from './legacy/bridge/achievement-state-reader.mjs';
 
 // Sets up government in civics tab
 export function defineGovernment(define){
@@ -444,8 +445,8 @@ function drawGovModal(){
                     if (global.race['unorganized']){
                         time = Math.round(time * (1 + traits.unorganized.vars()[0] / 100));
                     }
-                    if (global.stats.achieve['anarchist']){
-                        time = Math.round(time * (1 - (global.stats.achieve['anarchist'].l / 10)));
+                    if (hasLegacyAchievement('anarchist')){
+                        time = Math.round(time * (1 - (legacyAchievementRank('anarchist') / 10)));
                     }
                     if (global.race['lawless']){
                         time = Math.round(time * ((100 - traits.lawless.vars()[0]) / 100));
@@ -2306,7 +2307,7 @@ export function armyRating(val,type,wound,analysis){
                 boost += traits.psychic.vars()[3] / 100;
             }
             if (global.tech.psychic >= 4 && global.race.psychicPowers['channel']){
-                let rank = global.stats.achieve['nightmare'] && global.stats.achieve.nightmare['mg'] ? global.stats.achieve.nightmare.mg : 0;
+                let rank = hasLegacyAchievement('nightmare') && legacyAchievementRank('nightmare', 'mg') ? legacyAchievementRank('nightmare', 'mg') : 0;
                 boost += +(traits.psychic.vars()[3] / 50000 * rank * global.race.psychicPowers.channel.assault).toFixed(3);
             }
             army *= 1 + boost;
