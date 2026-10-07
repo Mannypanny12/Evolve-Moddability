@@ -50,7 +50,7 @@ export function createEvolveLegacyMappingCatalog(){
         canonicalId: 'evolve:resource/dna',
         introducedIn: 'M3B3',
         removeBy: 'M6B',
-        stateSemantics: 'Legacy runtime state bucket for DNA used by the bounded M3 condition compatibility bridge.',
+        stateSemantics: 'Legacy DNA runtime state used by bounded M3 condition reads and M3F atomic resource settlement until authoritative resource migration.',
         sourceLocations: ['src/actions.js', 'src/resources.js', 'src/vars.js'],
     });
 
@@ -62,7 +62,7 @@ export function createEvolveLegacyMappingCatalog(){
         canonicalId: 'evolve:resource/rna',
         introducedIn: 'M3B3',
         removeBy: 'M6B',
-        stateSemantics: 'Legacy runtime state bucket for RNA used by the bounded M3 condition compatibility bridge.',
+        stateSemantics: 'Legacy RNA runtime state used by bounded M3 condition reads and M3F atomic resource settlement until authoritative resource migration.',
         sourceLocations: ['src/actions.js', 'src/resources.js', 'src/vars.js'],
     });
 
