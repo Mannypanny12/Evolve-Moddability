@@ -58,6 +58,18 @@ The existing M3B3 and M3F1 fitness allowlists were tightened to admit only the n
 
 The baseline workflow now preserves full test, architecture, and browser command output as always-uploaded artifacts while retaining the exact guarded `npm test`, `npm run test:architecture`, and `npm run test:browser` execution contracts. This was used to diagnose the live browser failure without weakening assertions or guessing from abbreviated annotations.
 
+## Post-closure review hardening
+
+A second deep review after the initial M3F4 closure found no new gameplay-semantics defect, but it did find three justified closure/process hardening items and fixed all three:
+
+1. **The Vue compatibility exception was broader than necessary.** The reviewed helper now accepts only the exact resource fields used by this boundary (`amount`, `max`, and `display`) and additionally pins the expected writable/configurable Vue observer data-descriptor shape. Dedicated negative controls reject unrelated accessors and weakened/forged observer descriptors. The real-browser DNA proof remains green with the narrower rule.
+2. **Repository status authority had drifted behind the implementation.** `ROADMAP.md` and `BACKLOG.md` still described M3F4 as next even after M3F4 had closed, and the backlog had also lost the later-added `CommandBus.prepare()` surface from its M3A1 summary. The status documents are corrected and `m3f4-status-doc-fitness.cjs` now machine-checks M3F closed / M3G next markers plus the `prepare()` contract so this class of closure drift cannot silently recur.
+3. **The repeated late-M3 stalls had a workflow pattern.** `EXECUTION_PROTOCOL.md` now requires a fixed starting SHA and dedicated slice branch, review-before-edit, targeted proof before full CI, explicit cumulative-architecture impact checks, early real-runtime/browser proof for legacy/Vue/platform boundaries, final documentation closure, and one final exact-head CI run before starting the next slice.
+
+The review also rechecked two suspicious-looking semantics and confirmed they are intentional legacy parity rather than bugs: M3F1 capacity clamping for a debit matches legacy `modRes(..., true)`, and DNA correctly does not use M3D's broader current-affordability assessment as execution authorization because the legacy direct action only gates on current RNA holdings plus DNA capacity.
+
+This review does not begin M3G and adds no second gameplay migration, new queue authority, new engine state domain, or broader executor.
+
 ## What M3F4 deliberately does not do
 
 M3F4 does not:
