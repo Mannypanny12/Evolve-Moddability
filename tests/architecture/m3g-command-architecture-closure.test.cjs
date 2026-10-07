@@ -10,9 +10,16 @@ const {
     REVIEWED_COMMAND_ID,
     REVIEWED_COMMAND,
     REVIEWED_RUNTIME,
+    REVIEWED_COMMAND_BUS,
+    REVIEWED_CONDITION_BOUNDARY,
+    REVIEWED_PAYMENT_BOUNDARY,
+    REVIEWED_EFFECT_BOUNDARY,
+    REVIEWED_QUEUE_MODEL,
     REVIEWED_EXECUTION_AUTHORITY,
     REVIEWED_LEGACY_WRITE_CAPABILITY,
+    LEGACY_WRITE_REMOVAL_TARGET,
     analyzeGenericM3Dependency,
+    queueAuthorityViolations,
     m3ArchitectureTestCoverageViolations,
     prerequisiteViolations,
     scanM3GCommandArchitecture,
@@ -27,10 +34,24 @@ test('M3G whole-M3 architecture closure composes all reviewed M3 boundaries', as
     assert.deepEqual(result.summary.reviewedLiveCommandIds, [REVIEWED_COMMAND_ID]);
     assert.deepEqual(result.summary.reviewedCommandModules, [REVIEWED_COMMAND]);
     assert.deepEqual(result.summary.productionRuntimes, [REVIEWED_RUNTIME]);
+    assert.deepEqual(result.summary.semanticBoundaries, {
+        commandBus: REVIEWED_COMMAND_BUS,
+        conditions: REVIEWED_CONDITION_BOUNDARY,
+        payments: REVIEWED_PAYMENT_BOUNDARY,
+        effects: REVIEWED_EFFECT_BOUNDARY,
+        queueModel: REVIEWED_QUEUE_MODEL,
+        settlement: REVIEWED_EXECUTION_AUTHORITY,
+    });
     assert.deepEqual(result.summary.executionAuthorities, [REVIEWED_EXECUTION_AUTHORITY]);
     assert.deepEqual(result.summary.legacyWriteCapabilities, [REVIEWED_LEGACY_WRITE_CAPABILITY]);
+    assert.deepEqual(result.summary.legacyCompatibilityDebt, [{
+        capability: REVIEWED_LEGACY_WRITE_CAPABILITY,
+        removalTarget: LEGACY_WRITE_REMOVAL_TARGET,
+    }]);
+    assert.equal(result.summary.queueAuthority, 'inert-no-production-consumers');
     assert.equal(result.summary.queueProductionConsumerCount, 0);
     assert.deepEqual(result.summary.queueProductionConsumers, []);
+    assert.equal(result.summary.queueAuthorityViolationCount, 0);
     assert.deepEqual(result.summary.prerequisiteViolationCounts, {
         command: 0,
         condition: 0,
@@ -69,6 +90,19 @@ test('M3G cross-layer ownership rejects first-party content identity inside gene
             'src/engine/effects/example.mjs'
         ),
         ['src/engine/effects/example.mjs: generic M3 engine packages may not embed first-party Evolve content IDs']
+    );
+});
+
+test('M3G queue authority rejects production WorkQueue consumers before reviewed cutover', () => {
+    assert.deepEqual(
+        queueAuthorityViolations([
+            'src/application/evolve/example.mjs',
+            'src/legacy/bridge/example.mjs',
+        ]),
+        [
+            'M3G queue authority: src/application/evolve/example.mjs: production code may not consume WorkQueue before its reviewed later cutover',
+            'M3G queue authority: src/legacy/bridge/example.mjs: production code may not consume WorkQueue before its reviewed later cutover',
+        ]
     );
 });
 
