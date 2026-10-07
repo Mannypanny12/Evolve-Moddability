@@ -30,6 +30,8 @@ const UPWARD_DEPENDENCY_ROOTS = Object.freeze([
     'src/legacy/',
     'src/platform/',
 ]);
+const M3_ARCHITECTURE_GATE_PATTERN = /^m3.*\.cjs$/;
+const ARCHITECTURE_TEST_SUFFIX = '.test.cjs';
 
 function normalize(value){
     return value.split(path.sep).join('/');
@@ -115,6 +117,80 @@ function productionQueueConsumers(root){
     return [...new Set(consumers)].sort();
 }
 
+function readM3ArchitectureScriptEntries(script){
+    if (typeof script !== 'string') return [];
+    const entries = [];
+    for (const rawCommand of script.split('&&')){
+        const command = rawCommand.trim();
+        const match = /^node\s+tests\/architecture\/(m3[^\s]+\.cjs)$/.exec(command);
+        if (match) entries.push(match[1]);
+    }
+    return entries;
+}
+
+function m3ArchitectureTestCoverageViolations(root){
+    const violations = [];
+    const architectureRoot = path.join(root, 'tests', 'architecture');
+    const packagePath = path.join(root, 'package.json');
+
+    if (!fs.existsSync(architectureRoot)){
+        return ['tests/architecture: M3 architecture test directory is missing'];
+    }
+    if (!fs.existsSync(packagePath)){
+        return ['package.json: package manifest is missing'];
+    }
+
+    let packageJson;
+    try {
+        packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+    }
+    catch {
+        return ['package.json: package manifest could not be parsed'];
+    }
+
+    const architectureScript = packageJson
+        && packageJson.scripts
+        && packageJson.scripts['test:architecture'];
+    if (typeof architectureScript !== 'string' || architectureScript.trim().length === 0){
+        return ['package.json: scripts.test:architecture must be a non-empty command string'];
+    }
+
+    const directGates = fs.readdirSync(architectureRoot, { withFileTypes: true })
+        .filter(entry => entry.isFile())
+        .map(entry => entry.name)
+        .filter(name => M3_ARCHITECTURE_GATE_PATTERN.test(name) && !name.endsWith(ARCHITECTURE_TEST_SUFFIX))
+        .sort();
+    const directGateSet = new Set(directGates);
+    const scriptEntries = readM3ArchitectureScriptEntries(architectureScript);
+    const scriptEntryCounts = new Map();
+    for (const entry of scriptEntries){
+        scriptEntryCounts.set(entry, (scriptEntryCounts.get(entry) || 0) + 1);
+    }
+
+    for (const gate of directGates){
+        const count = scriptEntryCounts.get(gate) || 0;
+        if (count === 0){
+            violations.push(`tests/architecture/${gate}: direct M3 architecture gate is missing from scripts.test:architecture`);
+        }
+        else if (count > 1){
+            violations.push(`tests/architecture/${gate}: direct M3 architecture gate appears ${count} times in scripts.test:architecture`);
+        }
+
+        const wrapper = gate.replace(/\.cjs$/, ARCHITECTURE_TEST_SUFFIX);
+        if (!fs.existsSync(path.join(architectureRoot, wrapper))){
+            violations.push(`tests/architecture/${gate}: direct M3 architecture gate is missing npm-test wrapper ${wrapper}`);
+        }
+    }
+
+    for (const entry of [...scriptEntryCounts.keys()].sort()){
+        if (!directGateSet.has(entry)){
+            violations.push(`package.json: scripts.test:architecture references stale or missing M3 gate tests/architecture/${entry}`);
+        }
+    }
+
+    return violations.sort();
+}
+
 function prerequisiteViolations(prerequisites){
     return [
         ...prefixed('M3A command prerequisite', prerequisites.command),
@@ -137,10 +213,12 @@ async function scanM3GCommandArchitecture(root){
         cutover: cutover.violations,
     };
     const crossLayer = crossLayerOwnershipViolations(root);
+    const architectureTestCoverage = m3ArchitectureTestCoverageViolations(root);
     const queueConsumers = productionQueueConsumers(root);
     const violations = [
         ...prerequisiteViolations(prerequisites),
         ...prefixed('cross-layer ownership', crossLayer),
+        ...prefixed('architecture-test coverage', architectureTestCoverage),
     ];
 
     return {
@@ -162,6 +240,7 @@ async function scanM3GCommandArchitecture(root){
                 cutover: prerequisites.cutover.length,
             },
             crossLayerViolationCount: crossLayer.length,
+            architectureTestCoverageViolationCount: architectureTestCoverage.length,
             violationCount: violations.length,
         },
         violations: [...new Set(violations)].sort(),
@@ -191,6 +270,8 @@ module.exports = {
     analyzeGenericM3Dependency,
     crossLayerOwnershipViolations,
     productionQueueConsumers,
+    readM3ArchitectureScriptEntries,
+    m3ArchitectureTestCoverageViolations,
     prerequisiteViolations,
     scanM3GCommandArchitecture,
 };
