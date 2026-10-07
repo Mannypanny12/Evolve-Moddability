@@ -118,7 +118,14 @@ test('M3F4 production runtime still rejects unmarked resource accessors', async 
 
     assert.throws(
         () => runtimeModule.dispatchEvolutionDnaCommand(),
-        error => error && error.name === 'EngineContractError' && error.code === 'INVALID_LEGACY_CONDITION_STATE'
+        error => error
+            && error.name === 'EngineContractError'
+            && error.code === 'CONDITION_READ_FAILURE'
+            && error.details
+            && error.details.readerCauseCode === 'INVALID_LEGACY_CONDITION_STATE'
+            && error.details.conditionKind === 'resource.below_capacity'
+            && error.details.commandId === 'evolve:command/evolution/dna'
+            && error.details.phase === 'execute'
     );
     assert.equal(state.resource.RNA.amount, 2);
     assert.equal(state.resource.DNA.amount, 0);
