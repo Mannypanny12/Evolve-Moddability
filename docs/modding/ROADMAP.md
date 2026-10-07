@@ -291,9 +291,9 @@ Adds the frozen `createWorkQueueSelector()` readiness/selection boundary with tr
 
 Closes M3E with executable legacy build/research queue evidence, a zero-execution `prepare -> WorkItem -> WorkQueue -> selection` integration proof, and a cumulative architecture gate that pins the four-file generic queue package, keeps it first-party-neutral, and prevents any production consumer before reviewed cutover. Command-specific admission, execution progress, reconciliation, prediction, scheduling and persistence remain deferred to their owning later milestones. See `M3E4_QUEUE_CLOSURE.md`.
 
-M3E is closed without modifying vanilla build/research gameplay. M3F is the active milestone.
+M3E is closed without modifying vanilla build/research gameplay. M3F is closed; M3G is the next milestone.
 
-### M3F First real vanilla cutover
+### M3F First real vanilla cutover - complete
 
 Cut over one bounded vanilla action end to end through the new command architecture. `evolution.dna` is the first selected evidence vertical because its mutation is small while its legacy availability, execution, affordability, capacity, and return-value semantics are usefully distinct.
 
@@ -311,11 +311,13 @@ Adds `evolve:command/evolution/dna` as the first first-party command registratio
 
 Cuts the real `actions.evolution.dna.action()` callback over to the reviewed command path through a tiny application composition root. The legacy callback no longer owns RNA/DNA checks or mutation; it only dispatches the command and preserves the historical `false` return expected by legacy control flow. Differential coverage retains a frozen pre-cutover oracle, production composition follows live `setGlobal()` rebinding, and architecture fitness prevents direct mutation or swallowed contract failures from returning to the shim. See `M3F3_DNA_LIVE_CUTOVER.md`.
 
-#### M3F4 Cutover proof and closure - next
+#### M3F4 Cutover proof and closure - complete
 
-Reconcile the first live cutover as a complete vertical: confirm downward architecture ratchets, run the complete CI/build/browser proof on the final M3F head, close any integration-only gaps exposed by production composition, and record M3F closure without broadening into M3G's whole-milestone audit.
+Closes the first live vertical with production-composition structured-result proof, a cumulative M3F architecture gate, downward legacy-authority ratchet evidence, explicit M6B lifecycle metadata for the temporary RNA/DNA bridge, and a real built-Chrome proof that clicks DNA and observes RNA 2 -> 0 / DNA 0 -> 1. The browser proof exposed and closed the Vue 2 observed-resource accessor gap through a narrowly reviewed bridge-local compatibility helper while arbitrary accessors remain fail-closed. See `M3F4_CUTOVER_CLOSURE.md`.
 
-### M3G Hardening and closure
+M3F is closed. `evolution.dna` is the first real vanilla action whose gameplay authority runs through the command/condition/payment/effect/atomic-settlement architecture while the legacy edge preserves its historical presentation and callback protocol.
+
+### M3G Hardening and closure - next
 
 Audit the complete M3 path for atomicity, failure semantics, boundary ownership, diagnostics, legacy compatibility, and architecture regressions. Extend CI/fitness guards where needed and record the M3 closure review.
 
