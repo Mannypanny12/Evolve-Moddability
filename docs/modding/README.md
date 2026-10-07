@@ -42,9 +42,9 @@ engine
 
 ## Documents
 
-Start with [CURRENT_ARCHITECTURE.md](CURRENT_ARCHITECTURE.md) when you need to know which document or machine-enforced contract is authoritative **now**. Slice documents remain migration history; milestone closure documents win when later work supersedes an earlier slice description.
+Start with [CURRENT_ARCHITECTURE.md](CURRENT_ARCHITECTURE.md) when you need to know which document or machine-enforced contract is authoritative **now**. Slice documents remain migration history; milestone closure documents and later final-review hardening records win when they supersede an earlier slice description.
 
-- [CURRENT_ARCHITECTURE.md](CURRENT_ARCHITECTURE.md): compact authority index, current dependency direction, and M0-M2 contract map.
+- [CURRENT_ARCHITECTURE.md](CURRENT_ARCHITECTURE.md): compact authority index, current dependency direction, and M0-M3 contract map.
 - [FULL_REFACTOR_AUDIT.md](FULL_REFACTOR_AUDIT.md): code-driven architectural audit and migration implications.
 - [ARCHITECTURE.md](ARCHITECTURE.md): target engine architecture and dependency rules.
 - [ROADMAP.md](ROADMAP.md): staged full-refactor roadmap.
@@ -69,8 +69,10 @@ Start with [CURRENT_ARCHITECTURE.md](CURRENT_ARCHITECTURE.md) when you need to k
 - [M2E2_MUTATION_BOUNDARY.md](M2E2_MUTATION_BOUNDARY.md): write-capability confinement and semantic mutation surfaces.
 - [M2E3_SELECTOR_STATE_DEPENDENCIES.md](M2E3_SELECTOR_STATE_DEPENDENCIES.md): semantic read surfaces and state-layer dependency DAG.
 - [M2_CLOSURE_REVIEW.md](M2_CLOSURE_REVIEW.md): final integrated M2 exit architecture and closure gate.
+- [M3_CLOSURE_REVIEW.md](M3_CLOSURE_REVIEW.md): integrated M3 command/condition/effect/payment/queue/first-cutover architecture at milestone exit.
+- [M3_FINAL_REVIEW_HARDENING.md](M3_FINAL_REVIEW_HARDENING.md): full post-closure M3 audit, test-manifest hardening, architecture-report versioning, and cross-milestone review.
 
-Older slice-specific M2 design and review-hardening notes remain useful migration history. `M2_CLOSURE_REVIEW.md` is the authority for the combined state of M2 at milestone exit.
+Older slice-specific M2 and M3 design/review-hardening notes remain useful migration history. `M2_CLOSURE_REVIEW.md` remains the combined M2 authority. For M3, read `M3_CLOSURE_REVIEW.md` together with the later `M3_FINAL_REVIEW_HARDENING.md` audit.
 
 ## Non-goals for early milestones
 
