@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - m3-milestone-test-site
   workflow_dispatch:
 
 permissions:
