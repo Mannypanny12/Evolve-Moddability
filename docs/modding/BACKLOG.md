@@ -288,11 +288,26 @@ Closed the effect-planning layer after implementation and hardening:
 
 M3C does not execute effects or cut over vanilla gameplay. RNA payment remains reserved for M3D.
 
-### M3D - Quote/cost/payment engine - next
+### M3D - Quote/cost/payment engine - complete
 
-Define the quote, affordability and payment-planning contracts while preserving the M3A0 distinction between current affordability, queue/capacity feasibility, pseudo-cost requirements, adjusted costs and actual consumptive payment.
+The quote/payment milestone is complete: deterministic quotes, current-affordability assessment, inert payment plans, explicit special/prestige payment families, and closure hardening are in place. Quotes/plans remain contextual rather than durable authorization.
 
-DNA's `2 RNA` price is the first simple evidence vertical; special legacy payment families such as Knowledge, prestige currencies, Supply and Species must remain explicit rather than being forced into generic resource effects.
+### M3E - Queue work-item model - complete
+
+The generic queue package is complete through prepared commands, inert WorkItems, pure WorkQueue operations, transient readiness/selection, legacy queue evidence, and cumulative architecture closure. It remains deliberately free of scheduler/execution/persistence authority.
+
+### M3F - First real vanilla cutover - active
+
+- M3F1 atomic resource commit - complete;
+- M3F2 `evolve:command/evolution/dna` - complete;
+- M3F3 live `actions.evolution.dna.action()` cutover - complete;
+- M3F4 cutover proof and M3F closure - next.
+
+The live DNA callback now delegates gameplay authority through the command/condition/payment/effect/atomic-settlement path while retaining its historical legacy return protocol. See [M3F3_DNA_LIVE_CUTOVER.md](M3F3_DNA_LIVE_CUTOVER.md).
+
+### M3G - Whole-M3 hardening and closure - later
+
+After M3F closes, audit the complete M3 command/condition/effect/payment/queue/cutover architecture as one milestone and record the whole-M3 closure review.
 
 ## Immediate sequence
 
@@ -303,20 +318,20 @@ M1A-M1D engine kernel and seams - complete
    |
 M2A-M2E explicit state architecture - complete
    |
-M3A0-M3A1 command foundation - complete
+M3A0-M3E command/condition/effect/payment/queue foundations - complete
    |
-M3B condition engine - complete
+M3F1-M3F3 first DNA vertical - complete
    |
-M3C effect/operation planning - complete
+M3F4 cutover proof and M3F closure - next
    |
-M3D quote/cost/payment engine - next
+M3G whole-M3 hardening and closure
 ```
 
 Do not jump directly to mod loading, total conversions, or bulk content conversion. Those would lock in legacy assumptions before the engine is ready.
 
 ## Later milestones
 
-- M3D-M3G costs/payments, queues, first vanilla cutover and M3 closure;
+- M3G whole-M3 hardening and closure;
 - M4 calculation/modifier engine;
 - M5 deterministic simulation;
 - M6 vanilla migration waves;

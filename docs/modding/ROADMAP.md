@@ -291,13 +291,29 @@ Adds the frozen `createWorkQueueSelector()` readiness/selection boundary with tr
 
 Closes M3E with executable legacy build/research queue evidence, a zero-execution `prepare -> WorkItem -> WorkQueue -> selection` integration proof, and a cumulative architecture gate that pins the four-file generic queue package, keeps it first-party-neutral, and prevents any production consumer before reviewed cutover. Command-specific admission, execution progress, reconciliation, prediction, scheduling and persistence remain deferred to their owning later milestones. See `M3E4_QUEUE_CLOSURE.md`.
 
-M3E is closed without modifying vanilla build/research gameplay. M3F is next.
+M3E is closed without modifying vanilla build/research gameplay. M3F is the active milestone.
 
 ### M3F First real vanilla cutover
 
 Cut over one bounded vanilla action end to end through the new command architecture. `evolution.dna` is the first selected evidence vertical because its mutation is small while its legacy availability, execution, affordability, capacity, and return-value semantics are usefully distinct.
 
 The cutover must validate, quote/pay where applicable, mutate authoritative state, and return structured results without making UI code the gameplay authority.
+
+#### M3F1 Atomic resource commit - complete
+
+Adds the narrow synchronous resource-plan commit executor and bounded Evolve legacy resource write capability needed to settle reviewed resource payment/effect plans atomically while resource authority remains temporarily in legacy state. The boundary is semantic rather than an arbitrary legacy-state writer and retains M6B as its removal target. See `M3F1_ATOMIC_RESOURCE_COMMIT.md`.
+
+#### M3F2 DNA command - complete
+
+Adds `evolve:command/evolution/dna` as the first first-party command registration. It preserves the DNA execution/presentation distinction, represents the 2 RNA payment through M3D, represents the 1 DNA grant through M3C, and delegates the combined mutation to M3F1 atomic resource settlement. The registration remains independent of `global`, DOM/UI, queue authority and raw mutation. See `M3F2_DNA_COMMAND.md` and `M3F2_REVIEW_HARDENING.md`.
+
+#### M3F3 Vanilla DNA live cutover - complete
+
+Cuts the real `actions.evolution.dna.action()` callback over to the reviewed command path through a tiny application composition root. The legacy callback no longer owns RNA/DNA checks or mutation; it only dispatches the command and preserves the historical `false` return expected by legacy control flow. Differential coverage retains a frozen pre-cutover oracle, production composition follows live `setGlobal()` rebinding, and architecture fitness prevents direct mutation or swallowed contract failures from returning to the shim. See `M3F3_DNA_LIVE_CUTOVER.md`.
+
+#### M3F4 Cutover proof and closure - next
+
+Reconcile the first live cutover as a complete vertical: confirm downward architecture ratchets, run the complete CI/build/browser proof on the final M3F head, close any integration-only gaps exposed by production composition, and record M3F closure without broadening into M3G's whole-milestone audit.
 
 ### M3G Hardening and closure
 
