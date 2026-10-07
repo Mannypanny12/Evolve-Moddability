@@ -42,9 +42,10 @@ engine
 
 ## Documents
 
-Start with [CURRENT_ARCHITECTURE.md](CURRENT_ARCHITECTURE.md) when you need to know which document or machine-enforced contract is authoritative **now**. Slice documents remain migration history; milestone closure documents and later final-review hardening records win when they supersede an earlier slice description.
+Start with [CURRENT_ARCHITECTURE.md](CURRENT_ARCHITECTURE.md) when you need to know which document or machine-enforced contract is authoritative **now**. Slice documents remain migration history; milestone closure documents, later final-review hardening records and the cumulative retrospective win when they supersede an earlier slice description.
 
 - [CURRENT_ARCHITECTURE.md](CURRENT_ARCHITECTURE.md): compact authority index, current dependency direction, and M0-M3 contract map.
+- [M0_M3_RETROSPECTIVE_HARDENING.md](M0_M3_RETROSPECTIVE_HARDENING.md): cumulative pre-M4 re-audit of all completed milestones and cross-milestone hardening.
 - [FULL_REFACTOR_AUDIT.md](FULL_REFACTOR_AUDIT.md): code-driven architectural audit and migration implications.
 - [ARCHITECTURE.md](ARCHITECTURE.md): target engine architecture and dependency rules.
 - [ROADMAP.md](ROADMAP.md): staged full-refactor roadmap.
@@ -60,6 +61,7 @@ Start with [CURRENT_ARCHITECTURE.md](CURRENT_ARCHITECTURE.md) when you need to k
 - [M0E3_FIXTURE_HYDRATION.md](M0E3_FIXTURE_HYDRATION.md): persisted-fixture lifecycle, hydration ownership, and runtime-isolation rules.
 - [BROWSER_SMOKE.md](BROWSER_SMOKE.md): M0E4 real-browser bootstrap, fresh-game interaction, and startup-failure tripwire.
 - [M0E5_ARCHITECTURE_GUARDRAILS.md](M0E5_ARCHITECTURE_GUARDRAILS.md): protected engine boundary, legacy ratchets, dependency-cycle baseline, and future milestone CI.
+- [M0_CLOSURE_REVIEW.md](M0_CLOSURE_REVIEW.md): integrated M0 safety/reproducibility closure authority added by the pre-M4 retrospective.
 - [M1_CLOSURE_REVIEW.md](M1_CLOSURE_REVIEW.md): final M1 kernel/seam audit before state architecture began.
 - [M2A_GAME_STATE_SCHEMA.md](M2A_GAME_STATE_SCHEMA.md): GameState value, schema-version, ownership, and layer laws.
 - [M2B_STATE_STORE_SELECTORS.md](M2B_STATE_STORE_SELECTORS.md): read store, selectors, mutation authority, scopes, transactions, snapshots, and change diagnostics.
@@ -72,7 +74,7 @@ Start with [CURRENT_ARCHITECTURE.md](CURRENT_ARCHITECTURE.md) when you need to k
 - [M3_CLOSURE_REVIEW.md](M3_CLOSURE_REVIEW.md): integrated M3 command/condition/effect/payment/queue/first-cutover architecture at milestone exit.
 - [M3_FINAL_REVIEW_HARDENING.md](M3_FINAL_REVIEW_HARDENING.md): full post-closure M3 audit, test-manifest hardening, architecture-report versioning, and cross-milestone review.
 
-Older slice-specific M2 and M3 design/review-hardening notes remain useful migration history. `M2_CLOSURE_REVIEW.md` remains the combined M2 authority. For M3, read `M3_CLOSURE_REVIEW.md` together with the later `M3_FINAL_REVIEW_HARDENING.md` audit.
+Older slice-specific M2 and M3 design/review-hardening notes remain useful migration history. `M0_CLOSURE_REVIEW.md`, `M1_CLOSURE_REVIEW.md` and `M2_CLOSURE_REVIEW.md` are the combined authorities for their milestones. For M3, read `M3_CLOSURE_REVIEW.md` together with the later `M3_FINAL_REVIEW_HARDENING.md` audit. `M0_M3_RETROSPECTIVE_HARDENING.md` records the later cumulative pre-M4 verification and any cross-milestone hardening that supersedes those earlier reviews.
 
 ## Non-goals for early milestones
 
