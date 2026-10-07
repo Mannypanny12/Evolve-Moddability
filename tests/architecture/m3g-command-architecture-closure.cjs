@@ -14,8 +14,14 @@ const SOURCE_EXTENSIONS = new Set(['.js', '.mjs', '.cjs']);
 const REVIEWED_COMMAND_ID = 'evolve:command/evolution/dna';
 const REVIEWED_COMMAND = 'src/content/evolve/commands/evolution-dna.mjs';
 const REVIEWED_RUNTIME = 'src/application/evolve/evolution-dna-command-runtime.mjs';
+const REVIEWED_COMMAND_BUS = 'src/engine/commands/command-bus.mjs';
+const REVIEWED_CONDITION_BOUNDARY = 'src/engine/conditions/condition-evaluator.mjs';
+const REVIEWED_PAYMENT_BOUNDARY = 'src/engine/costs/payment-plan.mjs';
+const REVIEWED_EFFECT_BOUNDARY = 'src/engine/effects/effect-plan.mjs';
+const REVIEWED_QUEUE_MODEL = 'src/engine/queue/work-queue.mjs';
 const REVIEWED_EXECUTION_AUTHORITY = 'src/engine/execution/resource-commit.mjs';
 const REVIEWED_LEGACY_WRITE_CAPABILITY = 'src/legacy/bridge/evolve-resource-commit-adapter.mjs';
+const LEGACY_WRITE_REMOVAL_TARGET = 'M6B';
 const M3_ENGINE_ROOTS = Object.freeze([
     'src/engine/commands',
     'src/engine/conditions',
@@ -87,6 +93,11 @@ function crossLayerOwnershipViolations(root){
     for (const required of [
         REVIEWED_COMMAND,
         REVIEWED_RUNTIME,
+        REVIEWED_COMMAND_BUS,
+        REVIEWED_CONDITION_BOUNDARY,
+        REVIEWED_PAYMENT_BOUNDARY,
+        REVIEWED_EFFECT_BOUNDARY,
+        REVIEWED_QUEUE_MODEL,
         REVIEWED_EXECUTION_AUTHORITY,
         REVIEWED_LEGACY_WRITE_CAPABILITY,
     ]){
@@ -115,6 +126,12 @@ function productionQueueConsumers(root){
     return [...new Set(consumers)].sort();
 }
 
+function queueAuthorityViolations(consumers){
+    return consumers.map(
+        consumer => `M3G queue authority: ${consumer}: production code may not consume WorkQueue before its reviewed later cutover`
+    );
+}
+
 function prerequisiteViolations(prerequisites){
     return [
         ...prefixed('M3A command prerequisite', prerequisites.command),
@@ -138,9 +155,11 @@ async function scanM3GCommandArchitecture(root){
     };
     const crossLayer = crossLayerOwnershipViolations(root);
     const queueConsumers = productionQueueConsumers(root);
+    const queueAuthority = queueAuthorityViolations(queueConsumers);
     const violations = [
         ...prerequisiteViolations(prerequisites),
         ...prefixed('cross-layer ownership', crossLayer),
+        ...queueAuthority,
     ];
 
     return {
@@ -148,11 +167,27 @@ async function scanM3GCommandArchitecture(root){
             reviewedLiveCommandIds: [REVIEWED_COMMAND_ID],
             reviewedCommandModules: [REVIEWED_COMMAND],
             productionRuntimes: [REVIEWED_RUNTIME],
+            semanticBoundaries: {
+                commandBus: REVIEWED_COMMAND_BUS,
+                conditions: REVIEWED_CONDITION_BOUNDARY,
+                payments: REVIEWED_PAYMENT_BOUNDARY,
+                effects: REVIEWED_EFFECT_BOUNDARY,
+                queueModel: REVIEWED_QUEUE_MODEL,
+                settlement: REVIEWED_EXECUTION_AUTHORITY,
+            },
             executionAuthorities: [REVIEWED_EXECUTION_AUTHORITY],
             legacyWriteCapabilities: [REVIEWED_LEGACY_WRITE_CAPABILITY],
+            legacyCompatibilityDebt: [{
+                capability: REVIEWED_LEGACY_WRITE_CAPABILITY,
+                removalTarget: LEGACY_WRITE_REMOVAL_TARGET,
+            }],
             genericPackageRoots: [...M3_ENGINE_ROOTS],
+            queueAuthority: queueConsumers.length === 0
+                ? 'inert-no-production-consumers'
+                : 'production-consumers-present',
             queueProductionConsumers: queueConsumers,
             queueProductionConsumerCount: queueConsumers.length,
+            queueAuthorityViolationCount: queueAuthority.length,
             prerequisiteViolationCounts: {
                 command: prerequisites.command.length,
                 condition: prerequisites.condition.length,
@@ -185,12 +220,19 @@ module.exports = {
     REVIEWED_COMMAND_ID,
     REVIEWED_COMMAND,
     REVIEWED_RUNTIME,
+    REVIEWED_COMMAND_BUS,
+    REVIEWED_CONDITION_BOUNDARY,
+    REVIEWED_PAYMENT_BOUNDARY,
+    REVIEWED_EFFECT_BOUNDARY,
+    REVIEWED_QUEUE_MODEL,
     REVIEWED_EXECUTION_AUTHORITY,
     REVIEWED_LEGACY_WRITE_CAPABILITY,
+    LEGACY_WRITE_REMOVAL_TARGET,
     M3_ENGINE_ROOTS,
     analyzeGenericM3Dependency,
     crossLayerOwnershipViolations,
     productionQueueConsumers,
+    queueAuthorityViolations,
     prerequisiteViolations,
     scanM3GCommandArchitecture,
 };
