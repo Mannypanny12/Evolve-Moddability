@@ -2,7 +2,7 @@
 
 This is the short navigation index for the architecture that is true **now**.
 
-Slice documents remain valuable migration history, but when an older slice note conflicts with a later closure document, use the newest authority listed here.
+Slice documents remain valuable migration history, but when an older slice note conflicts with a later closure or final-review document, use the newest authority listed here.
 
 ## Milestone status
 
@@ -11,7 +11,7 @@ Slice documents remain valuable migration history, but when an older slice note 
 | M0 Safety and reproducibility | complete | `ROADMAP.md`, `M0E5_ARCHITECTURE_GUARDRAILS.md`, `TEST_STRATEGY.md` |
 | M1 Engine kernel and seams | complete | `M1_CLOSURE_REVIEW.md` |
 | M2 Explicit state architecture | complete | `M2_CLOSURE_REVIEW.md` |
-| M3 Commands, conditions, effects and costs | complete | `M3_CLOSURE_REVIEW.md` |
+| M3 Commands, conditions, effects and costs | complete | `M3_CLOSURE_REVIEW.md`, `M3_FINAL_REVIEW_HARDENING.md` |
 | M4 Calculation and modifier engine | next | `ROADMAP.md` |
 
 ## Current dependency direction
@@ -63,7 +63,7 @@ Read these when changing test/build/refactor safety:
 - `BROWSER_SMOKE.md` for real-browser startup and interaction smoke coverage.
 - `TEST_STRATEGY.md` for the complete regression strategy.
 
-The full Node suite recursively discovers every `*.test.cjs` file. Architecture gates then run as a cumulative command chain in CI.
+The full Node suite recursively discovers every `*.test.cjs` file. Architecture gates then run as a cumulative command chain in CI. M3G additionally self-audits the direct M3 architecture-test manifest so M3 gates cannot silently fall out of either test surface.
 
 ## M1 authority: engine kernel
 
@@ -112,7 +112,7 @@ For specific state contracts use:
 
 ## M3 authority: command architecture
 
-`M3_CLOSURE_REVIEW.md` is the combined authority for M3.
+Read `M3_CLOSURE_REVIEW.md` for the integrated milestone design/exit authority and `M3_FINAL_REVIEW_HARDENING.md` for the later whole-M3 audit and post-closure hardening.
 
 The first live vanilla vertical is `evolve:command/evolution/dna`:
 
@@ -149,6 +149,7 @@ Current M3 laws:
 - the application layer composes reviewed capabilities but does not reimplement gameplay semantics.
 - the legacy RNA/DNA write bridge remains temporary compatibility debt until the owning migration removes it.
 - `WorkQueue` remains deliberately non-authoritative in production at M3 exit.
+- every direct M3 architecture gate must remain represented exactly once in `test:architecture` and by an independently discovered `*.test.cjs` wrapper.
 
 ## Architecture inspector
 
@@ -158,7 +159,7 @@ Run:
 npm run inspect:architecture
 ```
 
-The versioned JSON report currently combines:
+Architecture report version 5 currently combines:
 
 - M0 legacy budgets and dependency-cycle data;
 - M1 protected-layer status and concrete engine-kernel structure;
@@ -166,7 +167,7 @@ The versioned JSON report currently combines:
 - M2C state-boundary debt;
 - M2D authority/reader migration gates;
 - M2E ownership, write-capability, selector, and dependency gates;
-- M3 command-architecture closure, including the reviewed live DNA command/runtime/settlement seams, generic package roots, queue-production-consumer count, prerequisite gate counts and cross-layer violations.
+- M3 command-architecture closure, including the reviewed live DNA command/runtime/settlement seams, generic package roots, queue-production-consumer count, prerequisite gate counts, cross-layer violations, and M3 architecture-test coverage violations.
 
 M2D3/M2D4 and the M3G closure gate expose composable scanner functions directly, so the report consumes the same rule implementations as their standalone CLI gates rather than maintaining a second architecture truth.
 
@@ -176,10 +177,10 @@ A slice design/review document describes what was true or being decided at that 
 
 When two documents appear to disagree:
 
-1. use this index to identify the current closure authority;
-2. prefer the latest milestone closure document over an earlier slice document;
+1. use this index to identify the current closure/final-review authority;
+2. prefer the latest milestone authority over an earlier slice document;
 3. prefer machine-enforced contracts/tests over stale prose;
-4. update this index, the relevant closure authority, roadmap, and backlog when a later milestone intentionally changes a permanent rule.
+4. update this index, the relevant closure/final-review authority, roadmap, and backlog when a later milestone intentionally changes a permanent rule.
 
 ## Next architectural work
 
