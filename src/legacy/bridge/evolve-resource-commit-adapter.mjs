@@ -307,6 +307,17 @@ function resourceAmount(resource){
     return finiteAmount(descriptor.value, resource.amountPath);
 }
 
+function resourceCapacity(resource){
+    const descriptor = readResourceDescriptor(resource.record, 'max', `legacy resource ${resource.resourceId}`);
+    if (descriptor === MISSING){
+        fail('INVALID_LEGACY_RESOURCE_COMMIT_STATE', 'Mapped legacy resource capacity disappeared during commit.', {
+            resourceId: resource.resourceId,
+            statePath: resource.capacityPath,
+        });
+    }
+    return capacityValue(descriptor.value, resource.capacityPath);
+}
+
 function resolveResource(root, index, resourceId){
     const mapping = index.get(resourceId);
     if (!mapping){
@@ -337,14 +348,17 @@ function resolveResource(root, index, resourceId){
         });
     }
     const amountPath = `${mapping.legacyPath}.amount`;
+    const capacityPath = `${mapping.legacyPath}.max`;
     const original = finiteAmount(amountDescriptor.value, amountPath);
     return {
         record,
         resourceId,
+        legacyPath: mapping.legacyPath,
         amountPath,
+        capacityPath,
         original,
         projected: original,
-        capacity: capacityValue(maxDescriptor.value, `${mapping.legacyPath}.max`),
+        capacity: capacityValue(maxDescriptor.value, capacityPath),
     };
 }
 
@@ -439,41 +453,84 @@ function rollbackBeforeRethrow(attempted, error){
     throw error;
 }
 
-function verifiedAmount(resource, attempted){
+function verifiedRead(attempted, read){
     try {
-        return resourceAmount(resource);
+        return read();
     }
     catch (error){
         rollbackBeforeRethrow(attempted, error);
     }
 }
 
-function failStateDrift(attempted, resourceId, phase, expected, actual){
+function failStateDrift(attempted, resourceId, phase, field, expected, actual){
     rollback(attempted);
     fail('LEGACY_RESOURCE_COMMIT_STATE_DRIFT', 'Legacy resource state changed during atomic commit.', {
         resourceId,
         phase,
+        field,
         expected,
         actual,
     });
 }
 
 function verifyRoot(readLegacyRoot, expectedRoot, attempted, resourceId, phase){
-    let root;
-    try {
-        root = currentRoot(readLegacyRoot);
-    }
-    catch (error){
-        rollbackBeforeRethrow(attempted, error);
-    }
+    const root = verifiedRead(attempted, () => currentRoot(readLegacyRoot));
     if (root !== expectedRoot){
-        rollback(attempted);
-        fail('LEGACY_RESOURCE_COMMIT_STATE_DRIFT', 'Legacy resource root changed during atomic commit.', {
+        failStateDrift(
+            attempted,
             resourceId,
             phase,
-            expected: 'same_root',
-            actual: 'different_root',
-        });
+            'root',
+            'same_root',
+            'different_root'
+        );
+    }
+}
+
+function verifyResourceState(root, resource, attempted, expectedAmount, phase){
+    const currentRecord = verifiedRead(attempted, () => {
+        const value = readLegacyPath(root, resource.legacyPath);
+        if (value === MISSING){
+            fail('INVALID_LEGACY_RESOURCE_COMMIT_STATE', 'Mapped legacy resource record disappeared during commit.', {
+                resourceId: resource.resourceId,
+                statePath: resource.legacyPath,
+            });
+        }
+        return assertPlainRecord(value, `legacy resource ${resource.resourceId}`);
+    });
+    if (currentRecord !== resource.record){
+        failStateDrift(
+            attempted,
+            resource.resourceId,
+            phase,
+            'record',
+            'same_resource_record',
+            'different_resource_record'
+        );
+    }
+
+    const amount = verifiedRead(attempted, () => resourceAmount(resource));
+    if (!Object.is(amount, expectedAmount)){
+        failStateDrift(
+            attempted,
+            resource.resourceId,
+            phase,
+            'amount',
+            expectedAmount,
+            amount
+        );
+    }
+
+    const capacity = verifiedRead(attempted, () => resourceCapacity(resource));
+    if (!Object.is(capacity, resource.capacity)){
+        failStateDrift(
+            attempted,
+            resource.resourceId,
+            phase,
+            'capacity',
+            resource.capacity,
+            capacity
+        );
     }
 }
 
@@ -483,16 +540,7 @@ function applyProjected(root, readLegacyRoot, order){
         if (Object.is(resource.original, resource.projected)) continue;
 
         verifyRoot(readLegacyRoot, root, attempted, resource.resourceId, 'before_write');
-        const current = verifiedAmount(resource, attempted);
-        if (!Object.is(current, resource.original)){
-            failStateDrift(
-                attempted,
-                resource.resourceId,
-                'before_write',
-                resource.original,
-                current
-            );
-        }
+        verifyResourceState(root, resource, attempted, resource.original, 'before_write');
 
         attempted.push(resource);
         try {
@@ -506,31 +554,13 @@ function applyProjected(root, readLegacyRoot, order){
         }
 
         verifyRoot(readLegacyRoot, root, attempted, resource.resourceId, 'after_write');
-        const written = verifiedAmount(resource, attempted);
-        if (!Object.is(written, resource.projected)){
-            failStateDrift(
-                attempted,
-                resource.resourceId,
-                'after_write',
-                resource.projected,
-                written
-            );
-        }
+        verifyResourceState(root, resource, attempted, resource.projected, 'after_write');
     }
 
     verifyRoot(readLegacyRoot, root, attempted, null, 'final');
     for (const resource of order){
         if (Object.is(resource.original, resource.projected)) continue;
-        const current = verifiedAmount(resource, attempted);
-        if (!Object.is(current, resource.projected)){
-            failStateDrift(
-                attempted,
-                resource.resourceId,
-                'final',
-                resource.projected,
-                current
-            );
-        }
+        verifyResourceState(root, resource, attempted, resource.projected, 'final');
     }
 }
 
