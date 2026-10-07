@@ -19,8 +19,9 @@ const { capabilitySurfaceHardeningViolations } = require('./m2e2-capability-surf
 const { scanDynamicEngineLoaders } = require('./m2e2-dynamic-loader-hardening.cjs');
 const { scanSelectorStateDependencies } = require('./m2e3-selector-state-dependencies-fitness.cjs');
 const { scanM2E3ReviewHardening } = require('./m2e3-selector-review-hardening.cjs');
+const { scanM3GCommandArchitecture } = require('./m3g-command-architecture-closure.cjs');
 
-const ARCHITECTURE_REPORT_VERSION = 3;
+const ARCHITECTURE_REPORT_VERSION = 4;
 
 function sortedUnique(values){
     return [...new Set(values)].sort();
@@ -116,6 +117,7 @@ async function buildArchitectureReport(root){
         scanM2E3ReviewHardening(root),
         { domainCount: selectors.summary.domainCount || 0 }
     );
+    const commandArchitecture = await scanM3GCommandArchitecture(root);
 
     const mappingModule = await import(pathToFileURL(path.join(root, 'src/legacy/bridge/evolve-mappings.mjs')).href);
     const inspectorModule = await import(pathToFileURL(path.join(root, 'src/legacy/bridge/inspector.mjs')).href);
@@ -148,6 +150,7 @@ async function buildArchitectureReport(root){
             selectors: selectors.summary,
             selectorReview: selectorReview.summary,
         },
+        commandArchitecture: commandArchitecture.summary,
         legacyMappings: mappings,
         gateViolations: {
             architecture: architecture.violations,
@@ -164,6 +167,7 @@ async function buildArchitectureReport(root){
             dynamicLoaders: dynamicLoaders.violations,
             selectorDependencies: selectors.violations,
             selectorReview: selectorReview.violations,
+            commandArchitecture: commandArchitecture.violations,
         },
     });
 }
