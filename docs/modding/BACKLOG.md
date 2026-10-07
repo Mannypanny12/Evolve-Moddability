@@ -309,6 +309,29 @@ The live DNA callback delegates gameplay authority through the command/condition
 
 The complete M3 command/condition/effect/payment/queue/cutover architecture is now audited as one milestone. M3G adds cumulative cross-layer ownership enforcement, command-architecture reporting and adversarial production-path proof for stale-state settlement, partial-write rollback and hard rollback failure. See [M3_CLOSURE_REVIEW.md](M3_CLOSURE_REVIEW.md).
 
+## M4: Calculation and modifier engine
+
+### M4A - Calculation context and trace - complete
+
+Established the generic calculation foundation:
+
+- canonical namespaced `calculation` identities;
+- closed explicit inert calculation contexts;
+- fixed synchronous input-validation/base-calculation registrations;
+- finite numerical outputs with negative-zero canonicalization;
+- shared `calculate()` / `explain()` execution with opt-in base tracing;
+- hostile-input, thenable, reentrancy and deterministic diagnostic hardening;
+- a state-free/legacy-free/first-party-neutral calculation architecture gate;
+- zero production consumers before the reviewed M4D cutover.
+
+No vanilla production behavior is migrated by M4A. See [M4A_CALCULATION_CONTEXT_TRACE.md](M4A_CALCULATION_CONTEXT_TRACE.md).
+
+### M4B - Modifier pipeline - next
+
+Add the ordered modifier pipeline on top of the M4A base-calculation/result/trace contract. M4B owns add/multiply/override/cap/floor/conditional contribution semantics plus deterministic ordering and ownership. It must not silently begin the M4C resource primitives or M4D vanilla production cutover.
+
+M4C-M4E remain as defined in [ROADMAP.md](ROADMAP.md).
+
 ## Immediate sequence
 
 ```text
@@ -324,14 +347,16 @@ M3F1-M3F4 first DNA vertical - complete
    |
 M3G whole-M3 hardening and closure - complete
    |
-M4A calculation context and trace - next
+M4A calculation context and trace - complete
+   |
+M4B modifier pipeline - next
 ```
 
-Do not jump directly to mod loading, total conversions, or bulk content conversion. Those would lock in legacy assumptions before the engine is ready.
+Do not jump directly to mod loading, total conversions, bulk content conversion, resource primitives, or a vanilla production cutover. Those would lock in assumptions before their owning slices are reviewed.
 
 ## Later milestones
 
-- M4 calculation/modifier engine;
+- M4B-M4E calculation/modifier engine;
 - M5 deterministic simulation;
 - M6 vanilla migration waves;
 - M7 persistence v2;

@@ -46,6 +46,22 @@ test('M4A calculation boundary rejects hidden runtime capabilities, mutation aut
     assert.equal(violations.some(value => value.includes('first-party evolve: identities')), true);
 });
 
+test('M4A calculation boundary rejects actual dynamic code construction without rejecting Function introspection', () => {
+    const constructedDynamicCode = ['new F', 'unction("return 1")'].join('');
+    const dynamicViolations = analyzeCalculationModule(
+        constructedDynamicCode,
+        'src/engine/calculations/probe.mjs'
+    );
+    assert.equal(dynamicViolations.some(value => value.includes('dynamic code capability')), true);
+
+    const introspection = 'const source = Function.prototype.toString.call(value);';
+    const introspectionViolations = analyzeCalculationModule(
+        introspection,
+        'src/engine/calculations/probe.mjs'
+    );
+    assert.equal(introspectionViolations.some(value => value.includes('dynamic code capability')), false);
+});
+
 test('M4A calculation boundary permits only identity, inert-data and sibling calculation imports', () => {
     const source = `
         import { EngineContractError } from '../identity.mjs';

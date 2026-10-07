@@ -12,7 +12,7 @@ Slice documents remain valuable migration history, but when an older slice note 
 | M1 Engine kernel and seams | complete | `M1_CLOSURE_REVIEW.md`, `M0_M3_RETROSPECTIVE_HARDENING.md` |
 | M2 Explicit state architecture | complete | `M2_CLOSURE_REVIEW.md`, `M0_M3_RETROSPECTIVE_HARDENING.md` |
 | M3 Commands, conditions, effects and costs | complete | `M3_CLOSURE_REVIEW.md`, `M3_FINAL_REVIEW_HARDENING.md`, `M0_M3_RETROSPECTIVE_HARDENING.md` |
-| M4 Calculation and modifier engine | next | `ROADMAP.md` |
+| M4 Calculation and modifier engine | in progress | `M4A_CALCULATION_CONTEXT_TRACE.md`, `ROADMAP.md` |
 
 ## Current dependency direction
 
@@ -34,6 +34,7 @@ generic engine semantic APIs
             +-- commands / conditions                    [M3]
             +-- costs / effects / execution              [M3]
             +-- inert queue model                        [M3]
+            +-- calculation context + base trace                [M4A]
 
 legacy bridge (temporary) may adapt legacy state to reviewed
 engine contracts, but generic engine packages never depend back
@@ -52,6 +53,9 @@ Permanent direction rules:
 - conditions remain read-only and distinct from payment/affordability.
 - effect and payment plans are inert data, not stored mutation authority.
 - `WorkQueue` remains an inert queue model at M3 exit and has no production gameplay execution consumer.
+- M4A calculations are named, synchronous finite-number computations over explicit inert inputs; the generic calculation package does not read state, runtime, platform or legacy data itself.
+- `calculate()` and `explain()` share one base-calculation path; explanation adds inert trace data rather than a second gameplay implementation.
+- `src/engine/calculations/**` has zero production consumers at M4A exit; live calculation cutover begins only in a later reviewed migration slice.
 
 ## M0 authority: safety net
 
@@ -153,6 +157,25 @@ Current M3 laws:
 - `WorkQueue` remains deliberately non-authoritative in production at M3 exit.
 - every direct M3 architecture gate must remain represented exactly once in `test:architecture` and by an independently discovered `*.test.cjs` wrapper.
 
+## M4 authority: calculation architecture
+
+`M4A_CALCULATION_CONTEXT_TRACE.md` is the current M4 authority. M4A establishes the base calculation contract only; modifier semantics remain M4B.
+
+Current M4 laws:
+
+- calculation identity reuses the canonical M1 content-ID grammar with type `calculation`;
+- contexts are closed `{ id, inputs }` inert data;
+- executable calculation registrations are fixed `{ id, validateInputs, calculateBase }` handlers rather than M1 Registry definitions;
+- base calculation output is a finite number, with `-0` normalized to `0`;
+- raw and validated inputs are detached/canonicalized/frozen and hostile shapes fail closed;
+- `calculate()` is the normal low-allocation path and returns `trace: null`;
+- `explain()` runs the same validation/base calculation and adds a frozen base trace containing validated inputs and one `before: null` / `after: value` step;
+- async/generator/class handlers, Promise/thenable leakage and nested/cross-instance evaluation are rejected;
+- the calculation package owns no state read/write authority and has no direct runtime, legacy, platform, M3 semantic-package or first-party Evolve dependency;
+- production code has no calculation-package consumer yet, so vanilla behavior remains unchanged at M4A exit.
+
+The M4A boundary and status-document gates are cumulative members of `npm run test:architecture`. The historical M3 status gate now protects M3 closure rather than owning current M4 progression markers.
+
 ## Architecture inspector
 
 Run:
@@ -161,7 +184,7 @@ Run:
 npm run inspect:architecture
 ```
 
-Architecture report version 5 currently combines:
+Architecture report version 6 currently combines:
 
 - M0 legacy budgets and dependency-cycle data;
 - M1 protected-layer status and concrete engine-kernel structure;
@@ -170,6 +193,8 @@ Architecture report version 5 currently combines:
 - M2D authority/reader migration gates;
 - M2E ownership, write-capability, selector, and dependency gates;
 - M3 command-architecture closure, including the reviewed live DNA command/runtime/settlement seams, generic package roots, queue-production-consumer count, prerequisite gate counts, cross-layer violations, and M3 architecture-test coverage violations.
+
+The report is not bumped solely for M4A because M4A adds no new report field. Its boundaries are enforced directly by the M4A architecture gates. A later calculation-architecture report extension should bump the report version when the report shape actually changes.
 
 M2D3/M2D4 and the M3G closure gate expose composable scanner functions directly, so the report consumes the same rule implementations as their standalone CLI gates rather than maintaining a second architecture truth.
 
@@ -190,6 +215,8 @@ When two documents appear to disagree:
 
 ## Next architectural work
 
-M4A is next: **Calculation context and trace**.
+M4A is complete: **Calculation context and trace**.
 
-It should build traceable named calculations on top of the existing M0-M3 safety floor without moving modifier logic into commands, conditions or the compatibility bridge. M3's first command vertical remains the proof that execution can be cleanly composed while M4 introduces the calculation/modifier substrate needed for broader production migration.
+M4B is next: **Modifier pipeline**.
+
+M4B should add deterministic modifier operations, ordering and ownership on top of the M4A base-calculation/result/trace contract. It must preserve M4A's explicit-input, state-free calculation kernel and must not prematurely begin M4C resource primitives or M4D vanilla production cutover.

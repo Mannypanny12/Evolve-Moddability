@@ -37,7 +37,6 @@ function statusDocViolations(roadmap, backlog, currentArchitecture, m3Closure, m
     requireExactlyOnce(roadmap, '#### M3F4 Cutover proof and closure - complete', ROADMAP, violations);
     requireExactlyOnce(roadmap, '### M3G Hardening and closure - complete', ROADMAP, violations);
     requireExactlyOnce(roadmap, 'See `M3_CLOSURE_REVIEW.md`.', ROADMAP, violations);
-    requireExactlyOnce(roadmap, '### M4A Calculation context and trace - next', ROADMAP, violations);
     forbid(roadmap, 'M3G is the active milestone.', ROADMAP, violations);
     forbid(roadmap, '### M3G Hardening and closure - next', ROADMAP, violations);
     forbid(roadmap, '#### M3F4 Cutover proof and closure - next', ROADMAP, violations);
@@ -48,7 +47,6 @@ function statusDocViolations(roadmap, backlog, currentArchitecture, m3Closure, m
     requireExactlyOnce(backlog, '### M3G - Whole-M3 hardening and closure - complete', BACKLOG, violations);
     requireExactlyOnce(backlog, 'M3F1-M3F4 first DNA vertical - complete', BACKLOG, violations);
     requireExactlyOnce(backlog, 'M3G whole-M3 hardening and closure - complete', BACKLOG, violations);
-    requireExactlyOnce(backlog, 'M4A calculation context and trace - next', BACKLOG, violations);
     requireExactlyOnce(backlog, 'See [M3_CLOSURE_REVIEW.md](M3_CLOSURE_REVIEW.md).', BACKLOG, violations);
     requireExactlyOnce(backlog, 'the public bus exposes only `prepare`, `dispatch`, `has`, and deterministic `ids`;', BACKLOG, violations);
     forbid(backlog, '### M3G - Whole-M3 hardening and closure - next', BACKLOG, violations);
@@ -57,13 +55,6 @@ function statusDocViolations(roadmap, backlog, currentArchitecture, m3Closure, m
 
     requireExactlyOnce(currentArchitecture, CURRENT_M3_ROW, CURRENT_ARCHITECTURE, violations);
     requireExactlyOnce(currentArchitecture, CURRENT_M3_AUTHORITY, CURRENT_ARCHITECTURE, violations);
-    requireExactlyOnce(
-        currentArchitecture,
-        '| M4 Calculation and modifier engine | next | `ROADMAP.md` |',
-        CURRENT_ARCHITECTURE,
-        violations
-    );
-    requireExactlyOnce(currentArchitecture, 'M4A is next: **Calculation context and trace**.', CURRENT_ARCHITECTURE, violations);
     forbid(currentArchitecture, '| M3 Commands, conditions, effects and costs | next |', CURRENT_ARCHITECTURE, violations);
     forbid(currentArchitecture, 'M3 begins with the command bus.', CURRENT_ARCHITECTURE, violations);
 

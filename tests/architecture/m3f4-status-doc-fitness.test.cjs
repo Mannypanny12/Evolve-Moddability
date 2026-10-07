@@ -38,19 +38,14 @@ test('M3 status-document guard accepts the intended closed-and-reviewed M3 repos
 });
 
 test('M3 status-document guard rejects stale M3G-next and M3-next authority text', () => {
-    const staleRoadmap = roadmap
-        .replace('### M3G Hardening and closure - complete', '### M3G Hardening and closure - next')
-        .replace('### M4A Calculation context and trace - next', '### M4A Calculation context and trace');
+    const staleRoadmap = roadmap.replace('### M3G Hardening and closure - complete', '### M3G Hardening and closure - next');
     const staleBacklog = backlog
         .replace('### M3G - Whole-M3 hardening and closure - complete', '### M3G - Whole-M3 hardening and closure - next')
-        .replace('M3G whole-M3 hardening and closure - complete', 'M3G whole-M3 hardening and closure - next')
-        .replace('M4A calculation context and trace - next', 'M4A calculation context and trace');
-    const staleCurrentArchitecture = currentArchitecture
-        .replace(
-            CURRENT_M3_ROW,
-            '| M3 Commands, conditions, effects and costs | next | `ROADMAP.md` |'
-        )
-        .replace('M4A is next: **Calculation context and trace**.', 'M3 begins with the command bus.');
+        .replace('M3G whole-M3 hardening and closure - complete', 'M3G whole-M3 hardening and closure - next');
+    const staleCurrentArchitecture = currentArchitecture.replace(
+        CURRENT_M3_ROW,
+        '| M3 Commands, conditions, effects and costs | next | `ROADMAP.md` |'
+    );
 
     const violations = violationsFor({
         roadmapText: staleRoadmap,
@@ -61,7 +56,6 @@ test('M3 status-document guard rejects stale M3G-next and M3-next authority text
     assert.ok(violations.some(violation => violation.includes('M3G Hardening and closure - next')));
     assert.ok(violations.some(violation => violation.includes('Whole-M3 hardening and closure - next')));
     assert.ok(violations.some(violation => violation.includes('M3 Commands, conditions, effects and costs | next')));
-    assert.ok(violations.some(violation => violation.includes('M3 begins with the command bus')));
 });
 
 test('M3 status-document guard rejects loss of the post-closure hardening authority', () => {
@@ -103,7 +97,7 @@ test('M3 status-document guard rejects loss of CommandBus.prepare documentation'
     assert.ok(violations.some(violation => violation.includes('prepare')));
 });
 
-test('M3 status-document guard requires the closure review, final review, and M4A handoff', () => {
+test('M3 status-document guard requires the closure review, final review, and historical M4A handoff', () => {
     const badClosure = m3Closure
         .replace('## M3G: integrated hardening and closure', '## M3G')
         .replace(
