@@ -317,6 +317,12 @@ function committed(){
     return Object.freeze({ status: 'committed', reason: null });
 }
 
+function clampToCapacity(resource, amount){
+    return resource.capacity === -1
+        ? amount
+        : Math.min(resource.capacity, amount);
+}
+
 function preflight(root, index, changes){
     const resolved = new Map();
     const order = [];
@@ -338,7 +344,7 @@ function preflight(root, index, changes){
                     order,
                 };
             }
-            resource.projected -= change.amount;
+            resource.projected = clampToCapacity(resource, resource.projected - change.amount);
         }
         else {
             if (resource.capacity !== -1 && resource.projected >= resource.capacity){
@@ -357,9 +363,7 @@ function preflight(root, index, changes){
                     resourceId: change.resourceId,
                 });
             }
-            resource.projected = resource.capacity === -1
-                ? next
-                : Math.min(resource.capacity, next);
+            resource.projected = clampToCapacity(resource, next);
         }
     }
     return { result: null, order };
