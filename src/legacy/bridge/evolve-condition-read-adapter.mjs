@@ -5,6 +5,7 @@ import {
     readClosedConditionObject,
 } from '../../engine/conditions/common.mjs';
 import { createEvolveLegacyMappingCatalog } from './evolve-mappings.mjs';
+import { readReviewedReactiveResourceField } from './reviewed-reactive-resource-field.mjs';
 
 const MISSING = Symbol('missing-legacy-condition-state');
 const SUPPORTED_TECHNOLOGY_MAPPING = 'evolve.technology.primitive_progression';
@@ -75,6 +76,43 @@ function readDataField(record, field, path, { required = false } = {}){
         });
     }
     return descriptor.value;
+}
+
+function readResourceField(record, field, path, { required = false } = {}){
+    let descriptor;
+    try {
+        descriptor = Object.getOwnPropertyDescriptor(record, field);
+    }
+    catch {
+        fail('INVALID_LEGACY_CONDITION_STATE', `${path}.${field} could not be inspected.`, {
+            path: `${path}.${field}`,
+        });
+    }
+    if (!descriptor){
+        if (required){
+            fail('INVALID_LEGACY_CONDITION_STATE', `${path}.${field} is required.`, {
+                path: `${path}.${field}`,
+            });
+        }
+        return MISSING;
+    }
+    if (Object.prototype.hasOwnProperty.call(descriptor, 'value')) return descriptor.value;
+
+    let reviewed;
+    try {
+        reviewed = readReviewedReactiveResourceField(record, field);
+    }
+    catch {
+        fail('INVALID_LEGACY_CONDITION_STATE', `${path}.${field} could not be safely read.`, {
+            path: `${path}.${field}`,
+        });
+    }
+    if (!reviewed){
+        fail('INVALID_LEGACY_CONDITION_STATE', `${path}.${field} must be a data field or reviewed reactive resource field.`, {
+            path: `${path}.${field}`,
+        });
+    }
+    return reviewed.value;
 }
 
 function pathSegments(legacyPath){
@@ -268,7 +306,7 @@ export function createEvolveLegacyConditionReadProvider(rawOptions){
             const record = resourceRecord(currentRoot, mapping);
             if (record === MISSING) return 0;
             return assertFiniteNumber(
-                readDataField(record, 'amount', `legacy resource ${resourceId}`, { required: true }),
+                readResourceField(record, 'amount', `legacy resource ${resourceId}`, { required: true }),
                 `${mapping.legacyPath}.amount`
             );
         },
@@ -277,7 +315,7 @@ export function createEvolveLegacyConditionReadProvider(rawOptions){
             const record = resourceRecord(currentRoot, mapping);
             if (record === MISSING) return false;
             return readLegacyPresence(
-                readDataField(record, 'display', `legacy resource ${resourceId}`),
+                readResourceField(record, 'display', `legacy resource ${resourceId}`),
                 `${mapping.legacyPath}.display`
             );
         },
@@ -286,7 +324,7 @@ export function createEvolveLegacyConditionReadProvider(rawOptions){
             const record = resourceRecord(currentRoot, mapping);
             if (record === MISSING) return 0;
             return assertNonNegativeFinite(
-                readDataField(record, 'max', `legacy resource ${resourceId}`, { required: true }),
+                readResourceField(record, 'max', `legacy resource ${resourceId}`, { required: true }),
                 `${mapping.legacyPath}.max`
             );
         },
