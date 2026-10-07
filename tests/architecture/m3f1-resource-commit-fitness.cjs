@@ -8,6 +8,7 @@ const SOURCE_EXTENSIONS = new Set(['.js', '.mjs', '.cjs']);
 const EXECUTION_ROOT = 'src/engine/execution';
 const RESOURCE_COMMIT = 'src/engine/execution/resource-commit.mjs';
 const LEGACY_ADAPTER = 'src/legacy/bridge/evolve-resource-commit-adapter.mjs';
+const REVIEWED_REACTIVE_RESOURCE_FIELD = 'src/legacy/bridge/reviewed-reactive-resource-field.mjs';
 const REVIEWED_DNA_RUNTIME = 'src/application/evolve/evolution-dna-command-runtime.mjs';
 const IDENTITY = 'src/engine/identity.mjs';
 const INERT_DATA = 'src/engine/contracts/inert-data.mjs';
@@ -120,7 +121,7 @@ function analyzeAdapterSource(source){
     for (const requiredMapping of ['evolve.resource.rna_state', 'evolve.resource.dna_state']){
         if (!source.includes(requiredMapping)) violations.push(`${relativePath}: missing reviewed mapping ${requiredMapping}`);
     }
-    const allowedImports = new Set([IDENTITY, INERT_DATA, MAPPINGS]);
+    const allowedImports = new Set([IDENTITY, INERT_DATA, MAPPINGS, REVIEWED_REACTIVE_RESOURCE_FIELD]);
     for (const reference of extractModuleReferences(source, relativePath)){
         if (reference.kind !== 'import-statement' || !reference.specifier.startsWith('.')){
             violations.push(`${relativePath}: adapter may use only reviewed static relative imports`);
