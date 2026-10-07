@@ -187,6 +187,23 @@ test('M3G settlement rejects synchronous resource drift introduced by an earlier
     assert.equal(dna.amount, 4, 'the externally introduced DNA drift must not be overwritten');
 });
 
+test('M3G settlement rolls back if an earlier write makes a later resource malformed', async () => {
+    const dna = { amount: 0, max: 100, display: true };
+    const rna = sideEffectResource({
+        amount: 10,
+        max: 100,
+        onFirstAmountWrite(){
+            dna.amount = Number.NaN;
+        },
+    });
+    const state = makeState({ rnaRecord: rna, dnaRecord: dna });
+    const dispatch = await createHarness(state);
+
+    assertExecutionContractError(dispatch, 'INVALID_LEGACY_RESOURCE_COMMIT_STATE');
+    assert.equal(rna.amount, 10, 'the earlier RNA debit must be rolled back before malformed-state failure escapes');
+    assert.equal(Number.isNaN(dna.amount), true, 'the external malformed state must not be overwritten by a stale projection');
+});
+
 test('M3G settlement rejects a live-root rebind during atomic application and rolls back the old root', async () => {
     let currentState;
     const replacementState = makeState({ rna: 50, dna: 7, dnaMax: 100 });
@@ -208,6 +225,27 @@ test('M3G settlement rejects a live-root rebind during atomic application and ro
     assert.equal(originalState.resource.DNA.amount, 0);
     assert.equal(replacementState.resource.RNA.amount, 50, 'the replacement root must remain untouched');
     assert.equal(replacementState.resource.DNA.amount, 7);
+});
+
+test('M3G settlement rolls back if the live root becomes malformed during atomic application', async () => {
+    let currentState;
+    const rna = sideEffectResource({
+        amount: 10,
+        max: 100,
+        onFirstAmountWrite(){
+            currentState = null;
+        },
+    });
+    const originalState = makeState({ rnaRecord: rna, dna: 0, dnaMax: 100 });
+    currentState = originalState;
+    const dispatch = await createHarness(originalState, {
+        readLegacyRoot: () => currentState,
+    });
+
+    assertExecutionContractError(dispatch, 'INVALID_LEGACY_RESOURCE_COMMIT_STATE');
+    assert.equal(originalState.resource.RNA.amount, 10, 'the old-root debit must be rolled back before malformed-root failure escapes');
+    assert.equal(originalState.resource.DNA.amount, 0);
+    assert.equal(currentState, null, 'the external root replacement must remain visible');
 });
 
 test('M3G partial legacy write failure rolls earlier resource changes back atomically', async () => {
