@@ -8,6 +8,7 @@ const test = require('node:test');
 require('../legacy/browser-shim.cjs');
 
 const root = path.resolve(__dirname, '../..');
+let observerDepId = 1000;
 
 let modulesPromise;
 function loadModules(){
@@ -20,12 +21,43 @@ function loadModules(){
     return modulesPromise;
 }
 
-function makeState({ rna = 2, rnaMax = 100, dna = 0, dnaMax = 100 } = {}){
+function accessorResourceRecord(values){
+    const record = {};
+    for (const [field, initial] of Object.entries(values)){
+        let value = initial;
+        Object.defineProperty(record, field, {
+            enumerable: true,
+            configurable: true,
+            get(){ return value; },
+            set(next){ value = next; },
+        });
+    }
+    return record;
+}
+
+function observedResourceRecord(values){
+    const record = accessorResourceRecord(values);
+    const observer = {
+        value: record,
+        dep: { id: observerDepId++ },
+        vmCount: 0,
+    };
+    Object.defineProperty(record, '__ob__', {
+        value: observer,
+        writable: true,
+        configurable: true,
+        enumerable: false,
+    });
+    return record;
+}
+
+function makeState({ rna = 2, rnaMax = 100, dna = 0, dnaMax = 100, reactive = false } = {}){
+    const makeResource = reactive ? observedResourceRecord : values => ({ ...values });
     return {
         stats: { achieve: {} },
         resource: {
-            RNA: { amount: rna, max: rnaMax, display: true },
-            DNA: { amount: dna, max: dnaMax, display: true },
+            RNA: makeResource({ amount: rna, max: rnaMax, display: true }),
+            DNA: makeResource({ amount: dna, max: dnaMax, display: true }),
         },
     };
 }
@@ -61,6 +93,35 @@ test('M3F4 production runtime returns the normalized structured success result a
     assertFrozenCommandResult(result);
     assert.equal(state.resource.RNA.amount, 0);
     assert.equal(state.resource.DNA.amount, 1);
+});
+
+test('M3F4 production runtime supports the reviewed reactive resource shape used by the live browser', async () => {
+    const { runtimeModule } = await loadModules();
+    const state = await installState({ rna: 2, dna: 0, dnaMax: 100, reactive: true });
+
+    assert.equal(typeof Object.getOwnPropertyDescriptor(state.resource.RNA, 'amount').get, 'function');
+    assert.equal(Object.getOwnPropertyDescriptor(state.resource.RNA, '__ob__').enumerable, false);
+
+    const result = runtimeModule.dispatchEvolutionDnaCommand();
+
+    assert.equal(result.status, 'succeeded');
+    assertFrozenCommandResult(result);
+    assert.equal(state.resource.RNA.amount, 0);
+    assert.equal(state.resource.DNA.amount, 1);
+});
+
+test('M3F4 production runtime still rejects unmarked resource accessors', async () => {
+    const { varsModule, runtimeModule } = await loadModules();
+    const state = makeState({ rna: 2, dna: 0, dnaMax: 100 });
+    state.resource.DNA = accessorResourceRecord({ amount: 0, max: 100, display: true });
+    varsModule.setGlobal(state);
+
+    assert.throws(
+        () => runtimeModule.dispatchEvolutionDnaCommand(),
+        error => error && error.name === 'EngineContractError' && error.code === 'INVALID_LEGACY_CONDITION_STATE'
+    );
+    assert.equal(state.resource.RNA.amount, 2);
+    assert.equal(state.resource.DNA.amount, 0);
 });
 
 test('M3F4 production runtime returns a structured insufficient-resource rejection without mutation', async () => {
