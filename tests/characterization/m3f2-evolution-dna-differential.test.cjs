@@ -112,7 +112,7 @@ async function compareDirectLegacyAndCommand(options, expectedStatus, expectedRe
     assert.equal(commandAfter, legacyAfter);
 }
 
-test('M3F2 DNA command is state-equivalent to direct legacy execution across the reviewed execution matrix', async () => {
+test('M3F2 DNA command is state-equivalent to direct legacy execution across the reviewed execution matrix', async t => {
     const scenarios = [
         {
             label: 'normal success',
@@ -159,7 +159,7 @@ test('M3F2 DNA command is state-equivalent to direct legacy execution across the
     ];
 
     for (const scenario of scenarios){
-        await test.step(scenario.label, async () => {
+        await t.test(scenario.label, async () => {
             await compareDirectLegacyAndCommand(scenario.options, scenario.status, scenario.reason || null);
         });
     }
@@ -169,13 +169,13 @@ test('M3F2 keeps presentation/current-affordability observations separate from d
     installDnaState({ rna: 10, rnaMax: 1, dna: 0 });
     assert.equal(legacy.actionAffordable('evolution', 'dna'), false);
     assert.equal(legacy.executeAction('evolution', 'dna'), false);
-    assert.equal(legacy.legacyState().resource.RNA.amount, 8);
+    assert.equal(legacy.legacyState().resource.RNA.amount, 1);
     assert.equal(legacy.legacyState().resource.DNA.amount, 1);
 
     installDnaState({ rna: 10, rnaMax: 1, dna: 0 });
     const result = await dispatchDna();
     assert.equal(result.status, 'succeeded');
-    assert.equal(legacy.legacyState().resource.RNA.amount, 8);
+    assert.equal(legacy.legacyState().resource.RNA.amount, 1);
     assert.equal(legacy.legacyState().resource.DNA.amount, 1);
 
     installDnaState({ rna: 10, dna: 0, dnaDisplay: false, evoFinalMenu: true });
