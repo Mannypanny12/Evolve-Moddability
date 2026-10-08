@@ -17,7 +17,7 @@ function createFixture(){
     fs.writeFileSync(path.join(fixture, 'src/engine/calculations/modifier-pipeline.mjs'), 'export function createModifierPipeline(){}\n');
     fs.writeFileSync(
         path.join(fixture, 'src/engine/calculations/calculation-engine.mjs'),
-        "import { createModifierPipeline } from './modifier-pipeline.mjs';\nconst allowed = ['registrations', 'modifiers'];\n"
+        "import { createModifierPipeline } from './modifier-pipeline.mjs';\nconst config = { allowed: ['registrations', 'modifiers'] };\n"
     );
     return fixture;
 }
