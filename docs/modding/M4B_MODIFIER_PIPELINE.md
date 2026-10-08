@@ -58,10 +58,11 @@ Rules:
 - `operation` is one of `add`, `multiply`, `override`, `cap`, or `floor`;
 - `applies` is optional and, when present, must be synchronous and return exactly `true` or `false`;
 - `operand` is synchronous and must return a finite number;
-- callbacks receive only the already validated, detached and frozen calculation inputs;
+- callbacks receive the already validated, detached and frozen calculation inputs as their sole explicit argument;
+- the engine supplies an undefined callback `thisArg`, but JavaScript bound, lexical and sloppy-function receiver semantics mean `this` is not an enforceable semantic-input boundary. Any receiver state a registration can observe has the same obligation as closure state: it may only represent immutable construction-time constants, never hidden mutable gameplay input;
 - callbacks do not receive the current intermediate calculation value;
 - Promise/thenable, async, generator and class callback forms fail closed;
-- calculation and modifier callbacks are contractually deterministic functions of explicit validated inputs plus immutable construction-time constants. Hidden mutable closure state is not a legitimate semantic input. JavaScript closure purity cannot be fully introspected by this generic runtime, so later slices that own real registrations must preserve and architecture-test this composition boundary.
+- calculation and modifier callbacks are contractually deterministic functions of explicit validated inputs plus immutable construction-time constants. Hidden mutable closure state is not a legitimate semantic input. JavaScript closure and receiver purity cannot be fully introspected by this generic runtime, so later slices that own real registrations must preserve and architecture-test this composition boundary.
 
 Canonical modifier identity is the M4B ownership anchor. M4B intentionally does not introduce the future package-loader/public-Mod-API ownership protocol.
 
@@ -185,7 +186,7 @@ M4B remains inside `src/engine/calculations/**` and inherits the M4A boundary:
 - no first-party `evolve:` identities in the generic calculation package;
 - no executable use of the inert M1 Registry.
 
-A dedicated M4B architecture gate additionally proves that the modifier pipeline is composed through the existing calculation engine, registrations remain fixed at engine construction, dynamic modifier-registration authority is absent, and production calculation consumers remain zero before M4D. The complete exported surface of `src/engine/calculations/**` is ratcheted to the reviewed M4A/M4B exports. Any new export, including an arbitrarily named authority or an export from a newly added calculation module, requires an explicit reviewed architecture-gate change. Runtime tests also pin the engine's frozen public surface to exactly `calculate`, `explain`, `has`, and `ids` even when modifiers are configured.
+A dedicated M4B architecture gate additionally proves that the modifier pipeline is composed through the existing calculation engine, registrations remain fixed at engine construction, dynamic modifier-registration authority is absent, and production calculation consumers remain zero before M4D. The complete exported surface of `src/engine/calculations/**` is ratcheted to the reviewed M4A/M4B exports. The reviewed calculation source-module set is ratcheted as well, so a newly added module requires an explicit reviewed architecture-gate change even if that module exports nothing. Any new export, including an arbitrarily named authority or an export from a newly added calculation module, likewise requires an explicit reviewed architecture-gate change. Runtime tests also pin the engine's frozen public surface to exactly `calculate`, `explain`, `has`, and `ids` even when modifiers are configured.
 
 ## Legacy relationship
 
@@ -215,13 +216,13 @@ M4B coverage includes:
 - negative-zero normalization;
 - duplicate IDs, unknown targets, invalid operations/orders;
 - hostile registration shapes;
-- detached deeply frozen callback inputs and `this === undefined`;
+- detached deeply frozen callback inputs as the sole explicit callback argument, plus a regression proving bound receiver state is separate construction-time state rather than an explicit calculation input;
 - modifier-specific diagnostic attribution;
 - reentrancy rejection and lock recovery;
 - exact frozen engine public surface with modifiers configured;
-- the reviewed calculation-package export-surface ratchet;
+- the reviewed calculation-package module-and-export surface ratchet;
 - the zero-production-consumer architecture boundary;
-- negative controls proving dynamic modifier registration and arbitrarily named/new-module exports are rejected while comments/strings do not cause false positives.
+- negative controls proving dynamic modifier registration, arbitrarily named exports, new exporting modules and new no-export modules are rejected while comments/strings do not cause false positives.
 
 ## Browser CI hardening discovered during implementation
 

@@ -118,12 +118,12 @@ test('M4B direct result construction rejects duplicate and non-deterministically
     );
 });
 
-test('M4B modifier callbacks receive detached deeply frozen validated inputs with undefined this', async () => {
+test('M4B modifier callbacks receive detached deeply frozen validated inputs as their sole explicit argument', async () => {
     const { createCalculationEngine } = await modules();
     let validatorOutput;
     let observedInputs;
-    let appliesThis;
-    let operandThis;
+    let appliesArgumentCount;
+    let operandArgumentCount;
 
     const engine = createCalculationEngine({
         registrations: [registration({
@@ -134,12 +134,12 @@ test('M4B modifier callbacks receive detached deeply frozen validated inputs wit
         })],
         modifiers: [modifier({
             applies(inputs){
-                appliesThis = this;
+                appliesArgumentCount = arguments.length;
                 observedInputs = inputs;
                 return inputs.nested.enabled;
             },
             operand(inputs){
-                operandThis = this;
+                operandArgumentCount = arguments.length;
                 assert.strictEqual(inputs, observedInputs);
                 return 2;
             },
@@ -154,8 +154,29 @@ test('M4B modifier callbacks receive detached deeply frozen validated inputs wit
     assert.notStrictEqual(observedInputs, validatorOutput);
     assert.equal(Object.isFrozen(observedInputs), true);
     assert.equal(Object.isFrozen(observedInputs.nested), true);
-    assert.equal(appliesThis, undefined);
-    assert.equal(operandThis, undefined);
+    assert.equal(appliesArgumentCount, 1);
+    assert.equal(operandArgumentCount, 1);
+});
+
+test('M4B does not treat JavaScript bound receiver state as explicit calculation input', async () => {
+    const { createCalculationEngine } = await modules();
+    const constructionConstant = Object.freeze({ bonus: 2 });
+    let observedReceiver;
+    const boundOperand = function(){
+        observedReceiver = this;
+        return this.bonus;
+    }.bind(constructionConstant);
+
+    const engine = createCalculationEngine({
+        registrations: [registration()],
+        modifiers: [modifier({ operand: boundOperand })],
+    });
+
+    assert.equal(
+        engine.calculate({ id: 'example:calculation/output', inputs: { base: 10 } }).value,
+        12
+    );
+    assert.strictEqual(observedReceiver, constructionConstant);
 });
 
 test('M4B modifiers do not expand the fixed frozen calculation-engine public surface', async () => {

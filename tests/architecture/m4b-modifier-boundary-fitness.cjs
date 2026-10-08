@@ -50,6 +50,13 @@ function listCalculationSources(dir){
     return files.sort();
 }
 
+function reviewedModulePath(root, filename){
+    return path.relative(
+        path.join(root, ...CALCULATION_ROOT.split('/')),
+        filename
+    ).split(path.sep).join('/');
+}
+
 function exportedNames(source, sourcefile){
     const result = esbuild.buildSync({
         stdin: {
@@ -70,22 +77,31 @@ function exportedNames(source, sourcefile){
     return [...(output && output.exports || [])].sort();
 }
 
-function exportSurfaceViolations(root, filename, source){
-    const relativeToCalculationRoot = path.relative(
-        path.join(root, ...CALCULATION_ROOT.split('/')),
-        filename
-    ).split(path.sep).join('/');
-    const allowed = new Set(REVIEWED_CALCULATION_EXPORTS[relativeToCalculationRoot] || []);
+function moduleSurfaceViolations(root, filename, source){
+    const relativeToCalculationRoot = reviewedModulePath(root, filename);
+    const relative = path.relative(root, filename).split(path.sep).join('/');
+    const reviewed = Object.prototype.hasOwnProperty.call(
+        REVIEWED_CALCULATION_EXPORTS,
+        relativeToCalculationRoot
+    );
+    const violations = [];
+    if (!reviewed){
+        violations.push(`${relative}: unreviewed calculation-package module could create new runtime authority`);
+    }
+
+    const allowed = new Set(reviewed ? REVIEWED_CALCULATION_EXPORTS[relativeToCalculationRoot] : []);
     let exports;
     try {
         exports = exportedNames(source, filename);
     }
     catch (error){
-        return [`${path.relative(root, filename).split(path.sep).join('/')}: calculation export surface could not be parsed (${error.message})`];
+        violations.push(`${relative}: calculation export surface could not be parsed (${error.message})`);
+        return violations;
     }
-    return exports
+    violations.push(...exports
         .filter(name => !allowed.has(name))
-        .map(name => `${path.relative(root, filename).split(path.sep).join('/')}: unreviewed calculation-package export ${JSON.stringify(name)} could create new runtime authority`);
+        .map(name => `${relative}: unreviewed calculation-package export ${JSON.stringify(name)} could create new runtime authority`));
+    return violations;
 }
 
 function findViolations(root){
@@ -118,7 +134,7 @@ function findViolations(root){
             const relative = path.relative(root, filename).split(path.sep).join('/');
             violations.push(`${relative}: M4B must not expose dynamic modifier registration authority`);
         }
-        violations.push(...exportSurfaceViolations(root, filename, rawSource));
+        violations.push(...moduleSurfaceViolations(root, filename, rawSource));
     }
 
     const production = productionCalculationConsumers(root);
