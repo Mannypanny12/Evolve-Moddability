@@ -8,7 +8,8 @@ import {
     readDenseCalculationArray,
 } from './common.mjs';
 import { normalizeCalculationContext } from './calculation-context.mjs';
-import { createCalculationResult } from './calculation-result.mjs';
+import { createCalculationResult, normalizeCalculationValue } from './calculation-result.mjs';
+import { createModifierPipeline } from './modifier-pipeline.mjs';
 
 let calculationOperationActive = false;
 
@@ -79,7 +80,9 @@ function enrichCalculationError(error, calculationId, phase){
 
     const code = phase === 'validate'
         ? 'CALCULATION_INPUT_VALIDATOR_FAILURE'
-        : 'CALCULATION_EVALUATOR_FAILURE';
+        : phase === 'modify'
+            ? 'CALCULATION_MODIFIER_FAILURE'
+            : 'CALCULATION_EVALUATOR_FAILURE';
     return new EngineContractError(
         code,
         `Calculation ${phase} phase threw unexpectedly. [${calculationId || '<unresolved>'}]`,
@@ -91,9 +94,17 @@ function validateRegistration(rawRegistration, index){
     const path = `calculationEngine.registrations[${index}]`;
     const fields = readClosedCalculationObject(rawRegistration, {
         path,
-        allowed: ['id', 'validateInputs', 'calculateBase'],
+        allowed: ['id', 'validateInputs', 'calculateBase', 'allowOverride'],
+        required: ['id', 'validateInputs', 'calculateBase'],
         code: 'INVALID_CALCULATION_REGISTRATION',
     });
+    const allowOverride = fields.has('allowOverride') ? fields.get('allowOverride') : false;
+    if (typeof allowOverride !== 'boolean'){
+        fail('INVALID_CALCULATION_REGISTRATION', `${path}.allowOverride must be a boolean when provided.`, {
+            path: `${path}.allowOverride`,
+            valueType: typeof allowOverride,
+        });
+    }
     return Object.freeze({
         id: assertCalculationId(fields.get('id'), `${path}.id`),
         validateInputs: assertSynchronousCalculationFunction(
@@ -104,13 +115,15 @@ function validateRegistration(rawRegistration, index){
             fields.get('calculateBase'),
             `${path}.calculateBase`
         ),
+        allowOverride,
     });
 }
 
 export function createCalculationEngine(rawOptions){
     const options = readClosedCalculationObject(rawOptions, {
         path: 'calculationEngineOptions',
-        allowed: ['registrations'],
+        allowed: ['registrations', 'modifiers'],
+        required: ['registrations'],
         code: 'INVALID_CALCULATION_ENGINE_CONFIG',
     });
     const rawRegistrations = readDenseCalculationArray(
@@ -118,6 +131,13 @@ export function createCalculationEngine(rawOptions){
         'calculationEngineOptions.registrations',
         'INVALID_CALCULATION_ENGINE_CONFIG'
     );
+    const rawModifiers = options.has('modifiers')
+        ? readDenseCalculationArray(
+            options.get('modifiers'),
+            'calculationEngineOptions.modifiers',
+            'INVALID_CALCULATION_ENGINE_CONFIG'
+        )
+        : [];
 
     const registrations = new Map();
     for (let index = 0; index < rawRegistrations.length; index++){
@@ -129,6 +149,7 @@ export function createCalculationEngine(rawOptions){
         }
         registrations.set(registration.id, registration);
     }
+    const modifierPipeline = createModifierPipeline(rawModifiers, registrations);
 
     function ids(){
         return Object.freeze([...registrations.keys()].sort());
@@ -176,14 +197,14 @@ export function createCalculationEngine(rawOptions){
             const inputs = canonicalizeCalculationInputs(validatedInputs, 'calculation.validatedInputs');
 
             phase = 'calculate';
-            let rawValue;
+            let rawBaseValue;
             try {
-                rawValue = Reflect.apply(registration.calculateBase, undefined, [inputs]);
+                rawBaseValue = Reflect.apply(registration.calculateBase, undefined, [inputs]);
             }
             catch (error){
                 throw enrichCalculationError(error, calculationId, phase);
             }
-            if (isCalculationPromiseLike(rawValue, 'calculation.calculateBase', 'INVALID_CALCULATION_RESULT')){
+            if (isCalculationPromiseLike(rawBaseValue, 'calculation.calculateBase', 'INVALID_CALCULATION_RESULT')){
                 fail('INVALID_CALCULATION_RESULT', 'Calculation base evaluators must not return a Promise or thenable.', {
                     calculationId,
                     phase,
@@ -191,7 +212,16 @@ export function createCalculationEngine(rawOptions){
             }
 
             phase = 'result';
-            return createCalculationResult(calculationId, rawValue, { trace, inputs });
+            const baseValue = normalizeCalculationValue(rawBaseValue, 'calculation.baseValue');
+
+            phase = 'modify';
+            const modified = modifierPipeline.apply(calculationId, inputs, baseValue, trace);
+
+            phase = 'result';
+            const resultOptions = trace
+                ? { trace: true, inputs, baseValue, modifierSteps: modified.steps }
+                : { trace: false, inputs };
+            return createCalculationResult(calculationId, modified.value, resultOptions);
         }
         catch (error){
             if (error instanceof EngineContractError){

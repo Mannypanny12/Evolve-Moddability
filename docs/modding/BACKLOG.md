@@ -326,11 +326,28 @@ Established the generic calculation foundation:
 
 No vanilla production behavior is migrated by M4A. See [M4A_CALCULATION_CONTEXT_TRACE.md](M4A_CALCULATION_CONTEXT_TRACE.md).
 
-### M4B - Modifier pipeline - next
+### M4B - Modifier pipeline - complete
 
-Add the ordered modifier pipeline on top of the M4A base-calculation/result/trace contract. M4B owns add/multiply/override/cap/floor/conditional contribution semantics plus deterministic ordering and ownership. It must not silently begin the M4C resource primitives or M4D vanilla production cutover.
+Completed the generic numeric contribution layer on top of M4A:
 
-M4C-M4E remain as defined in [ROADMAP.md](ROADMAP.md).
+- canonical modifier IDs and cross-namespace targeting;
+- fixed engine-construction registrations;
+- add/multiply/explicit override/cap/floor semantics;
+- strict conditional contribution and skipped-operand short-circuiting;
+- deterministic `(order, modifierId)` ordering;
+- target-owned override permission;
+- calculate/explain parity with applied and skipped trace attribution;
+- hardened trace continuity, uniqueness, ordering and arithmetic validation;
+- hostile-input/thenable/reentrancy diagnostics with modifier attribution;
+- cumulative architecture guards for fixed registration authority and zero production consumers.
+
+No vanilla production or cost path is migrated by M4B. See [M4B_MODIFIER_PIPELINE.md](M4B_MODIFIER_PIPELINE.md).
+
+### M4C - Resource calculation primitives - next
+
+Define production, consumption, capacity, storage and resource-delta primitives on the hardened M4A/M4B calculation/modifier foundation. M4C must not silently begin the M4D vanilla production cutover.
+
+M4D-M4E remain as defined in [ROADMAP.md](ROADMAP.md).
 
 ## Immediate sequence
 
@@ -349,14 +366,16 @@ M3G whole-M3 hardening and closure - complete
    |
 M4A calculation context and trace - complete
    |
-M4B modifier pipeline - next
+M4B modifier pipeline - complete
+   |
+M4C resource calculation primitives - next
 ```
 
-Do not jump directly to mod loading, total conversions, bulk content conversion, resource primitives, or a vanilla production cutover. Those would lock in assumptions before their owning slices are reviewed.
+Do not jump directly to mod loading, total conversions, bulk content conversion, a vanilla production cutover, or later simulation work. Those would lock in assumptions before their owning slices are reviewed.
 
 ## Later milestones
 
-- M4B-M4E calculation/modifier engine;
+- M4C-M4E calculation/modifier engine;
 - M5 deterministic simulation;
 - M6 vanilla migration waves;
 - M7 persistence v2;

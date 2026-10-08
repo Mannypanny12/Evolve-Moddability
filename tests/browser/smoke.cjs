@@ -4,6 +4,13 @@ const fs = require('fs');
 const http = require('http');
 const path = require('path');
 const { spawn } = require('child_process');
+const { collectBrowserLogsUntilMarker } = require('./log-collector.cjs');
+const {
+    assertOnlyExpectedStartupFailure,
+    cleanupBrowserHarness,
+    terminateProcessTree,
+    trackServerConnections,
+} = require('./smoke-harness.cjs');
 
 const ROOT = process.cwd();
 const DRIVER_HOST = '127.0.0.1';
@@ -13,6 +20,10 @@ const ELEMENT_KEY = 'element-6066-11e4-a52e-4f735466cecf';
 const DEFAULT_WAIT_MS = 12000;
 const INJECT_STARTUP_FAILURE = process.env.M0E4_INJECT_STARTUP_FAILURE === '1';
 const STARTUP_FAILURE_MARKER = 'M0E4_INJECTED_STARTUP_FAILURE';
+const parsedHarnessTimeoutMs = Number(process.env.M0E4_BROWSER_SMOKE_TIMEOUT_MS || 90000);
+const HARNESS_TIMEOUT_MS = Number.isFinite(parsedHarnessTimeoutMs) && parsedHarnessTimeoutMs > 0
+    ? parsedHarnessTimeoutMs
+    : 90000;
 
 const optionalExternalHosts = [
     'fonts.googleapis.com',
@@ -21,25 +32,47 @@ const optionalExternalHosts = [
     'www.google-analytics.com',
 ];
 
-function delay(ms){
-    return new Promise(resolve => setTimeout(resolve, ms));
+const harnessStartedAt = Date.now();
+let currentPhase = 'bootstrap';
+let activeServer;
+let activeSockets;
+let activeDriver;
+
+function setPhase(phase){
+    currentPhase = phase;
+    const elapsed = Date.now() - harnessStartedAt;
+    console.log(`[M0E4 browser smoke] phase=${phase} elapsed_ms=${elapsed}`);
 }
 
-async function stopChildProcess(child){
-    if (!child || child.exitCode !== null) return;
-
-    const exited = new Promise(resolve => child.once('exit', resolve));
-    child.kill('SIGTERM');
-
-    const stopped = await Promise.race([
-        exited.then(() => true),
-        delay(2000).then(() => false),
-    ]);
-
-    if (!stopped && child.exitCode === null) {
-        child.kill('SIGKILL');
-        await Promise.race([exited, delay(1000)]);
+function emergencyCleanup(){
+    if (activeDriver && activeDriver.child) {
+        terminateProcessTree(activeDriver.child, 'SIGKILL');
     }
+    if (activeServer) {
+        try {
+            if (typeof activeServer.closeAllConnections === 'function') activeServer.closeAllConnections();
+        }
+        catch (_) {}
+        if (activeSockets) {
+            for (const socket of activeSockets) {
+                try { socket.destroy(); }
+                catch (_) {}
+            }
+        }
+        try { activeServer.close(); }
+        catch (_) {}
+    }
+}
+
+const watchdog = setTimeout(() => {
+    console.error(`[M0E4 browser smoke] watchdog timeout after ${HARNESS_TIMEOUT_MS} ms in phase=${currentPhase}`);
+    emergencyCleanup();
+    process.exit(124);
+}, HARNESS_TIMEOUT_MS);
+watchdog.unref();
+
+function delay(ms){
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 function mimeType(file){
@@ -113,6 +146,7 @@ function startStaticServer(){
             res.end(responseBody);
         });
     });
+    const sockets = trackServerConnections(server);
 
     return new Promise((resolve, reject) => {
         server.once('error', reject);
@@ -120,6 +154,7 @@ function startStaticServer(){
             const address = server.address();
             resolve({
                 server,
+                sockets,
                 baseUrl: `http://${DRIVER_HOST}:${address.port}`,
             });
         });
@@ -171,6 +206,7 @@ function startChromeDriver(){
         `--port=${DRIVER_PORT}`,
         '--allowed-origins=*',
     ], {
+        detached: process.platform !== 'win32',
         stdio: ['ignore', 'pipe', 'pipe'],
     });
 
@@ -181,12 +217,12 @@ function startChromeDriver(){
     return { child, output: () => output };
 }
 
-async function webdriver(method, endpoint, body){
+async function webdriver(method, endpoint, body, timeoutMs = 15000){
     const response = await fetch(`${DRIVER_URL}${endpoint}`, {
         method,
         headers: body === undefined ? undefined : { 'content-type': 'application/json' },
         body: body === undefined ? undefined : JSON.stringify(body),
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(timeoutMs),
     });
     const payload = await response.json().catch(() => ({}));
     const value = payload.value;
@@ -290,13 +326,16 @@ async function click(sessionId, selector){
     await webdriver('POST', `/session/${sessionId}/element/${elementId}/click`, {});
 }
 
-async function browserLogs(sessionId){
+async function browserLogs(sessionId, timeoutMs = 15000){
+    const startedAt = Date.now();
     try {
-        return await webdriver('POST', `/session/${sessionId}/se/log`, { type: 'browser' });
+        return await webdriver('POST', `/session/${sessionId}/se/log`, { type: 'browser' }, timeoutMs);
     }
     catch (firstError) {
+        const remainingMs = timeoutMs - (Date.now() - startedAt);
+        if (remainingMs <= 0) throw firstError;
         try {
-            return await webdriver('POST', `/session/${sessionId}/log`, { type: 'browser' });
+            return await webdriver('POST', `/session/${sessionId}/log`, { type: 'browser' }, Math.max(1, remainingMs));
         }
         catch (_) {
             throw firstError;
@@ -334,6 +373,7 @@ async function verifyUncaughtExceptionDetection(sessionId, baseUrl, criticalExte
 }
 
 async function run(){
+    setPhase('artifact-check');
     for (const required of ['index.html', 'evolve/main.js', 'evolve/evolve.css']) {
         if (!fs.existsSync(path.join(ROOT, required))) {
             throw new Error(`Missing built artifact ${required}. Run npm run build before npm run test:browser.`);
@@ -344,24 +384,60 @@ async function run(){
     if (criticalExternalUrls.length === 0) {
         throw new Error('Expected at least one blocking external bootstrap script in index.html; update the M0E4 smoke assumptions.');
     }
+
+    setPhase('external-preflight');
     await preflightExternalBootstrap(criticalExternalUrls);
 
-    const { server, baseUrl } = await startStaticServer();
+    setPhase('static-server-start');
+    const { server, sockets, baseUrl } = await startStaticServer();
+    activeServer = server;
+    activeSockets = sockets;
+
+    setPhase('driver-start');
     const driver = startChromeDriver();
+    activeDriver = driver;
     let sessionId;
 
     try {
+        setPhase('driver-ready');
         await waitForDriver(driver);
+
+        setPhase('session-create');
         sessionId = await createSession();
 
+        setPhase('network-config');
         await cdp(sessionId, 'Network.enable');
         await cdp(sessionId, 'Network.setBlockedURLs', {
             urls: optionalExternalHosts.flatMap(host => [`*://${host}/*`]),
         });
 
+        setPhase('uncaught-probe');
         await verifyUncaughtExceptionDetection(sessionId, baseUrl, criticalExternalUrls);
 
+        setPhase('game-navigation');
         await setUrl(sessionId, `${baseUrl}/`);
+
+        if (INJECT_STARTUP_FAILURE) {
+            setPhase('negative-control-observation');
+            const logs = await collectBrowserLogsUntilMarker({
+                readLogs: remainingMs => browserLogs(sessionId, Math.min(1000, remainingMs)),
+                marker: STARTUP_FAILURE_MARKER,
+                timeoutMs: 3000,
+                pollMs: 100,
+                settleAfterMarkerMs: 500,
+            });
+            const { external, application } = classifySevereLogs(logs, criticalExternalUrls);
+            assertOnlyExpectedStartupFailure({
+                externalLogs: external,
+                applicationLogs: application,
+                marker: STARTUP_FAILURE_MARKER,
+            });
+            const error = new Error(`M0E4_NEGATIVE_CONTROL_CONFIRMED: detected ${STARTUP_FAILURE_MARKER} with no unrelated severe browser errors.`);
+            error.negativeControlConfirmed = true;
+            throw error;
+        }
+
+        setPhase('ui-smoke');
         await waitForDisplayed(sessionId, '#mainColumn');
         await waitForDisplayed(sessionId, '#mainTabs');
         await waitForDisplayed(sessionId, '#evolution-rna a.button');
@@ -376,6 +452,7 @@ async function run(){
         await waitForDisplayed(sessionId, '#evolution-dna a.button');
         await delay(300);
 
+        setPhase('browser-log-check');
         const logs = await browserLogs(sessionId);
         const { external, application } = classifySevereLogs(logs, criticalExternalUrls);
 
@@ -389,7 +466,11 @@ async function run(){
         console.log('M0E4 browser smoke passed: real Chrome booted the built game, rendered fresh evolution UI, and RNA interaction unlocked DNA.');
     }
     catch (error) {
+        if (error && error.negativeControlConfirmed) {
+            throw error;
+        }
         if (sessionId) {
+            setPhase('failure-diagnostics');
             const logs = await browserLogs(sessionId).catch(() => []);
             const { external, application } = classifySevereLogs(logs, criticalExternalUrls);
             const diagnostics = [];
@@ -402,15 +483,27 @@ async function run(){
         throw error;
     }
     finally {
-        if (sessionId) {
-            await webdriver('DELETE', `/session/${sessionId}`).catch(() => {});
-        }
-        await stopChildProcess(driver.child);
-        await new Promise(resolve => server.close(resolve));
+        await cleanupBrowserHarness({
+            sessionId,
+            deleteSession: sessionId
+                ? () => webdriver('DELETE', `/session/${sessionId}`, undefined, 5000)
+                : undefined,
+            child: driver.child,
+            server,
+            sockets,
+            onPhase: setPhase,
+            onWarning: message => console.warn(`[M0E4 browser smoke] ${message}`),
+        });
+        activeDriver = undefined;
+        activeServer = undefined;
+        activeSockets = undefined;
+        setPhase('cleanup-complete');
     }
 }
 
-run().catch(error => {
-    console.error(error && error.stack ? error.stack : error);
-    process.exitCode = 1;
-});
+run()
+    .catch(error => {
+        console.error(error && error.stack ? error.stack : error);
+        process.exitCode = 1;
+    })
+    .finally(() => clearTimeout(watchdog));
