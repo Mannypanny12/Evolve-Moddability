@@ -51,6 +51,16 @@ test('M4B status-document guard rejects stale M4B-next markers', () => {
     assert.ok(violations.some(value => value.includes('M4B is next')));
 });
 
+test('M4B status-document guard rejects truncated roadmap tail', () => {
+    const tailStart = roadmap.indexOf('\nAndroid packages the engine. It must not become a separate gameplay implementation.');
+    assert.notEqual(tailStart, -1);
+    const truncatedRoadmap = roadmap.slice(0, tailStart);
+    const violations = violationsFor({ roadmapText: truncatedRoadmap });
+    assert.ok(violations.some(value => value.includes('Android packages the engine')));
+    assert.ok(violations.some(value => value.includes('Cross-cutting migration rules')));
+    assert.ok(violations.some(value => value.includes('Behavioral compatibility is more important')));
+});
+
 test('M4B status-document guard pins architecture report version without inventing a new schema version', () => {
     const staleCurrent = currentArchitecture.replace(
         'Architecture report version 6 currently combines:',
