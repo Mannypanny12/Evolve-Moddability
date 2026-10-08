@@ -99,6 +99,23 @@ function normalizeModifierNumber(value, path, code, modifier){
     return Object.is(value, -0) ? 0 : value;
 }
 
+function rejectModifierPromiseLike(value, path, code, modifier, modifierPhase, message){
+    let promiseLike;
+    try {
+        promiseLike = isCalculationPromiseLike(value, path, code);
+    }
+    catch (error){
+        throw enrichModifierError(error, modifier, modifierPhase);
+    }
+    if (promiseLike){
+        fail(code, message, {
+            calculationId: modifier.calculationId,
+            modifierId: modifier.id,
+            modifierPhase,
+        });
+    }
+}
+
 function applyOperation(before, operation, operand, modifier){
     let rawAfter;
     switch (operation){
@@ -203,13 +220,14 @@ export function createModifierPipeline(rawModifiers, calculations){
                 catch (error){
                     throw enrichModifierError(error, modifier, 'applies');
                 }
-                if (isCalculationPromiseLike(rawApplied, 'modifier.applies', 'INVALID_MODIFIER_APPLIES_RESULT')){
-                    fail('INVALID_MODIFIER_APPLIES_RESULT', 'Modifier applies callbacks must not return a Promise or thenable.', {
-                        calculationId,
-                        modifierId: modifier.id,
-                        modifierPhase: 'applies',
-                    });
-                }
+                rejectModifierPromiseLike(
+                    rawApplied,
+                    'modifier.applies',
+                    'INVALID_MODIFIER_APPLIES_RESULT',
+                    modifier,
+                    'applies',
+                    'Modifier applies callbacks must not return a Promise or thenable.'
+                );
                 if (typeof rawApplied !== 'boolean'){
                     fail('INVALID_MODIFIER_APPLIES_RESULT', 'Modifier applies callbacks must return exactly true or false.', {
                         calculationId,
@@ -244,13 +262,14 @@ export function createModifierPipeline(rawModifiers, calculations){
             catch (error){
                 throw enrichModifierError(error, modifier, 'operand');
             }
-            if (isCalculationPromiseLike(rawOperand, 'modifier.operand', 'INVALID_MODIFIER_OPERAND')){
-                fail('INVALID_MODIFIER_OPERAND', 'Modifier operand callbacks must not return a Promise or thenable.', {
-                    calculationId,
-                    modifierId: modifier.id,
-                    modifierPhase: 'operand',
-                });
-            }
+            rejectModifierPromiseLike(
+                rawOperand,
+                'modifier.operand',
+                'INVALID_MODIFIER_OPERAND',
+                modifier,
+                'operand',
+                'Modifier operand callbacks must not return a Promise or thenable.'
+            );
             const operand = normalizeModifierNumber(rawOperand, 'modifier.operand', 'INVALID_MODIFIER_OPERAND', modifier);
             value = applyOperation(before, modifier.operation, operand, modifier);
 
