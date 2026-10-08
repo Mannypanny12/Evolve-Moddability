@@ -29,10 +29,18 @@ async function readLogsBounded(readLogs, remainingMs){
             logs => ({ type: 'logs', logs }),
             error => ({ type: 'error', error })
         );
-    const outcome = await Promise.race([
-        read,
-        delay(remainingMs).then(() => ({ type: 'timeout' })),
-    ]);
+    let timeoutId;
+    const timeout = new Promise(resolve => {
+        timeoutId = setTimeout(() => resolve({ type: 'timeout' }), remainingMs);
+    });
+
+    let outcome;
+    try {
+        outcome = await Promise.race([read, timeout]);
+    }
+    finally {
+        clearTimeout(timeoutId);
+    }
 
     if (outcome.type === 'timeout') return null;
     if (outcome.type === 'error') throw outcome.error;
