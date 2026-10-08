@@ -2,12 +2,27 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { maskNonCode } = require('./architecture-fitness.cjs');
 const { productionCalculationConsumers } = require('./m4a-calculation-boundary-fitness.cjs');
 
 const REQUIRED_FILES = Object.freeze([
     'src/engine/calculations/modifier-contract.mjs',
     'src/engine/calculations/modifier-pipeline.mjs',
 ]);
+const CALCULATION_ROOT = 'src/engine/calculations';
+const SOURCE_EXTENSIONS = new Set(['.js', '.mjs', '.cjs']);
+const DYNAMIC_MODIFIER_AUTHORITY_PATTERN = /\b(?:registerModifier|unregisterModifier|addModifier|removeModifier)\b/;
+
+function listCalculationSources(dir){
+    if (!fs.existsSync(dir)) return [];
+    const files = [];
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })){
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) files.push(...listCalculationSources(full));
+        else if (entry.isFile() && SOURCE_EXTENSIONS.has(path.extname(entry.name))) files.push(full);
+    }
+    return files.sort();
+}
 
 function findViolations(root){
     const violations = [];
@@ -29,8 +44,14 @@ function findViolations(root){
         if (!engineSource.includes("allowed: ['registrations', 'modifiers']")){
             violations.push('calculation-engine.mjs: M4B modifiers must be fixed engine-construction registrations');
         }
-        if (/\b(?:registerModifier|unregisterModifier|addModifier|removeModifier)\b/.test(engineSource)){
-            violations.push('calculation-engine.mjs: M4B must not expose dynamic modifier registration authority');
+    }
+
+    const calculationDir = path.join(root, ...CALCULATION_ROOT.split('/'));
+    for (const filename of listCalculationSources(calculationDir)){
+        const source = maskNonCode(fs.readFileSync(filename, 'utf8'));
+        if (DYNAMIC_MODIFIER_AUTHORITY_PATTERN.test(source)){
+            const relative = path.relative(root, filename).split(path.sep).join('/');
+            violations.push(`${relative}: M4B must not expose dynamic modifier registration authority`);
         }
     }
 
