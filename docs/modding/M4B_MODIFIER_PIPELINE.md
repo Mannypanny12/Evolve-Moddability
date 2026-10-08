@@ -74,7 +74,7 @@ For one calculation, modifiers are sorted by:
 
 Registration order is never gameplay authority. Equal order values are allowed so independent packages do not have to coordinate globally unique integers.
 
-The hardened result/trace contract independently enforces this total order and rejects duplicate modifier IDs even when `createCalculationResult()` is called directly. A forged explanation therefore cannot claim a different modifier order from the pipeline that produced the value.
+The hardened result/trace contract independently rejects duplicate modifier IDs and non-deterministically ordered modifier steps when `createCalculationResult()` is called directly. This proves the internal ordering and arithmetic truth of the supplied trace. Only an engine-produced trace additionally proves provenance from that engine instance's actual registered modifier pipeline.
 
 ## Numeric operations
 
@@ -157,7 +157,8 @@ The result contract validates trace continuity and arithmetic truthfulness:
 - an applied step's `after` matches its declared operation and operand;
 - a skipped step has `operand: null` and `before === after`;
 - the final step's `after` equals `result.value`;
-- with no modifiers, the base step still equals `result.value` exactly as in M4A.
+- any direct result that supplies `modifierSteps` must also supply an explicit `baseValue`, so modifier traces cannot silently infer their starting value from the final result;
+- with no modifier steps, the M4A base-only trace may still infer its base from `result.value`.
 
 Normal `calculate()` calls allocate no modifier trace and continue to return `trace: null`.
 
@@ -184,7 +185,7 @@ M4B remains inside `src/engine/calculations/**` and inherits the M4A boundary:
 - no first-party `evolve:` identities in the generic calculation package;
 - no executable use of the inert M1 Registry.
 
-A dedicated M4B architecture gate additionally proves that the modifier pipeline is composed through the existing calculation engine, registrations remain fixed at engine construction, dynamic modifier-registration authority is absent anywhere in the calculation package, and production calculation consumers remain zero before M4D. Runtime tests also pin the engine's frozen public surface to exactly `calculate`, `explain`, `has`, and `ids` even when modifiers are configured.
+A dedicated M4B architecture gate additionally proves that the modifier pipeline is composed through the existing calculation engine, registrations remain fixed at engine construction, dynamic modifier-registration authority is absent, and production calculation consumers remain zero before M4D. The complete exported surface of `src/engine/calculations/**` is ratcheted to the reviewed M4A/M4B exports. Any new export, including an arbitrarily named authority or an export from a newly added calculation module, requires an explicit reviewed architecture-gate change. Runtime tests also pin the engine's frozen public surface to exactly `calculate`, `explain`, `has`, and `ids` even when modifiers are configured.
 
 ## Legacy relationship
 
@@ -205,6 +206,7 @@ M4B coverage includes:
 - conditional short-circuiting and skipped-trace entries;
 - calculate/explain value parity;
 - trace continuity, ordering, uniqueness and frozen result shapes;
+- explicit base provenance for direct modifier traces while preserving M4A base-only trace shorthand;
 - strict boolean predicates;
 - async/generator/thenable rejection;
 - hostile accessor-backed thenables without getter invocation;
@@ -217,8 +219,9 @@ M4B coverage includes:
 - modifier-specific diagnostic attribution;
 - reentrancy rejection and lock recovery;
 - exact frozen engine public surface with modifiers configured;
+- the reviewed calculation-package export-surface ratchet;
 - the zero-production-consumer architecture boundary;
-- negative controls proving dynamic modifier registration is rejected while comments/strings do not cause false positives.
+- negative controls proving dynamic modifier registration and arbitrarily named/new-module exports are rejected while comments/strings do not cause false positives.
 
 ## Browser CI hardening discovered during implementation
 
@@ -251,18 +254,20 @@ The branch diff was re-audited after hardening. It remained limited to the gener
 
 A second thorough review was requested after the original M4B closure. It froze merged master `a096634a71a1bc0ccd74295ef11a20f3caed89dd` as its base and rechecked the calculation/modifier implementation, result contract, production composition, architecture gates, hostile inputs, browser proof path, documentation and original closure evidence.
 
-This review found and fixed four additional issues or proof gaps:
+This review found and fixed six additional issues or proof gaps:
 
 1. **Thenable prototype inspection was not time-bounded.** Cycle detection prevented ordinary prototype loops, but a hostile proxy could return a fresh prototype object on every `getPrototypeOf()` trap and keep synchronous evaluation inside an unbounded loop. Thenable inspection now has an explicit prototype-depth limit, with validator and modifier regression tests proving bounded rejection, diagnostic attribution and lock recovery.
 2. **Two browser-log checks still used one-shot sampling.** The harness's own uncaught-exception probe and the normal successful smoke could miss Chrome errors delivered after their single browser-log drain. Both now use bounded repeated polling/draining, and failure diagnostics use a short bounded drain as well.
 3. **The marker settling window could be truncated.** The first polling helper used one initial absolute deadline, so a marker arriving near that deadline did not receive the promised full post-marker settling interval. The marker now starts its own bounded settling deadline, with a regression test that injects a later unrelated severe error.
 4. **The durable M4B authority pinned an intermediate proof.** The status fitness gate and this document emphasized code-hardening head `9b94f0e4...` even though later branch, PR, merge and merged-master proof existed. The authority now records the actual original closure chain and the status guard protects that evidence.
+5. **Direct modifier traces could omit base provenance.** `createCalculationResult()` accepted `modifierSteps` without an explicit `baseValue`, silently treating the final result as the starting base. Engine-produced traces were already correct, but the direct contract could manufacture a misleading modifier narrative. Direct modifier traces now require explicit `baseValue`; base-only M4A traces retain their existing shorthand.
+6. **Dynamic-authority enforcement was partly name-based.** The architecture gate rejected familiar names such as `registerModifier`, but an exported authority with an unrelated name could evade that terminology check. The gate now ratchets every export in the calculation package to the reviewed M4A/M4B surface, including exports from newly added modules, with negative controls using arbitrary non-registration terminology.
 
 The second review also adds an explicit runtime proof that configuring modifiers cannot expand the frozen calculation-engine API, and clarifies the permanent determinism obligation for future registration owners: hidden mutable closure state is not a valid calculation input even though generic JavaScript runtime code cannot introspect closure purity completely.
 
 Code-bearing second-review head `e67b2ba30e86ee79701d5fa8192d2470cbf69d51` passed the complete Baseline workflow in run `37755684579`: Node tests, cumulative architecture gates, production build/cleanliness, injected-startup-failure browser negative control and normal real-browser smoke all passed.
 
-The documentation/status-bearing head must still pass the same complete exact-head chain before this second review can be merged. M4C remains untouched throughout this review.
+The later code-and-architecture hardening head `d27baaf373f5be70e26b5752e06002f7d4fd4664` also passed the complete Baseline workflow in run `37758991381`, including the explicit-base trace contract and export-surface architecture ratchet. The final documentation-bearing head must still pass the same complete exact-head chain before this second review can be merged. M4C remains untouched throughout this review.
 
 ## Deliberate deferrals
 
