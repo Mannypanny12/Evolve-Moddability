@@ -705,3 +705,45 @@ After package/save semantics are stable:
 - offline operation;
 - lifecycle/save tests;
 - mod profile management appropriate for mobile.
+
+Android packages the engine. It must not become a separate gameplay implementation.
+
+---
+
+## Cross-cutting migration rules
+
+### No permanent dual systems
+
+A temporary dual path is acceptable only for differential verification. Once a migrated path is authoritative and proven, delete the old path.
+
+### Characterize before migrate
+
+Every migrated behavior needs coverage first.
+
+### Public stability comes late
+
+Internal APIs may evolve aggressively through M1-M9. Third-party compatibility promises begin at M10.
+
+### Architecture budgets ratchet downward
+
+Track direct:
+
+- `global`;
+- DOM;
+- storage;
+- wall-clock/random;
+- forbidden imports;
+- dependency cycles.
+
+New engine code starts at zero and stays at zero.
+
+### Upstream changes
+
+Because the repository is now standalone and the architecture will diverge, upstream integration changes from "keep every refactor easy to merge" to:
+
+- periodically compare upstream;
+- port bug fixes/content intentionally;
+- retain upstream provenance;
+- avoid unnecessary behavior divergence.
+
+Behavioral compatibility is more important than preserving legacy file structure.
