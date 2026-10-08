@@ -140,6 +140,11 @@ function normalizeModifierTraceStep(rawStep, index, expectedBefore){
     });
 }
 
+function modifierTraceComesAfter(previous, current){
+    return current.order > previous.order
+        || (current.order === previous.order && current.modifierId > previous.modifierId);
+}
+
 function createTrace(inputs, finalValue, baseValue, rawModifierSteps){
     const traceInputs = canonicalizeCalculationInputs(inputs, 'calculationTrace.inputs');
     const normalizedBaseValue = normalizeCalculationValue(
@@ -150,9 +155,28 @@ function createTrace(inputs, finalValue, baseValue, rawModifierSteps){
         ? []
         : readDenseCalculationArray(rawModifierSteps, 'calculationResultOptions.modifierSteps', 'INVALID_CALCULATION_TRACE');
     const steps = [Object.freeze({ kind: 'base', before: null, after: normalizedBaseValue })];
+    const seenModifierIds = new Set();
+    let previousModifier = null;
     let expectedBefore = normalizedBaseValue;
     for (let index = 0; index < rawSteps.length; index++){
         const step = normalizeModifierTraceStep(rawSteps[index], index, expectedBefore);
+        if (seenModifierIds.has(step.modifierId)){
+            fail('INVALID_CALCULATION_TRACE', `Modifier trace contains duplicate modifier ${JSON.stringify(step.modifierId)}.`, {
+                path: `calculationTrace.steps[${index + 1}].modifierId`,
+                modifierId: step.modifierId,
+            });
+        }
+        if (previousModifier && !modifierTraceComesAfter(previousModifier, step)){
+            fail('INVALID_CALCULATION_TRACE', 'Modifier trace does not follow deterministic (order, modifierId) ordering.', {
+                path: `calculationTrace.steps[${index + 1}]`,
+                previousModifierId: previousModifier.modifierId,
+                previousOrder: previousModifier.order,
+                modifierId: step.modifierId,
+                order: step.order,
+            });
+        }
+        seenModifierIds.add(step.modifierId);
+        previousModifier = step;
         steps.push(step);
         expectedBefore = step.after;
     }
