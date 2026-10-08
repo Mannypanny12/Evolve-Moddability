@@ -33,6 +33,10 @@ function statusDocViolations(roadmap, backlog, currentArchitecture, m4bAuthority
     requireExactlyOnce(roadmap, '### M4B Modifier pipeline - complete', ROADMAP, violations);
     requireExactlyOnce(roadmap, 'See `M4B_MODIFIER_PIPELINE.md`.', ROADMAP, violations);
     requireExactlyOnce(roadmap, '### M4C Resource calculation primitives - next', ROADMAP, violations);
+    requireExactlyOnce(roadmap, 'Android packages the engine. It must not become a separate gameplay implementation.', ROADMAP, violations);
+    requireExactlyOnce(roadmap, '## Cross-cutting migration rules', ROADMAP, violations);
+    requireExactlyOnce(roadmap, '### No permanent dual systems', ROADMAP, violations);
+    requireExactlyOnce(roadmap, 'Behavioral compatibility is more important than preserving legacy file structure.', ROADMAP, violations);
     forbid(roadmap, '### M4B Modifier pipeline - next', ROADMAP, violations);
 
     requireExactlyOnce(backlog, '### M4B - Modifier pipeline - complete', BACKLOG, violations);
