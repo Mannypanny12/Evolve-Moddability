@@ -57,7 +57,9 @@ Permanent direction rules:
 - M4 calculations are named, synchronous finite-number computations over explicit inert inputs; the generic calculation package does not read state, runtime, platform or legacy data itself.
 - `calculate()` and `explain()` share one calculation/modifier path; explanation adds inert trace data rather than a second gameplay implementation.
 - M4B modifiers are fixed engine-construction registrations with canonical IDs, deterministic `(order, modifierId)` ordering and target-owned override permission.
+- calculation/validation/modifier callbacks are contractually deterministic over explicit validated inputs plus immutable construction-time constants; hidden mutable closure state is not a valid semantic input, and future registration owners must preserve this at their composition boundary.
 - modifier callbacks see only validated detached frozen calculation inputs; they do not receive hidden state or the current intermediate value.
+- Promise/thenable inspection is bounded against hostile prototype traversal as well as accessors, cycles and runtime Promise leakage.
 - `src/engine/calculations/**` has zero production consumers at M4B exit; live calculation cutover begins only in the reviewed M4D migration slice.
 
 ## M0 authority: safety net
@@ -177,6 +179,8 @@ Current M4 laws:
 - modifiers are ordered by `(order ascending, canonical modifier ID ascending)` independent of registration order;
 - override permission is owned by the target calculation through `allowOverride`, which defaults to false;
 - raw and validated inputs are detached/canonicalized/frozen and hostile shapes fail closed;
+- calculation/validation/modifier callbacks are deterministic-by-contract over explicit validated inputs plus immutable construction-time constants; hidden mutable closure state is not a valid semantic input;
+- Promise/thenable inspection has an explicit prototype-depth bound so hostile proxies cannot force unbounded synchronous traversal;
 - `calculate()` is the normal low-allocation path and returns `trace: null`;
 - `explain()` runs the same calculation/modifier path and records base plus ordered applied/skipped modifier steps;
 - trace construction independently enforces arithmetic continuity, unique modifier IDs and deterministic modifier order;
