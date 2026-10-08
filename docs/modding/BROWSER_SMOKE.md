@@ -18,6 +18,17 @@ After `npm run build`, the smoke test:
 
 It does **not** validate simulation math through the UI. The M0E1-M0E3 simulation/oracle work remains authoritative for that.
 
+## Browser-log and teardown hardening
+
+Chrome's browser-log endpoint is asynchronous and drains entries when read. The harness therefore does not rely on a single sleep followed by a single log read:
+
+- the deliberate uncaught-exception probe polls until its marker is observed, then keeps draining for a bounded settling window;
+- the injected startup-failure negative control uses the same marker-aware polling and receives its full post-marker settling window even when the marker arrives near the initial observation deadline;
+- the normal successful smoke drains browser logs repeatedly for a bounded observation window before declaring the page clean;
+- failure diagnostics also perform a short bounded drain so late severe errors are less likely to disappear from the report.
+
+All WebDriver, browser-log, child-process and HTTP-server waits remain explicitly bounded. Cleanup attempts session deletion, process-tree termination and HTTP-server shutdown in sequence even when an earlier phase fails, with forced cleanup and a final harness watchdog as backstops.
+
 ## External bootstrap dependencies
 
 The inherited page loads several blocking runtime libraries from external CDNs. M0E4 keeps the production page unchanged, but avoids muddy CI diagnostics:

@@ -8,6 +8,7 @@ import {
 export const MAX_CALCULATION_DATA_NESTING_DEPTH = 128;
 export const MAX_CALCULATION_COLLECTION_LENGTH = 4096;
 export const MAX_CALCULATION_OBJECT_FIELDS = 4096;
+export const MAX_CALCULATION_THENABLE_PROTOTYPE_DEPTH = 128;
 
 function fail(code, message, details){
     throw new EngineContractError(code, message, details);
@@ -175,8 +176,17 @@ export function isCalculationPromiseLike(value, path, code){
     if (value === null || (typeof value !== 'object' && typeof value !== 'function')) return false;
 
     let cursor = value;
+    let prototypeDepth = 0;
     const seen = new WeakSet();
     while (cursor !== null){
+        if (prototypeDepth > MAX_CALCULATION_THENABLE_PROTOTYPE_DEPTH){
+            fail(code, `${path} returned a value whose thenable prototype chain exceeds the inspection limit.`, {
+                path,
+                maxPrototypeDepth: MAX_CALCULATION_THENABLE_PROTOTYPE_DEPTH,
+            });
+        }
+        prototypeDepth += 1;
+
         if ((typeof cursor !== 'object' && typeof cursor !== 'function') || seen.has(cursor)){
             fail(code, `${path} returned a value whose thenable state could not be safely inspected.`, { path });
         }

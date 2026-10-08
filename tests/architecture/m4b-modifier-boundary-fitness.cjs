@@ -2,6 +2,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const esbuild = require('esbuild');
 const { maskNonCode } = require('./architecture-fitness.cjs');
 const { productionCalculationConsumers } = require('./m4a-calculation-boundary-fitness.cjs');
 
@@ -12,6 +13,31 @@ const REQUIRED_FILES = Object.freeze([
 const CALCULATION_ROOT = 'src/engine/calculations';
 const SOURCE_EXTENSIONS = new Set(['.js', '.mjs', '.cjs']);
 const DYNAMIC_MODIFIER_AUTHORITY_PATTERN = /\b(?:registerModifier|unregisterModifier|addModifier|removeModifier)\b/;
+const REVIEWED_CALCULATION_EXPORTS = Object.freeze({
+    'calculation-context.mjs': Object.freeze(['normalizeCalculationContext']),
+    'calculation-engine.mjs': Object.freeze(['createCalculationEngine']),
+    'calculation-result.mjs': Object.freeze(['createCalculationResult', 'normalizeCalculationValue']),
+    'common.mjs': Object.freeze([
+        'MAX_CALCULATION_COLLECTION_LENGTH',
+        'MAX_CALCULATION_DATA_NESTING_DEPTH',
+        'MAX_CALCULATION_OBJECT_FIELDS',
+        'MAX_CALCULATION_THENABLE_PROTOTYPE_DEPTH',
+        'assertCalculationId',
+        'assertSynchronousCalculationFunction',
+        'canonicalizeCalculationData',
+        'canonicalizeCalculationInputs',
+        'isCalculationPromiseLike',
+        'readClosedCalculationObject',
+        'readDenseCalculationArray',
+    ]),
+    'modifier-contract.mjs': Object.freeze([
+        'MODIFIER_OPERATIONS',
+        'assertModifierId',
+        'assertModifierOperation',
+        'assertModifierOrder',
+    ]),
+    'modifier-pipeline.mjs': Object.freeze(['createModifierPipeline']),
+});
 
 function listCalculationSources(dir){
     if (!fs.existsSync(dir)) return [];
@@ -22,6 +48,44 @@ function listCalculationSources(dir){
         else if (entry.isFile() && SOURCE_EXTENSIONS.has(path.extname(entry.name))) files.push(full);
     }
     return files.sort();
+}
+
+function exportedNames(source, sourcefile){
+    const result = esbuild.buildSync({
+        stdin: {
+            contents: source,
+            sourcefile,
+            resolveDir: path.dirname(path.resolve(sourcefile)),
+            loader: path.extname(sourcefile) === '.cjs' ? 'js' : 'js',
+        },
+        bundle: true,
+        external: ['*'],
+        platform: 'neutral',
+        format: 'esm',
+        write: false,
+        metafile: true,
+        logLevel: 'silent',
+    });
+    const output = Object.values(result.metafile.outputs)[0];
+    return [...(output && output.exports || [])].sort();
+}
+
+function exportSurfaceViolations(root, filename, source){
+    const relativeToCalculationRoot = path.relative(
+        path.join(root, ...CALCULATION_ROOT.split('/')),
+        filename
+    ).split(path.sep).join('/');
+    const allowed = new Set(REVIEWED_CALCULATION_EXPORTS[relativeToCalculationRoot] || []);
+    let exports;
+    try {
+        exports = exportedNames(source, filename);
+    }
+    catch (error){
+        return [`${path.relative(root, filename).split(path.sep).join('/')}: calculation export surface could not be parsed (${error.message})`];
+    }
+    return exports
+        .filter(name => !allowed.has(name))
+        .map(name => `${path.relative(root, filename).split(path.sep).join('/')}: unreviewed calculation-package export ${JSON.stringify(name)} could create new runtime authority`);
 }
 
 function findViolations(root){
@@ -48,11 +112,13 @@ function findViolations(root){
 
     const calculationDir = path.join(root, ...CALCULATION_ROOT.split('/'));
     for (const filename of listCalculationSources(calculationDir)){
-        const source = maskNonCode(fs.readFileSync(filename, 'utf8'));
+        const rawSource = fs.readFileSync(filename, 'utf8');
+        const source = maskNonCode(rawSource);
         if (DYNAMIC_MODIFIER_AUTHORITY_PATTERN.test(source)){
             const relative = path.relative(root, filename).split(path.sep).join('/');
             violations.push(`${relative}: M4B must not expose dynamic modifier registration authority`);
         }
+        violations.push(...exportSurfaceViolations(root, filename, rawSource));
     }
 
     const production = productionCalculationConsumers(root);
@@ -75,6 +141,6 @@ function main(){
     console.log('M4B modifier boundary fitness passed.');
 }
 
-module.exports = { REQUIRED_FILES, findViolations };
+module.exports = { REQUIRED_FILES, REVIEWED_CALCULATION_EXPORTS, findViolations };
 
 if (require.main === module) main();

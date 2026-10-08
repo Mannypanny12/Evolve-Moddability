@@ -13,7 +13,10 @@ function createFixture(){
     const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'm4b-boundary-'));
     fs.mkdirSync(path.join(fixture, 'src/engine/calculations'), { recursive: true });
     fs.mkdirSync(path.join(fixture, 'src/application'), { recursive: true });
-    fs.writeFileSync(path.join(fixture, 'src/engine/calculations/modifier-contract.mjs'), 'export const x = 1;\n');
+    fs.writeFileSync(
+        path.join(fixture, 'src/engine/calculations/modifier-contract.mjs'),
+        'export const MODIFIER_OPERATIONS = [];\n'
+    );
     fs.writeFileSync(path.join(fixture, 'src/engine/calculations/modifier-pipeline.mjs'), 'export function createModifierPipeline(){}\n');
     fs.writeFileSync(
         path.join(fixture, 'src/engine/calculations/calculation-engine.mjs'),
@@ -50,6 +53,42 @@ test('M4B boundary rejects dynamic modifier registration authority anywhere in c
         );
         const violations = findViolations(fixture);
         assert.equal(violations.some(value => value.includes('dynamic modifier registration authority')), true);
+    }
+    finally {
+        fs.rmSync(fixture, { recursive: true, force: true });
+    }
+});
+
+test('M4B boundary rejects unreviewed calculation-package exports regardless of API naming', () => {
+    const fixture = createFixture();
+    try {
+        fs.writeFileSync(
+            path.join(fixture, 'src/engine/calculations/modifier-pipeline.mjs'),
+            'export function createModifierPipeline(){}\nexport function attachContribution(){}\n'
+        );
+        const violations = findViolations(fixture);
+        assert.equal(
+            violations.some(value => value.includes('unreviewed calculation-package export "attachContribution"')),
+            true
+        );
+    }
+    finally {
+        fs.rmSync(fixture, { recursive: true, force: true });
+    }
+});
+
+test('M4B boundary rejects exports from unreviewed new calculation-package modules', () => {
+    const fixture = createFixture();
+    try {
+        fs.writeFileSync(
+            path.join(fixture, 'src/engine/calculations/hidden-authority.mjs'),
+            'export function attachContribution(){}\n'
+        );
+        const violations = findViolations(fixture);
+        assert.equal(
+            violations.some(value => value.includes('hidden-authority.mjs') && value.includes('unreviewed calculation-package export')),
+            true
+        );
     }
     finally {
         fs.rmSync(fixture, { recursive: true, force: true });

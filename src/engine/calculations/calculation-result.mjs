@@ -45,6 +45,11 @@ function normalizeCalculationResultOptions(rawOptions){
             path: 'calculationResultOptions.inputs',
         });
     }
+    if (trace && fields.has('modifierSteps') && !fields.has('baseValue')){
+        fail('INVALID_CALCULATION_RESULT_OPTIONS', 'calculationResultOptions.baseValue is required when modifierSteps are provided.', {
+            path: 'calculationResultOptions.baseValue',
+        });
+    }
     if (!trace && (fields.has('baseValue') || fields.has('modifierSteps'))){
         fail('INVALID_CALCULATION_RESULT_OPTIONS', 'Trace-only calculation result fields require trace: true.', {
             path: 'calculationResultOptions',

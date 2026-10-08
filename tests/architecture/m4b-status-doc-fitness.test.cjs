@@ -6,6 +6,10 @@ const path = require('node:path');
 const test = require('node:test');
 const {
     CURRENT_M4_ROW,
+    ORIGINAL_FINAL_BRANCH_PROOF,
+    SECOND_REVIEW_CODE_PROOF,
+    SECOND_REVIEW_TRACE_PROVENANCE,
+    SECOND_REVIEW_EXPORT_RATCHET,
     statusDocViolations,
 } = require('./m4b-status-doc-fitness.cjs');
 
@@ -70,13 +74,31 @@ test('M4B status-document guard pins architecture report version without inventi
     assert.ok(violations.some(value => value.includes('Architecture report version 6')));
 });
 
-test('M4B status-document guard requires review proof and explicit M4C handoff', () => {
+test('M4B status-document guard requires actual closure proof and complete second-review evidence', () => {
     const staleAuthority = m4bAuthority
         .replace('## Independent review and hardening', '## Review notes')
-        .replace('Code-hardening head `9b94f0e4c7bb62d72987c637e2e8a447a1586ae1` passed the complete Baseline workflow in run `37727211512`.', 'Code hardening passed.')
+        .replace(ORIGINAL_FINAL_BRANCH_PROOF, 'Original closure passed.')
+        .replace('## Second post-merge independent review and hardening', '## Later review')
+        .replace(SECOND_REVIEW_CODE_PROOF, 'Second review passed.')
+        .replace(SECOND_REVIEW_TRACE_PROVENANCE, '**Trace notes.**')
+        .replace(SECOND_REVIEW_EXPORT_RATCHET, '**Architecture notes.**')
+        .replace('hidden mutable closure state is not a valid calculation input', 'closure state is acceptable')
+        .replace('complete exported surface of `src/engine/calculations/**` is ratcheted', 'calculation exports are unconstrained')
         .replace('M4C Resource calculation primitives is the next slice.', 'Resource primitives come later.');
     const violations = violationsFor({ m4bAuthorityText: staleAuthority });
     assert.ok(violations.some(value => value.includes('Independent review and hardening')));
-    assert.ok(violations.some(value => value.includes('9b94f0e4')));
+    assert.ok(violations.some(value => value.includes('920c4633')));
+    assert.ok(violations.some(value => value.includes('Second post-merge independent review and hardening')));
+    assert.ok(violations.some(value => value.includes('e67b2ba3')));
+    assert.ok(violations.some(value => value.includes('Direct modifier traces could omit base provenance')));
+    assert.ok(violations.some(value => value.includes('Dynamic-authority enforcement was partly name-based')));
+    assert.ok(violations.some(value => value.includes('hidden mutable closure state')));
+    assert.ok(violations.some(value => value.includes('complete exported surface')));
     assert.ok(violations.some(value => value.includes('M4C Resource calculation primitives is the next slice.')));
+});
+
+test('M4B status-document guard rejects the obsolete pre-merge status sentence', () => {
+    const staleAuthority = `${m4bAuthority}\nImplementation and independent review/hardening are complete on the dedicated M4B branch.\n`;
+    const violations = violationsFor({ m4bAuthorityText: staleAuthority });
+    assert.ok(violations.some(value => value.includes('stale status text')));
 });

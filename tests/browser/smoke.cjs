@@ -4,7 +4,10 @@ const fs = require('fs');
 const http = require('http');
 const path = require('path');
 const { spawn } = require('child_process');
-const { collectBrowserLogsUntilMarker } = require('./log-collector.cjs');
+const {
+    collectBrowserLogsForWindow,
+    collectBrowserLogsUntilMarker,
+} = require('./log-collector.cjs');
 const {
     assertOnlyExpectedStartupFailure,
     cleanupBrowserHarness,
@@ -363,8 +366,13 @@ function formatLogs(logs){
 
 async function verifyUncaughtExceptionDetection(sessionId, baseUrl, criticalExternalUrls){
     await setUrl(sessionId, `${baseUrl}/__m0e4_uncaught_probe.html`);
-    await delay(250);
-    const logs = await browserLogs(sessionId);
+    const logs = await collectBrowserLogsUntilMarker({
+        readLogs: remainingMs => browserLogs(sessionId, Math.min(1000, remainingMs)),
+        marker: 'M0E4_UNCAUGHT_PROBE',
+        timeoutMs: 3000,
+        pollMs: 100,
+        settleAfterMarkerMs: 200,
+    });
     const { application } = classifySevereLogs(logs, criticalExternalUrls);
     const sawProbe = application.some(log => String(log.message || '').includes('M0E4_UNCAUGHT_PROBE'));
     if (!sawProbe) {
@@ -450,10 +458,13 @@ async function run(){
         await click(sessionId, '#evolution-rna a.button');
         await click(sessionId, '#evolution-rna a.button');
         await waitForDisplayed(sessionId, '#evolution-dna a.button');
-        await delay(300);
 
         setPhase('browser-log-check');
-        const logs = await browserLogs(sessionId);
+        const logs = await collectBrowserLogsForWindow({
+            readLogs: remainingMs => browserLogs(sessionId, Math.min(1000, remainingMs)),
+            durationMs: 500,
+            pollMs: 100,
+        });
         const { external, application } = classifySevereLogs(logs, criticalExternalUrls);
 
         if (external.length > 0) {
@@ -471,7 +482,11 @@ async function run(){
         }
         if (sessionId) {
             setPhase('failure-diagnostics');
-            const logs = await browserLogs(sessionId).catch(() => []);
+            const logs = await collectBrowserLogsForWindow({
+                readLogs: remainingMs => browserLogs(sessionId, Math.min(1000, remainingMs)),
+                durationMs: 300,
+                pollMs: 75,
+            }).catch(() => []);
             const { external, application } = classifySevereLogs(logs, criticalExternalUrls);
             const diagnostics = [];
             if (external.length > 0) diagnostics.push(`Critical external browser errors:\n${formatLogs(external)}`);

@@ -30,6 +30,18 @@ function registration(overrides = {}){
     };
 }
 
+function createLongPrototypeChain(length){
+    let next = null;
+    for (let index = 0; index < length; index++){
+        const target = {};
+        const currentNext = next;
+        next = new Proxy(target, {
+            getPrototypeOf(){ return currentNext; },
+        });
+    }
+    return next;
+}
+
 test('M4A direct result construction enforces canonical calculation identity', async () => {
     const { createCalculationResult, EngineContractError } = await modules();
 
@@ -110,6 +122,32 @@ test('M4A thenable inspection rejects accessor-backed then without executing it'
             && error.details.phase === 'validate'
     );
     assert.equal(thenGetterCalls, 0);
+});
+
+test('M4A thenable inspection bounds hostile prototype chains and recovers the evaluation lock', async () => {
+    const {
+        createCalculationEngine,
+        EngineContractError,
+        MAX_CALCULATION_THENABLE_PROTOTYPE_DEPTH,
+    } = await modules();
+    const hostile = createLongPrototypeChain(MAX_CALCULATION_THENABLE_PROTOTYPE_DEPTH + 2);
+    const engine = createCalculationEngine({
+        registrations: [registration({ validateInputs(){ return hostile; } })],
+    });
+
+    assert.throws(
+        () => engine.calculate({ id: 'example:calculation/review-hardening', inputs: {} }),
+        error => error instanceof EngineContractError
+            && error.code === 'INVALID_CALCULATION_INPUTS'
+            && error.details.phase === 'validate'
+            && error.details.maxPrototypeDepth === MAX_CALCULATION_THENABLE_PROTOTYPE_DEPTH
+    );
+
+    const recovered = createCalculationEngine({ registrations: [registration()] });
+    assert.equal(
+        recovered.calculate({ id: 'example:calculation/review-hardening', inputs: {} }).value,
+        1
+    );
 });
 
 test('M4A rejects exotic and hostile input objects and releases the evaluation lock afterward', async () => {

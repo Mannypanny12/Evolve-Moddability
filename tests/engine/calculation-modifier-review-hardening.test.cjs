@@ -9,10 +9,16 @@ const root = path.resolve(__dirname, '../..');
 const enginePromise = import(pathToFileURL(path.join(root, 'src/engine/calculations/calculation-engine.mjs')).href);
 const identityPromise = import(pathToFileURL(path.join(root, 'src/engine/identity.mjs')).href);
 const resultPromise = import(pathToFileURL(path.join(root, 'src/engine/calculations/calculation-result.mjs')).href);
+const commonPromise = import(pathToFileURL(path.join(root, 'src/engine/calculations/common.mjs')).href);
 
 async function modules(){
-    const [engine, identity, result] = await Promise.all([enginePromise, identityPromise, resultPromise]);
-    return { ...engine, ...identity, ...result };
+    const [engine, identity, result, common] = await Promise.all([
+        enginePromise,
+        identityPromise,
+        resultPromise,
+        commonPromise,
+    ]);
+    return { ...engine, ...identity, ...result, ...common };
 }
 
 function registration(overrides = {}){
@@ -33,6 +39,18 @@ function modifier(overrides = {}){
         operand(){ return 1; },
         ...overrides,
     };
+}
+
+function createLongPrototypeChain(length){
+    let next = null;
+    for (let index = 0; index < length; index++){
+        const target = {};
+        const currentNext = next;
+        next = new Proxy(target, {
+            getPrototypeOf(){ return currentNext; },
+        });
+    }
+    return next;
 }
 
 function traceStep({
@@ -140,6 +158,17 @@ test('M4B modifier callbacks receive detached deeply frozen validated inputs wit
     assert.equal(operandThis, undefined);
 });
 
+test('M4B modifiers do not expand the fixed frozen calculation-engine public surface', async () => {
+    const { createCalculationEngine } = await modules();
+    const engine = createCalculationEngine({
+        registrations: [registration()],
+        modifiers: [modifier()],
+    });
+
+    assert.deepEqual(Object.keys(engine), ['calculate', 'explain', 'has', 'ids']);
+    assert.equal(Object.isFrozen(engine), true);
+});
+
 test('M4B hostile applies thenables fail closed without invoking accessors', async () => {
     const { createCalculationEngine, EngineContractError } = await modules();
     let getterCalls = 0;
@@ -165,6 +194,29 @@ test('M4B hostile applies thenables fail closed without invoking accessors', asy
             && error.details.modifierPhase === 'applies'
     );
     assert.equal(getterCalls, 0);
+});
+
+test('M4B modifier thenable inspection bounds hostile prototype chains with modifier attribution', async () => {
+    const {
+        createCalculationEngine,
+        EngineContractError,
+        MAX_CALCULATION_THENABLE_PROTOTYPE_DEPTH,
+    } = await modules();
+    const hostile = createLongPrototypeChain(MAX_CALCULATION_THENABLE_PROTOTYPE_DEPTH + 2);
+    const engine = createCalculationEngine({
+        registrations: [registration()],
+        modifiers: [modifier({ operand(){ return hostile; } })],
+    });
+
+    assert.throws(
+        () => engine.calculate({ id: 'example:calculation/output', inputs: { base: 10 } }),
+        error => error instanceof EngineContractError
+            && error.code === 'INVALID_MODIFIER_OPERAND'
+            && error.details.phase === 'modify'
+            && error.details.modifierId === 'example:modifier/test'
+            && error.details.modifierPhase === 'operand'
+            && error.details.maxPrototypeDepth === MAX_CALCULATION_THENABLE_PROTOTYPE_DEPTH
+    );
 });
 
 test('M4B modifier callback failures retain calculation and modifier phase diagnostics', async () => {
