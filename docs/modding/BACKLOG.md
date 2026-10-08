@@ -140,7 +140,7 @@ See [M2B_STATE_STORE_SELECTORS.md](M2B_STATE_STORE_SELECTORS.md) for the design 
 
 Established a fail-closed migration catalog for the mixed legacy settings/runtime surfaces without moving authority:
 
-- every M0-classified top-level `global.settings` member has one explicit M2 target classification;
+- every M0-classified top-level `global.settings` member has one explicit target classification;
 - the actual initialized legacy settings surface is independently cross-checked so M0/M2 cannot silently omit a current top-level setting together;
 - every exported mutable `var`/`let` binding in `src/vars.js` has one explicit target classification;
 - new exported `const` containers in `vars.js` are ratcheted so they cannot bypass the mutable-state review;
@@ -227,6 +227,7 @@ Established the pre-implementation evidence and design authority for M3:
 - explicit characterization of overloaded legacy action return values;
 - separation of availability, execution conditions, current affordability and queue/capacity feasibility;
 - special legacy payment semantics for prestige currencies, antimatter Plasmid, Supply, Species and Knowledge;
+- separation of consumptive payments from pseudo-cost requirements such as `Bool`, `Structs`, morale and army gates;
 - representative numeric and resource-substitution cost-adjustment evidence;
 - explicit M3 quote/payment versus M4 calculation/modifier boundary;
 - separation of authoritative semantic effects from legacy presentation `effect`, callbacks and redraws;
