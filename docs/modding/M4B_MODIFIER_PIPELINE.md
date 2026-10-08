@@ -2,7 +2,7 @@
 
 ## Status
 
-Implementation stage complete on the dedicated M4B branch. Independent review/hardening and final exact-head CI are still required before M4B may be marked complete or M4C may begin.
+Implementation and independent review/hardening are complete on the dedicated M4B branch. M4B is the current M4 authority once the final status-bearing head passes the complete Baseline workflow and is merged. M4C is the next reviewed slice; it has not been started here.
 
 M4B extends the M4A calculation runner with deterministic numeric modifier composition. It deliberately does not migrate vanilla Evolve production or cost behavior.
 
@@ -70,6 +70,8 @@ For one calculation, modifiers are sorted by:
 2. canonical modifier ID ascending.
 
 Registration order is never gameplay authority. Equal order values are allowed so independent packages do not have to coordinate globally unique integers.
+
+The hardened result/trace contract independently enforces this total order and rejects duplicate modifier IDs even when `createCalculationResult()` is called directly. A forged explanation therefore cannot claim a different modifier order from the pipeline that produced the value.
 
 ## Numeric operations
 
@@ -146,6 +148,8 @@ Skipped conditional modifiers remain visible in `explain()`:
 The result contract validates trace continuity and arithmetic truthfulness:
 
 - the base step begins at `before: null`;
+- modifier IDs are unique within the trace;
+- modifier steps follow deterministic `(order, modifierId)` order;
 - each modifier `before` equals the previous step's `after`;
 - an applied step's `after` matches its declared operation and operand;
 - a skipped step has `operand: null` and `before === after`;
@@ -158,7 +162,7 @@ Normal `calculate()` calls allocate no modifier trace and continue to return `tr
 
 Modifier contract failures throw `EngineContractError`; they are not gameplay rejection results.
 
-Diagnostics retain the enclosing `calculationId` and calculation phase and add `modifierId` plus modifier-specific phase information where relevant. Failures include malformed registrations, unknown targets, duplicate modifier IDs, unauthorized override, invalid predicate results, Promise/thenable leakage, non-finite operands and non-finite arithmetic results.
+Diagnostics retain the enclosing `calculationId` and calculation phase and add `modifierId` plus modifier-specific phase information where relevant. This includes hostile Promise/thenable inspection failures as well as callback exceptions. Failures include malformed registrations, unknown targets, duplicate modifier IDs, unauthorized override, invalid predicate results, Promise/thenable leakage, non-finite operands and non-finite arithmetic results.
 
 The existing calculation reentrancy lock remains active throughout modifier evaluation, so modifier callbacks cannot recursively invoke a calculation engine. The lock is released after failure.
 
@@ -175,7 +179,7 @@ M4B remains inside `src/engine/calculations/**` and inherits the M4A boundary:
 - no first-party `evolve:` identities in the generic calculation package;
 - no executable use of the inert M1 Registry.
 
-A dedicated M4B architecture gate additionally proves that the modifier pipeline is composed through the existing calculation engine, registrations remain fixed at engine construction, dynamic modifier-registration authority is absent, and production calculation consumers remain zero before M4D.
+A dedicated M4B architecture gate additionally proves that the modifier pipeline is composed through the existing calculation engine, registrations remain fixed at engine construction, dynamic modifier-registration authority is absent anywhere in the calculation package, and production calculation consumers remain zero before M4D.
 
 ## Legacy relationship
 
@@ -183,9 +187,9 @@ Legacy `adjustCosts()` demonstrates why deterministic numeric composition is nee
 
 Legacy `production()` and `fastLoop()` are also unchanged by M4B.
 
-## Test coverage added by implementation
+## Test coverage
 
-M4B implementation tests cover:
+M4B coverage includes:
 
 - add/multiply/override/cap/floor semantics;
 - mixed non-commutative ordering;
@@ -195,15 +199,46 @@ M4B implementation tests cover:
 - target-owned override permission;
 - conditional short-circuiting and skipped-trace entries;
 - calculate/explain value parity;
-- trace continuity and frozen result shapes;
+- trace continuity, ordering, uniqueness and frozen result shapes;
 - strict boolean predicates;
 - async/generator/thenable rejection;
+- hostile accessor-backed thenables without getter invocation;
 - non-finite operands and arithmetic overflow;
 - negative-zero normalization;
 - duplicate IDs, unknown targets, invalid operations/orders;
 - hostile registration shapes;
+- detached deeply frozen callback inputs and `this === undefined`;
+- modifier-specific diagnostic attribution;
 - reentrancy rejection and lock recovery;
-- the zero-production-consumer architecture boundary.
+- the zero-production-consumer architecture boundary;
+- negative controls proving dynamic modifier registration is rejected while comments/strings do not cause false positives.
+
+## Browser CI hardening discovered during implementation
+
+M4B itself has no production consumer and therefore does not execute in the browser game yet. During implementation proof, however, the inherited M0E4 browser startup negative control exposed two pre-existing CI harness weaknesses that could make a healthy branch hang or fail nondeterministically:
+
+- WebDriver/Chrome and local HTTP teardown could wait indefinitely after an unhealthy browser session;
+- Chrome browser-log delivery was sampled once after a fixed sleep even though the log endpoint is asynchronous and draining.
+
+The harness was hardened rather than weakening the gate. Cleanup now bounds session deletion, process-tree shutdown and HTTP server shutdown, attempts later cleanup phases even if an earlier phase fails, streams phase diagnostics, and has a final watchdog. The injected-startup marker is collected through bounded polling with a short post-marker settling window so unrelated severe errors cannot be hidden. Repeated complete CI runs proved both the injected-failure negative control and normal Chrome smoke before the M4B review began.
+
+These are test-infrastructure corrections only; they do not connect the M4 calculation package to production gameplay.
+
+## Independent review and hardening
+
+The post-implementation review treated M4B as untrusted against the approved design, M4A/M3 contracts, legacy modifier ordering evidence, production composition, hostile inputs, architecture boundaries and the browser proof path.
+
+The review found and fixed three substantive issues:
+
+1. **Trace authority was incomplete.** Runtime modifiers were deterministically sorted, but direct result construction could supply duplicate or out-of-order modifier steps as long as arithmetic continuity remained true. The result contract now independently rejects duplicate modifier IDs and enforces the same `(order, modifierId)` total order as the pipeline.
+2. **Hostile thenable diagnostics lost modifier attribution.** Accessor-based thenable inspection could throw after a modifier callback returned but outside the modifier error-enrichment block. Both `applies` and `operand` thenable inspection now preserve `modifierId`, `modifierPhase`, `calculationId` and the underlying cause code without invoking hostile accessors.
+3. **Browser cleanup was not fully fail-through.** A hard failure during driver process-tree cleanup could prevent the HTTP server cleanup phase from running. Teardown now attempts every phase and reports aggregated fatal cleanup failures only after all bounded cleanup work has been attempted.
+
+The review also strengthened the M4B architecture gate so dynamic modifier registration authority is rejected recursively across the calculation package, with a negative control proving the scanner ignores comments and string literals.
+
+Code-hardening head `9b94f0e4c7bb62d72987c637e2e8a447a1586ae1` passed the complete Baseline workflow in run `37727211512`.
+
+The branch diff was re-audited after hardening. It remains limited to the generic M4 calculation/modifier package, M4B tests/architecture/documentation, and the browser harness corrections required to make the existing CI proof bounded and deterministic. No legacy production path, `prod.js`, `fastLoop()`, resource primitive, M3 payment path or live calculation consumer is changed.
 
 ## Deliberate deferrals
 
@@ -222,8 +257,10 @@ M4B does not implement:
 - persistence of calculations/modifiers;
 - UI explanation panels.
 
-Production calculation consumers remain zero at the implementation checkpoint.
+Production calculation consumers remain zero at M4B exit. Resource substitution remains a structural transformation problem, not a numeric override.
 
-## Required next phase
+## Next slice
 
-The next action is the independent M4B review/hardening pass. It must treat this implementation as untrusted, compare it against the approved deep-dive contract and legacy evidence, fix every justified issue, rerun the complete relevant CI chain on the hardened head, and only then update current status documents to mark M4B complete and M4C next.
+M4C Resource calculation primitives is the next slice.
+
+M4C must be deep-dived separately before implementation. It may build production, consumption, capacity, storage and resource-delta primitives on the hardened calculation/modifier foundation, but M4B does not pre-design or implement those semantics.
