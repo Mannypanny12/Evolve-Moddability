@@ -140,7 +140,7 @@ See [M2B_STATE_STORE_SELECTORS.md](M2B_STATE_STORE_SELECTORS.md) for the design 
 
 Established a fail-closed migration catalog for the mixed legacy settings/runtime surfaces without moving authority:
 
-- every M0-classified top-level `global.settings` member has one explicit target classification;
+- every M0-classified top-level `global.settings` member has one explicit M2 target classification;
 - the actual initialized legacy settings surface is independently cross-checked so M0/M2 cannot silently omit a current top-level setting together;
 - every exported mutable `var`/`let` binding in `src/vars.js` has one explicit target classification;
 - new exported `const` containers in `vars.js` are ratcheted so they cannot bypass the mutable-state review;
