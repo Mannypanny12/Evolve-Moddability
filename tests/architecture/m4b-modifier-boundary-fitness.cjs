@@ -37,6 +37,20 @@ const REVIEWED_CALCULATION_EXPORTS = Object.freeze({
         'assertModifierOrder',
     ]),
     'modifier-pipeline.mjs': Object.freeze(['createModifierPipeline']),
+    'resource-contract.mjs': Object.freeze([
+        'RESOURCE_CAPACITY_MODES',
+        'RESOURCE_DELTA_KINDS',
+        'assertResourceMagnitude',
+        'normalizeResourceCapacity',
+        'normalizeResourceDeltaOperations',
+    ]),
+    'resource-delta.mjs': Object.freeze(['resolveResourceDelta']),
+    'resource-primitives.mjs': Object.freeze([
+        'calculateCapacity',
+        'calculateConsumption',
+        'calculateProduction',
+        'calculateStorageCapacity',
+    ]),
 });
 
 function listCalculationSources(dir){
