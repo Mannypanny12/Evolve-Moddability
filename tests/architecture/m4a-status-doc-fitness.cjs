@@ -8,8 +8,6 @@ const BACKLOG = 'docs/modding/BACKLOG.md';
 const CURRENT_ARCHITECTURE = 'docs/modding/CURRENT_ARCHITECTURE.md';
 const M4A_AUTHORITY = 'docs/modding/M4A_CALCULATION_CONTEXT_TRACE.md';
 
-const CURRENT_M4_ROW = '| M4 Calculation and modifier engine | in progress | `M4A_CALCULATION_CONTEXT_TRACE.md`, `ROADMAP.md` |';
-
 function occurrences(source, needle){
     return source.split(needle).length - 1;
 }
@@ -33,21 +31,15 @@ function statusDocViolations(roadmap, backlog, currentArchitecture, m4aAuthority
     requireExactlyOnce(roadmap, '## M4: Calculation and modifier engine', ROADMAP, violations);
     requireExactlyOnce(roadmap, '### M4A Calculation context and trace - complete', ROADMAP, violations);
     requireExactlyOnce(roadmap, 'See `M4A_CALCULATION_CONTEXT_TRACE.md`.', ROADMAP, violations);
-    requireExactlyOnce(roadmap, '### M4B Modifier pipeline - next', ROADMAP, violations);
     forbid(roadmap, '### M4A Calculation context and trace - next', ROADMAP, violations);
 
     requireExactlyOnce(backlog, '## M4: Calculation and modifier engine', BACKLOG, violations);
     requireExactlyOnce(backlog, '### M4A - Calculation context and trace - complete', BACKLOG, violations);
-    requireExactlyOnce(backlog, '### M4B - Modifier pipeline - next', BACKLOG, violations);
     requireExactlyOnce(backlog, 'M4A calculation context and trace - complete', BACKLOG, violations);
-    requireExactlyOnce(backlog, 'M4B modifier pipeline - next', BACKLOG, violations);
     requireExactlyOnce(backlog, 'See [M4A_CALCULATION_CONTEXT_TRACE.md](M4A_CALCULATION_CONTEXT_TRACE.md).', BACKLOG, violations);
     forbid(backlog, 'M4A calculation context and trace - next', BACKLOG, violations);
 
-    requireExactlyOnce(currentArchitecture, CURRENT_M4_ROW, CURRENT_ARCHITECTURE, violations);
-    requireExactlyOnce(currentArchitecture, 'Architecture report version 6 currently combines:', CURRENT_ARCHITECTURE, violations);
     requireExactlyOnce(currentArchitecture, 'M4A is complete: **Calculation context and trace**.', CURRENT_ARCHITECTURE, violations);
-    requireExactlyOnce(currentArchitecture, 'M4B is next: **Modifier pipeline**.', CURRENT_ARCHITECTURE, violations);
     requireExactlyOnce(currentArchitecture, '+-- calculation context + base trace                [M4A]', CURRENT_ARCHITECTURE, violations);
     forbid(currentArchitecture, '| M4 Calculation and modifier engine | next | `ROADMAP.md` |', CURRENT_ARCHITECTURE, violations);
     forbid(currentArchitecture, 'M4A is next: **Calculation context and trace**.', CURRENT_ARCHITECTURE, violations);
@@ -86,7 +78,6 @@ function main(){
 }
 
 module.exports = {
-    CURRENT_M4_ROW,
     statusDocViolations,
     findViolations,
 };
