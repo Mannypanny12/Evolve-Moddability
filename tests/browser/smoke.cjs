@@ -4,6 +4,7 @@ const fs = require('fs');
 const http = require('http');
 const path = require('path');
 const { spawn } = require('child_process');
+const { collectBrowserLogsUntilMarker } = require('./log-collector.cjs');
 const {
     assertOnlyExpectedStartupFailure,
     cleanupBrowserHarness,
@@ -325,13 +326,16 @@ async function click(sessionId, selector){
     await webdriver('POST', `/session/${sessionId}/element/${elementId}/click`, {});
 }
 
-async function browserLogs(sessionId){
+async function browserLogs(sessionId, timeoutMs = 15000){
+    const startedAt = Date.now();
     try {
-        return await webdriver('POST', `/session/${sessionId}/se/log`, { type: 'browser' });
+        return await webdriver('POST', `/session/${sessionId}/se/log`, { type: 'browser' }, timeoutMs);
     }
     catch (firstError) {
+        const remainingMs = timeoutMs - (Date.now() - startedAt);
+        if (remainingMs <= 0) throw firstError;
         try {
-            return await webdriver('POST', `/session/${sessionId}/log`, { type: 'browser' });
+            return await webdriver('POST', `/session/${sessionId}/log`, { type: 'browser' }, Math.max(1, remainingMs));
         }
         catch (_) {
             throw firstError;
@@ -415,8 +419,13 @@ async function run(){
 
         if (INJECT_STARTUP_FAILURE) {
             setPhase('negative-control-observation');
-            await delay(250);
-            const logs = await browserLogs(sessionId);
+            const logs = await collectBrowserLogsUntilMarker({
+                readLogs: remainingMs => browserLogs(sessionId, Math.min(1000, remainingMs)),
+                marker: STARTUP_FAILURE_MARKER,
+                timeoutMs: 3000,
+                pollMs: 100,
+                settleAfterMarkerMs: 500,
+            });
             const { external, application } = classifySevereLogs(logs, criticalExternalUrls);
             assertOnlyExpectedStartupFailure({
                 externalLogs: external,
