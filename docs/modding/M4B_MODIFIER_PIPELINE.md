@@ -267,7 +267,7 @@ The second review also adds an explicit runtime proof that configuring modifiers
 
 Code-bearing second-review head `e67b2ba30e86ee79701d5fa8192d2470cbf69d51` passed the complete Baseline workflow in run `37755684579`: Node tests, cumulative architecture gates, production build/cleanliness, injected-startup-failure browser negative control and normal real-browser smoke all passed.
 
-The later code-and-architecture hardening head `d27baaf373f5be70e26b5752e06002f7d4fd4664` also passed the complete Baseline workflow in run `37758991381`, including the explicit-base trace contract and export-surface architecture ratchet. The final documentation-bearing head must still pass the same complete exact-head chain before this second review can be merged. M4C remains untouched throughout this review.
+The later code-and-architecture hardening head `d27baaf373f5be70e26b5752e06002f7d4fd4664` also passed the complete Baseline workflow in run `37758991381`, including the explicit-base trace contract and export-surface architecture ratchet. The final second-review head `acc61049c03f9670e707e8d5b105901d33208c5d` passed complete Baseline PR run `37759833839`, merged through PR #56 as `bc0bf6031083f2f74faffb9806495b1f2991a8fc`, and the merged master commit passed Baseline run `37760263363`; Android test-site run `37760263358` also completed its build and Pages deployment successfully. M4C remained untouched throughout this review.
 
 ## Deliberate deferrals
 

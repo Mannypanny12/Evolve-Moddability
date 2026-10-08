@@ -11,8 +11,10 @@ const M4B_AUTHORITY = 'docs/modding/M4B_MODIFIER_PIPELINE.md';
 const CURRENT_M4_ROW = '| M4 Calculation and modifier engine | in progress | `M4B_MODIFIER_PIPELINE.md`, `ROADMAP.md` |';
 const ORIGINAL_FINAL_BRANCH_PROOF = 'The final original M4B branch head `920c46331364f3959143eb25f908ada3aeb2861b` passed Baseline PR run `37751341942`, merged as `a096634a71a1bc0ccd74295ef11a20f3caed89dd`, and the merged master commit passed Baseline run `37751803143`.';
 const SECOND_REVIEW_CODE_PROOF = 'Code-bearing second-review head `e67b2ba30e86ee79701d5fa8192d2470cbf69d51` passed the complete Baseline workflow in run `37755684579`: Node tests, cumulative architecture gates, production build/cleanliness, injected-startup-failure browser negative control and normal real-browser smoke all passed.';
+const FINAL_SECOND_REVIEW_PROOF = 'The final second-review head `acc61049c03f9670e707e8d5b105901d33208c5d` passed complete Baseline PR run `37759833839`, merged through PR #56 as `bc0bf6031083f2f74faffb9806495b1f2991a8fc`, and the merged master commit passed Baseline run `37760263363`; Android test-site run `37760263358` also completed its build and Pages deployment successfully.';
 const SECOND_REVIEW_TRACE_PROVENANCE = '**Direct modifier traces could omit base provenance.**';
 const SECOND_REVIEW_EXPORT_RATCHET = '**Dynamic-authority enforcement was partly name-based.**';
+const STALE_SECOND_REVIEW_PENDING = 'The final documentation-bearing head must still pass the same complete exact-head chain before this second review can be merged.';
 
 function occurrences(source, needle){
     return source.split(needle).length - 1;
@@ -64,6 +66,7 @@ function statusDocViolations(roadmap, backlog, currentArchitecture, m4bAuthority
     requireExactlyOnce(m4bAuthority, ORIGINAL_FINAL_BRANCH_PROOF, M4B_AUTHORITY, violations);
     requireExactlyOnce(m4bAuthority, '## Second post-merge independent review and hardening', M4B_AUTHORITY, violations);
     requireExactlyOnce(m4bAuthority, SECOND_REVIEW_CODE_PROOF, M4B_AUTHORITY, violations);
+    requireExactlyOnce(m4bAuthority, FINAL_SECOND_REVIEW_PROOF, M4B_AUTHORITY, violations);
     requireExactlyOnce(m4bAuthority, SECOND_REVIEW_TRACE_PROVENANCE, M4B_AUTHORITY, violations);
     requireExactlyOnce(m4bAuthority, SECOND_REVIEW_EXPORT_RATCHET, M4B_AUTHORITY, violations);
     requireExactlyOnce(m4bAuthority, 'hidden mutable closure state is not a valid calculation input', M4B_AUTHORITY, violations);
@@ -71,6 +74,7 @@ function statusDocViolations(roadmap, backlog, currentArchitecture, m4bAuthority
     requireExactlyOnce(m4bAuthority, '## Deliberate deferrals', M4B_AUTHORITY, violations);
     requireExactlyOnce(m4bAuthority, 'M4C Resource calculation primitives is the next slice.', M4B_AUTHORITY, violations);
     forbid(m4bAuthority, 'Implementation and independent review/hardening are complete on the dedicated M4B branch.', M4B_AUTHORITY, violations);
+    forbid(m4bAuthority, STALE_SECOND_REVIEW_PENDING, M4B_AUTHORITY, violations);
 
     return violations;
 }
@@ -100,8 +104,10 @@ module.exports = {
     CURRENT_M4_ROW,
     ORIGINAL_FINAL_BRANCH_PROOF,
     SECOND_REVIEW_CODE_PROOF,
+    FINAL_SECOND_REVIEW_PROOF,
     SECOND_REVIEW_TRACE_PROVENANCE,
     SECOND_REVIEW_EXPORT_RATCHET,
+    STALE_SECOND_REVIEW_PENDING,
     statusDocViolations,
     findViolations,
 };

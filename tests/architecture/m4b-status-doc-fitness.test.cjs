@@ -8,8 +8,10 @@ const {
     CURRENT_M4_ROW,
     ORIGINAL_FINAL_BRANCH_PROOF,
     SECOND_REVIEW_CODE_PROOF,
+    FINAL_SECOND_REVIEW_PROOF,
     SECOND_REVIEW_TRACE_PROVENANCE,
     SECOND_REVIEW_EXPORT_RATCHET,
+    STALE_SECOND_REVIEW_PENDING,
     statusDocViolations,
 } = require('./m4b-status-doc-fitness.cjs');
 
@@ -80,6 +82,7 @@ test('M4B status-document guard requires actual closure proof and complete secon
         .replace(ORIGINAL_FINAL_BRANCH_PROOF, 'Original closure passed.')
         .replace('## Second post-merge independent review and hardening', '## Later review')
         .replace(SECOND_REVIEW_CODE_PROOF, 'Second review passed.')
+        .replace(FINAL_SECOND_REVIEW_PROOF, 'Final second review passed.')
         .replace(SECOND_REVIEW_TRACE_PROVENANCE, '**Trace notes.**')
         .replace(SECOND_REVIEW_EXPORT_RATCHET, '**Architecture notes.**')
         .replace('hidden mutable closure state is not a valid calculation input', 'closure state is acceptable')
@@ -90,6 +93,7 @@ test('M4B status-document guard requires actual closure proof and complete secon
     assert.ok(violations.some(value => value.includes('920c4633')));
     assert.ok(violations.some(value => value.includes('Second post-merge independent review and hardening')));
     assert.ok(violations.some(value => value.includes('e67b2ba3')));
+    assert.ok(violations.some(value => value.includes('acc61049')));
     assert.ok(violations.some(value => value.includes('Direct modifier traces could omit base provenance')));
     assert.ok(violations.some(value => value.includes('Dynamic-authority enforcement was partly name-based')));
     assert.ok(violations.some(value => value.includes('hidden mutable closure state')));
@@ -97,8 +101,8 @@ test('M4B status-document guard requires actual closure proof and complete secon
     assert.ok(violations.some(value => value.includes('M4C Resource calculation primitives is the next slice.')));
 });
 
-test('M4B status-document guard rejects the obsolete pre-merge status sentence', () => {
-    const staleAuthority = `${m4bAuthority}\nImplementation and independent review/hardening are complete on the dedicated M4B branch.\n`;
+test('M4B status-document guard rejects obsolete pre-merge and second-review-pending status text', () => {
+    const staleAuthority = `${m4bAuthority}\nImplementation and independent review/hardening are complete on the dedicated M4B branch.\n${STALE_SECOND_REVIEW_PENDING}\n`;
     const violations = violationsFor({ m4bAuthorityText: staleAuthority });
-    assert.ok(violations.some(value => value.includes('stale status text')));
+    assert.equal(violations.filter(value => value.includes('stale status text')).length >= 2, true);
 });
