@@ -186,6 +186,9 @@ async function cleanupBrowserHarness({
     serverForceMs = 1000,
 }){
     let sessionDeleteFailed = false;
+    let driver = { forced: false, timedOut: false };
+    let httpServer = { forced: false, timedOut: false };
+    const fatalCleanupErrors = [];
 
     if (sessionId && deleteSession) {
         onPhase('session-delete');
@@ -206,28 +209,43 @@ async function cleanupBrowserHarness({
     }
 
     onPhase('driver-stop');
-    const driver = await stopChildProcessTree(child, {
-        termMs: driverTermMs,
-        killMs: driverKillMs,
-    });
-    if (driver.forced) {
-        onWarning('ChromeDriver/browser process tree required forced termination.');
+    try {
+        driver = await stopChildProcessTree(child, {
+            termMs: driverTermMs,
+            killMs: driverKillMs,
+        });
+        if (driver.forced) {
+            onWarning('ChromeDriver/browser process tree required forced termination.');
+        }
+        if (driver.timedOut) {
+            fatalCleanupErrors.push(new Error('ChromeDriver/browser process tree survived forced termination.'));
+        }
     }
-    if (driver.timedOut) {
-        throw new Error('ChromeDriver/browser process tree survived forced termination.');
+    catch (error) {
+        fatalCleanupErrors.push(error instanceof Error ? error : new Error(String(error)));
     }
 
     onPhase('server-close');
-    const httpServer = await closeServerBounded(server, {
-        sockets,
-        graceMs: serverGraceMs,
-        forceMs: serverForceMs,
-    });
-    if (httpServer.forced) {
-        onWarning('Browser smoke HTTP server required forced connection cleanup.');
+    try {
+        httpServer = await closeServerBounded(server, {
+            sockets,
+            graceMs: serverGraceMs,
+            forceMs: serverForceMs,
+        });
+        if (httpServer.forced) {
+            onWarning('Browser smoke HTTP server required forced connection cleanup.');
+        }
+        if (httpServer.timedOut) {
+            fatalCleanupErrors.push(new Error('Browser smoke HTTP server did not close after forced connection cleanup.'));
+        }
     }
-    if (httpServer.timedOut) {
-        throw new Error('Browser smoke HTTP server did not close after forced connection cleanup.');
+    catch (error) {
+        fatalCleanupErrors.push(error instanceof Error ? error : new Error(String(error)));
+    }
+
+    if (fatalCleanupErrors.length > 0) {
+        const message = fatalCleanupErrors.map(error => error.message).join(' | ');
+        throw new Error(`Browser smoke cleanup failed after attempting all teardown phases: ${message}`);
     }
 
     return {
