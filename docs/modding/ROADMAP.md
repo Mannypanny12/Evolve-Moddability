@@ -293,7 +293,7 @@ Adds the frozen `createWorkQueueSelector()` readiness/selection boundary with tr
 
 Closes M3E with executable legacy build/research queue evidence, a zero-execution `prepare -> WorkItem -> WorkQueue -> selection` integration proof, and a cumulative architecture gate that pins the four-file generic queue package, keeps it first-party-neutral, and prevents any production consumer before reviewed cutover. Command-specific admission, execution progress, reconciliation, prediction, scheduling and persistence remain deferred to their owning later milestones. See `M3E4_QUEUE_CLOSURE.md`.
 
-M3E is closed without modifying vanilla build/research gameplay. M3F and M3G are closed; M4A is complete and M4B is next.
+M3E is closed without modifying vanilla build/research gameplay. M3F and M3G are closed; M4A and M4B are complete, and M4C is next.
 
 ### M3F First real vanilla cutover - complete
 
@@ -343,19 +343,24 @@ M4A establishes a generic, state-free calculation kernel with:
 
 No vanilla production calculation is cut over in M4A. See `M4A_CALCULATION_CONTEXT_TRACE.md`.
 
-### M4B Modifier pipeline - next
+### M4B Modifier pipeline - complete
 
-Support operations such as:
+M4B adds the deterministic numeric contribution layer on top of M4A:
 
-- add;
-- multiply;
-- override where explicitly allowed;
-- cap/floor;
-- conditional contribution.
+- canonical namespaced `modifier` identities that may target calculations across namespaces;
+- fixed engine-construction modifier registrations;
+- sequential `add`, `multiply`, explicitly permitted `override`, `cap`, and `floor` operations;
+- optional strict-boolean conditional contribution without evaluating skipped operands;
+- deterministic `(order, modifierId)` ordering independent of registration order;
+- target-owned override permission through `allowOverride`;
+- calculate/explain parity with ordered applied/skipped modifier trace entries;
+- finite operand/intermediate enforcement and modifier-specific failure diagnostics;
+- hardened trace continuity, arithmetic truthfulness, modifier uniqueness and ordering;
+- cumulative architecture guards that forbid dynamic modifier authority and retain zero production calculation consumers.
 
-Define deterministic ordering and ownership.
+M4B does not migrate `adjustCosts()`, `production()`, `prod.js`, `fastLoop()`, or any live vanilla calculation. See `M4B_MODIFIER_PIPELINE.md`.
 
-### M4C Resource calculation primitives
+### M4C Resource calculation primitives - next
 
 Model:
 
@@ -364,6 +369,8 @@ Model:
 - capacity;
 - storage;
 - resource delta application.
+
+M4C must build on the hardened M4A/M4B calculation/modifier contracts. It does not automatically imply a vanilla production cutover; M4D owns the first reviewed live production vertical.
 
 ### M4D Migrate one production vertical
 
@@ -698,45 +705,3 @@ After package/save semantics are stable:
 - offline operation;
 - lifecycle/save tests;
 - mod profile management appropriate for mobile.
-
-Android packages the engine. It must not become a separate gameplay implementation.
-
----
-
-## Cross-cutting migration rules
-
-### No permanent dual systems
-
-A temporary dual path is acceptable only for differential verification. Once a migrated path is authoritative and proven, delete the old path.
-
-### Characterize before migrate
-
-Every migrated behavior needs coverage first.
-
-### Public stability comes late
-
-Internal APIs may evolve aggressively through M1-M9. Third-party compatibility promises begin at M10.
-
-### Architecture budgets ratchet downward
-
-Track direct:
-
-- `global`;
-- DOM;
-- storage;
-- wall-clock/random;
-- forbidden imports;
-- dependency cycles.
-
-New engine code starts at zero and stays at zero.
-
-### Upstream changes
-
-Because the repository is now standalone and the architecture will diverge, upstream integration changes from "keep every refactor easy to merge" to:
-
-- periodically compare upstream;
-- port bug fixes/content intentionally;
-- retain upstream provenance;
-- avoid unnecessary behavior divergence.
-
-Behavioral compatibility is more important than preserving legacy file structure.
