@@ -9,27 +9,61 @@ const { findViolations } = require('./m4b-modifier-boundary-fitness.cjs');
 
 const root = path.resolve(__dirname, '../..');
 
+function createFixture(){
+    const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'm4b-boundary-'));
+    fs.mkdirSync(path.join(fixture, 'src/engine/calculations'), { recursive: true });
+    fs.mkdirSync(path.join(fixture, 'src/application'), { recursive: true });
+    fs.writeFileSync(path.join(fixture, 'src/engine/calculations/modifier-contract.mjs'), 'export const x = 1;\n');
+    fs.writeFileSync(path.join(fixture, 'src/engine/calculations/modifier-pipeline.mjs'), 'export function createModifierPipeline(){}\n');
+    fs.writeFileSync(
+        path.join(fixture, 'src/engine/calculations/calculation-engine.mjs'),
+        "import { createModifierPipeline } from './modifier-pipeline.mjs';\nconst allowed = ['registrations', 'modifiers'];\n"
+    );
+    return fixture;
+}
+
 test('M4B modifier package satisfies its dedicated architecture boundary', () => {
     assert.deepEqual(findViolations(root), []);
 });
 
 test('M4B boundary rejects production consumers before M4D', () => {
-    const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'm4b-boundary-'));
+    const fixture = createFixture();
     try {
-        fs.mkdirSync(path.join(fixture, 'src/engine/calculations'), { recursive: true });
-        fs.mkdirSync(path.join(fixture, 'src/application'), { recursive: true });
-        fs.writeFileSync(path.join(fixture, 'src/engine/calculations/modifier-contract.mjs'), 'export const x = 1;\n');
-        fs.writeFileSync(path.join(fixture, 'src/engine/calculations/modifier-pipeline.mjs'), 'export function createModifierPipeline(){}\n');
-        fs.writeFileSync(
-            path.join(fixture, 'src/engine/calculations/calculation-engine.mjs'),
-            "import { createModifierPipeline } from './modifier-pipeline.mjs';\nconst allowed = ['registrations', 'modifiers'];\n"
-        );
         fs.writeFileSync(
             path.join(fixture, 'src/application/illegal.mjs'),
             "import { createCalculationEngine } from '../engine/calculations/calculation-engine.mjs';\nexport { createCalculationEngine };\n"
         );
         const violations = findViolations(fixture);
         assert.equal(violations.some(value => value.includes('zero production calculation consumers')), true);
+    }
+    finally {
+        fs.rmSync(fixture, { recursive: true, force: true });
+    }
+});
+
+test('M4B boundary rejects dynamic modifier registration authority anywhere in calculation sources', () => {
+    const fixture = createFixture();
+    try {
+        fs.writeFileSync(
+            path.join(fixture, 'src/engine/calculations/modifier-pipeline.mjs'),
+            'export function createModifierPipeline(){}\nexport function registerModifier(){}\n'
+        );
+        const violations = findViolations(fixture);
+        assert.equal(violations.some(value => value.includes('dynamic modifier registration authority')), true);
+    }
+    finally {
+        fs.rmSync(fixture, { recursive: true, force: true });
+    }
+});
+
+test('M4B dynamic-authority guard ignores comments and strings', () => {
+    const fixture = createFixture();
+    try {
+        fs.writeFileSync(
+            path.join(fixture, 'src/engine/calculations/modifier-pipeline.mjs'),
+            "export function createModifierPipeline(){}\n// registerModifier is forbidden API terminology\nconst note = 'removeModifier';\n"
+        );
+        assert.deepEqual(findViolations(fixture), []);
     }
     finally {
         fs.rmSync(fixture, { recursive: true, force: true });
