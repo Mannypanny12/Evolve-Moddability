@@ -8,6 +8,8 @@ const {
     CURRENT_M4_ROW,
     ORIGINAL_FINAL_BRANCH_PROOF,
     SECOND_REVIEW_CODE_PROOF,
+    SECOND_REVIEW_TRACE_PROVENANCE,
+    SECOND_REVIEW_EXPORT_RATCHET,
     statusDocViolations,
 } = require('./m4b-status-doc-fitness.cjs');
 
@@ -72,20 +74,26 @@ test('M4B status-document guard pins architecture report version without inventi
     assert.ok(violations.some(value => value.includes('Architecture report version 6')));
 });
 
-test('M4B status-document guard requires actual closure proof and second-review evidence', () => {
+test('M4B status-document guard requires actual closure proof and complete second-review evidence', () => {
     const staleAuthority = m4bAuthority
         .replace('## Independent review and hardening', '## Review notes')
         .replace(ORIGINAL_FINAL_BRANCH_PROOF, 'Original closure passed.')
         .replace('## Second post-merge independent review and hardening', '## Later review')
         .replace(SECOND_REVIEW_CODE_PROOF, 'Second review passed.')
+        .replace(SECOND_REVIEW_TRACE_PROVENANCE, '**Trace notes.**')
+        .replace(SECOND_REVIEW_EXPORT_RATCHET, '**Architecture notes.**')
         .replace('hidden mutable closure state is not a valid calculation input', 'closure state is acceptable')
+        .replace('complete exported surface of `src/engine/calculations/**` is ratcheted', 'calculation exports are unconstrained')
         .replace('M4C Resource calculation primitives is the next slice.', 'Resource primitives come later.');
     const violations = violationsFor({ m4bAuthorityText: staleAuthority });
     assert.ok(violations.some(value => value.includes('Independent review and hardening')));
     assert.ok(violations.some(value => value.includes('920c4633')));
     assert.ok(violations.some(value => value.includes('Second post-merge independent review and hardening')));
     assert.ok(violations.some(value => value.includes('e67b2ba3')));
+    assert.ok(violations.some(value => value.includes('Direct modifier traces could omit base provenance')));
+    assert.ok(violations.some(value => value.includes('Dynamic-authority enforcement was partly name-based')));
     assert.ok(violations.some(value => value.includes('hidden mutable closure state')));
+    assert.ok(violations.some(value => value.includes('complete exported surface')));
     assert.ok(violations.some(value => value.includes('M4C Resource calculation primitives is the next slice.')));
 });
 
