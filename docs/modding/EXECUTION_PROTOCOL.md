@@ -53,6 +53,20 @@ When CI fails:
 
 Do not repeatedly poll every workflow surface or make speculative production changes from an abbreviated CI annotation.
 
+## CI observation rule
+
+Healthy but still-running CI is also an external wait and must be bounded at the orchestration level.
+
+- Do not make more than two consecutive status reads of the same workflow run when they report no meaningful state change.
+- After the second unchanged observation, stop polling that run in the current tool sequence.
+- If the same step remains active beyond its normal envelope, inspect its job/log once and diagnose the specific wait instead of continuing status polling.
+- If the run is simply still progressing normally, record it as pending external evidence and continue only work that does not depend on its completion. Do not sit in a status loop.
+- A content-identical merge does not require blocking on a second full CI run when the exact merged tree already passed the complete required chain before merge.
+- Post-merge workflow status may be checked once for additional evidence; if it is still in progress, record it as pending and stop polling.
+- Never create a new documentation-only follow-up solely to replace a truthful pending CI sentence while that external run is still executing. Closure authority should record the strongest completed proof available without recursively creating another proof cycle.
+
+The final exact-head proof still matters. This rule changes how external CI is observed, not what must be proven before a code-bearing head is accepted.
+
 ## Runtime-shape rule
 
 Node fixtures are not sufficient proof when legacy production state is transformed by runtime frameworks. Any bridge that reads or writes live Vue/DOM/platform-managed state needs at least one real runtime/browser proof while the slice is still active.
@@ -87,7 +101,8 @@ Long-running external operations must remain bounded:
 - CI jobs require a job timeout;
 - browser/WebDriver/network waits require explicit timeouts;
 - child processes require forced cleanup fallback;
-- test failures must preserve logs as artifacts.
+- test failures must preserve logs as artifacts;
+- orchestration-level status observation must obey the CI observation rule above rather than waiting indefinitely for a remote state transition.
 
 The repository already has these protections for the current baseline workflow and browser harness. New long-running tools must preserve the same property.
 
