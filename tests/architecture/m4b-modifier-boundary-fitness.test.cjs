@@ -95,6 +95,24 @@ test('M4B boundary rejects exports from unreviewed new calculation-package modul
     }
 });
 
+test('M4B boundary rejects unreviewed new calculation-package modules even without exports', () => {
+    const fixture = createFixture();
+    try {
+        fs.writeFileSync(
+            path.join(fixture, 'src/engine/calculations/hidden-side-effect.mjs'),
+            'const internalAuthority = new Map();\ninternalAuthority.set("hidden", true);\n'
+        );
+        const violations = findViolations(fixture);
+        assert.equal(
+            violations.some(value => value.includes('hidden-side-effect.mjs') && value.includes('unreviewed calculation-package module')),
+            true
+        );
+    }
+    finally {
+        fs.rmSync(fixture, { recursive: true, force: true });
+    }
+});
+
 test('M4B dynamic-authority guard ignores comments and strings', () => {
     const fixture = createFixture();
     try {
