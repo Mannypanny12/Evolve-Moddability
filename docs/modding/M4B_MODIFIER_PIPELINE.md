@@ -2,7 +2,9 @@
 
 ## Status
 
-Implementation and independent review/hardening are complete on the dedicated M4B branch. M4B is the current M4 authority once the final status-bearing head passes the complete Baseline workflow and is merged. M4C is the next reviewed slice; it has not been started here.
+M4B is complete and merged on `master`. The original closure reached final branch head `920c46331364f3959143eb25f908ada3aeb2861b`, passed Baseline PR run `37751341942`, and merged as `a096634a71a1bc0ccd74295ef11a20f3caed89dd`. That merged master head passed Baseline run `37751803143`, and the companion Android test-site build/deploy also completed successfully.
+
+A second post-merge independent review was later requested from exact base `a096634a71a1bc0ccd74295ef11a20f3caed89dd`. Its hardening is isolated from M4C and does not begin resource primitives, production cutover, `adjustCosts()` migration, or other later work.
 
 M4B extends the M4A calculation runner with deterministic numeric modifier composition. It deliberately does not migrate vanilla Evolve production or cost behavior.
 
@@ -58,7 +60,8 @@ Rules:
 - `operand` is synchronous and must return a finite number;
 - callbacks receive only the already validated, detached and frozen calculation inputs;
 - callbacks do not receive the current intermediate calculation value;
-- Promise/thenable, async, generator and class callback forms fail closed.
+- Promise/thenable, async, generator and class callback forms fail closed;
+- calculation and modifier callbacks are contractually deterministic functions of explicit validated inputs plus immutable construction-time constants. Hidden mutable closure state is not a legitimate semantic input. JavaScript closure purity cannot be fully introspected by this generic runtime, so later slices that own real registrations must preserve and architecture-test this composition boundary.
 
 Canonical modifier identity is the M4B ownership anchor. M4B intentionally does not introduce the future package-loader/public-Mod-API ownership protocol.
 
@@ -164,6 +167,8 @@ Modifier contract failures throw `EngineContractError`; they are not gameplay re
 
 Diagnostics retain the enclosing `calculationId` and calculation phase and add `modifierId` plus modifier-specific phase information where relevant. This includes hostile Promise/thenable inspection failures as well as callback exceptions. Failures include malformed registrations, unknown targets, duplicate modifier IDs, unauthorized override, invalid predicate results, Promise/thenable leakage, non-finite operands and non-finite arithmetic results.
 
+Promise/thenable inspection itself is bounded. The runtime follows only a finite prototype-chain depth while checking returned objects, so a hostile proxy cannot manufacture an endless stream of fresh prototypes and trap synchronous evaluation forever.
+
 The existing calculation reentrancy lock remains active throughout modifier evaluation, so modifier callbacks cannot recursively invoke a calculation engine. The lock is released after failure.
 
 ## Architecture boundary
@@ -179,7 +184,7 @@ M4B remains inside `src/engine/calculations/**` and inherits the M4A boundary:
 - no first-party `evolve:` identities in the generic calculation package;
 - no executable use of the inert M1 Registry.
 
-A dedicated M4B architecture gate additionally proves that the modifier pipeline is composed through the existing calculation engine, registrations remain fixed at engine construction, dynamic modifier-registration authority is absent anywhere in the calculation package, and production calculation consumers remain zero before M4D.
+A dedicated M4B architecture gate additionally proves that the modifier pipeline is composed through the existing calculation engine, registrations remain fixed at engine construction, dynamic modifier-registration authority is absent anywhere in the calculation package, and production calculation consumers remain zero before M4D. Runtime tests also pin the engine's frozen public surface to exactly `calculate`, `explain`, `has`, and `ids` even when modifiers are configured.
 
 ## Legacy relationship
 
@@ -203,6 +208,7 @@ M4B coverage includes:
 - strict boolean predicates;
 - async/generator/thenable rejection;
 - hostile accessor-backed thenables without getter invocation;
+- bounded hostile thenable prototype traversal;
 - non-finite operands and arithmetic overflow;
 - negative-zero normalization;
 - duplicate IDs, unknown targets, invalid operations/orders;
@@ -210,17 +216,18 @@ M4B coverage includes:
 - detached deeply frozen callback inputs and `this === undefined`;
 - modifier-specific diagnostic attribution;
 - reentrancy rejection and lock recovery;
+- exact frozen engine public surface with modifiers configured;
 - the zero-production-consumer architecture boundary;
 - negative controls proving dynamic modifier registration is rejected while comments/strings do not cause false positives.
 
 ## Browser CI hardening discovered during implementation
 
-M4B itself has no production consumer and therefore does not execute in the browser game yet. During implementation proof, however, the inherited M0E4 browser startup negative control exposed two pre-existing CI harness weaknesses that could make a healthy branch hang or fail nondeterministically:
+M4B itself has no production consumer and therefore does not execute in the browser game yet. During implementation proof, however, the inherited M0E4 browser startup negative control exposed pre-existing CI harness weaknesses that could make a healthy branch hang or fail nondeterministically:
 
 - WebDriver/Chrome and local HTTP teardown could wait indefinitely after an unhealthy browser session;
-- Chrome browser-log delivery was sampled once after a fixed sleep even though the log endpoint is asynchronous and draining.
+- Chrome browser-log delivery is asynchronous and draining, so one-shot reads after fixed sleeps can miss relevant severe errors.
 
-The harness was hardened rather than weakening the gate. Cleanup now bounds session deletion, process-tree shutdown and HTTP server shutdown, attempts later cleanup phases even if an earlier phase fails, streams phase diagnostics, and has a final watchdog. The injected-startup marker is collected through bounded polling with a short post-marker settling window so unrelated severe errors cannot be hidden. Repeated complete CI runs proved both the injected-failure negative control and normal Chrome smoke before the M4B review began.
+The harness was hardened rather than weakening the gate. Cleanup now bounds session deletion, process-tree shutdown and HTTP server shutdown, attempts later cleanup phases even if an earlier phase fails, streams phase diagnostics, and has a final watchdog. Marker-bearing checks use bounded polling with a post-marker settling window, while the normal successful smoke repeatedly drains logs for a bounded observation window. Failure diagnostics also perform a short bounded drain.
 
 These are test-infrastructure corrections only; they do not connect the M4 calculation package to production gameplay.
 
@@ -236,9 +243,26 @@ The review found and fixed three substantive issues:
 
 The review also strengthened the M4B architecture gate so dynamic modifier registration authority is rejected recursively across the calculation package, with a negative control proving the scanner ignores comments and string literals.
 
-Code-hardening head `9b94f0e4c7bb62d72987c637e2e8a447a1586ae1` passed the complete Baseline workflow in run `37727211512`.
+Code-hardening head `9b94f0e4c7bb62d72987c637e2e8a447a1586ae1` passed the complete Baseline workflow in run `37727211512`. That was an implementation checkpoint, not the final original M4B closure proof. The final original M4B branch head `920c46331364f3959143eb25f908ada3aeb2861b` passed Baseline PR run `37751341942`, merged as `a096634a71a1bc0ccd74295ef11a20f3caed89dd`, and the merged master commit passed Baseline run `37751803143`.
 
-The branch diff was re-audited after hardening. It remains limited to the generic M4 calculation/modifier package, M4B tests/architecture/documentation, and the browser harness corrections required to make the existing CI proof bounded and deterministic. No legacy production path, `prod.js`, `fastLoop()`, resource primitive, M3 payment path or live calculation consumer is changed.
+The branch diff was re-audited after hardening. It remained limited to the generic M4 calculation/modifier package, M4B tests/architecture/documentation, and the browser harness corrections required to make the existing CI proof bounded and deterministic. No legacy production path, `prod.js`, `fastLoop()`, resource primitive, M3 payment path or live calculation consumer was changed.
+
+## Second post-merge independent review and hardening
+
+A second thorough review was requested after the original M4B closure. It froze merged master `a096634a71a1bc0ccd74295ef11a20f3caed89dd` as its base and rechecked the calculation/modifier implementation, result contract, production composition, architecture gates, hostile inputs, browser proof path, documentation and original closure evidence.
+
+This review found and fixed four additional issues or proof gaps:
+
+1. **Thenable prototype inspection was not time-bounded.** Cycle detection prevented ordinary prototype loops, but a hostile proxy could return a fresh prototype object on every `getPrototypeOf()` trap and keep synchronous evaluation inside an unbounded loop. Thenable inspection now has an explicit prototype-depth limit, with validator and modifier regression tests proving bounded rejection, diagnostic attribution and lock recovery.
+2. **Two browser-log checks still used one-shot sampling.** The harness's own uncaught-exception probe and the normal successful smoke could miss Chrome errors delivered after their single browser-log drain. Both now use bounded repeated polling/draining, and failure diagnostics use a short bounded drain as well.
+3. **The marker settling window could be truncated.** The first polling helper used one initial absolute deadline, so a marker arriving near that deadline did not receive the promised full post-marker settling interval. The marker now starts its own bounded settling deadline, with a regression test that injects a later unrelated severe error.
+4. **The durable M4B authority pinned an intermediate proof.** The status fitness gate and this document emphasized code-hardening head `9b94f0e4...` even though later branch, PR, merge and merged-master proof existed. The authority now records the actual original closure chain and the status guard protects that evidence.
+
+The second review also adds an explicit runtime proof that configuring modifiers cannot expand the frozen calculation-engine API, and clarifies the permanent determinism obligation for future registration owners: hidden mutable closure state is not a valid calculation input even though generic JavaScript runtime code cannot introspect closure purity completely.
+
+Code-bearing second-review head `e67b2ba30e86ee79701d5fa8192d2470cbf69d51` passed the complete Baseline workflow in run `37755684579`: Node tests, cumulative architecture gates, production build/cleanliness, injected-startup-failure browser negative control and normal real-browser smoke all passed.
+
+The documentation/status-bearing head must still pass the same complete exact-head chain before this second review can be merged. M4C remains untouched throughout this review.
 
 ## Deliberate deferrals
 
