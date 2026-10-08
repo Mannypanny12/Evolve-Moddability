@@ -12,7 +12,7 @@ Slice documents remain valuable migration history, but when an older slice note 
 | M1 Engine kernel and seams | complete | `M1_CLOSURE_REVIEW.md`, `M0_M3_RETROSPECTIVE_HARDENING.md` |
 | M2 Explicit state architecture | complete | `M2_CLOSURE_REVIEW.md`, `M0_M3_RETROSPECTIVE_HARDENING.md` |
 | M3 Commands, conditions, effects and costs | complete | `M3_CLOSURE_REVIEW.md`, `M3_FINAL_REVIEW_HARDENING.md`, `M0_M3_RETROSPECTIVE_HARDENING.md` |
-| M4 Calculation and modifier engine | in progress | `M4A_CALCULATION_CONTEXT_TRACE.md`, `ROADMAP.md` |
+| M4 Calculation and modifier engine | in progress | `M4B_MODIFIER_PIPELINE.md`, `ROADMAP.md` |
 
 ## Current dependency direction
 
@@ -35,6 +35,7 @@ generic engine semantic APIs
             +-- costs / effects / execution              [M3]
             +-- inert queue model                        [M3]
             +-- calculation context + base trace                [M4A]
+            +-- deterministic modifier pipeline                 [M4B]
 
 legacy bridge (temporary) may adapt legacy state to reviewed
 engine contracts, but generic engine packages never depend back
@@ -53,9 +54,11 @@ Permanent direction rules:
 - conditions remain read-only and distinct from payment/affordability.
 - effect and payment plans are inert data, not stored mutation authority.
 - `WorkQueue` remains an inert queue model at M3 exit and has no production gameplay execution consumer.
-- M4A calculations are named, synchronous finite-number computations over explicit inert inputs; the generic calculation package does not read state, runtime, platform or legacy data itself.
-- `calculate()` and `explain()` share one base-calculation path; explanation adds inert trace data rather than a second gameplay implementation.
-- `src/engine/calculations/**` has zero production consumers at M4A exit; live calculation cutover begins only in a later reviewed migration slice.
+- M4 calculations are named, synchronous finite-number computations over explicit inert inputs; the generic calculation package does not read state, runtime, platform or legacy data itself.
+- `calculate()` and `explain()` share one calculation/modifier path; explanation adds inert trace data rather than a second gameplay implementation.
+- M4B modifiers are fixed engine-construction registrations with canonical IDs, deterministic `(order, modifierId)` ordering and target-owned override permission.
+- modifier callbacks see only validated detached frozen calculation inputs; they do not receive hidden state or the current intermediate value.
+- `src/engine/calculations/**` has zero production consumers at M4B exit; live calculation cutover begins only in the reviewed M4D migration slice.
 
 ## M0 authority: safety net
 
@@ -159,22 +162,29 @@ Current M3 laws:
 
 ## M4 authority: calculation architecture
 
-`M4A_CALCULATION_CONTEXT_TRACE.md` is the current M4 authority. M4A establishes the base calculation contract only; modifier semantics remain M4B.
+`M4B_MODIFIER_PIPELINE.md` is the current M4 authority. M4A remains the base calculation/context/trace foundation; M4B adds the deterministic numeric contribution layer without beginning resource primitives or vanilla cutover.
 
 Current M4 laws:
 
 - calculation identity reuses the canonical M1 content-ID grammar with type `calculation`;
+- modifier identity uses the same grammar with type `modifier`, and a modifier may target a calculation in another namespace;
 - contexts are closed `{ id, inputs }` inert data;
-- executable calculation registrations are fixed `{ id, validateInputs, calculateBase }` handlers rather than M1 Registry definitions;
-- base calculation output is a finite number, with `-0` normalized to `0`;
+- executable calculation registrations are fixed `{ id, validateInputs, calculateBase, allowOverride? }` handlers rather than M1 Registry definitions;
+- modifiers are fixed engine-construction registrations; no dynamic registration authority exists in M4B;
+- base calculation output, modifier operands, intermediates and final output are finite numbers, with `-0` normalized to `0`;
+- modifiers compose sequentially through `add`, `multiply`, explicitly permitted `override`, `cap` and `floor` operations;
+- optional `applies(inputs)` predicates are strict booleans and skipped modifiers do not evaluate their operand;
+- modifiers are ordered by `(order ascending, canonical modifier ID ascending)` independent of registration order;
+- override permission is owned by the target calculation through `allowOverride`, which defaults to false;
 - raw and validated inputs are detached/canonicalized/frozen and hostile shapes fail closed;
 - `calculate()` is the normal low-allocation path and returns `trace: null`;
-- `explain()` runs the same validation/base calculation and adds a frozen base trace containing validated inputs and one `before: null` / `after: value` step;
-- async/generator/class handlers, Promise/thenable leakage and nested/cross-instance evaluation are rejected;
+- `explain()` runs the same calculation/modifier path and records base plus ordered applied/skipped modifier steps;
+- trace construction independently enforces arithmetic continuity, unique modifier IDs and deterministic modifier order;
+- async/generator/class handlers, Promise/thenable leakage and nested/cross-instance evaluation are rejected with calculation/modifier phase attribution;
 - the calculation package owns no state read/write authority and has no direct runtime, legacy, platform, M3 semantic-package or first-party Evolve dependency;
-- production code has no calculation-package consumer yet, so vanilla behavior remains unchanged at M4A exit.
+- production code has no calculation-package consumer yet, so vanilla behavior remains unchanged at M4B exit.
 
-The M4A boundary and status-document gates are cumulative members of `npm run test:architecture`. The historical M3 status gate now protects M3 closure rather than owning current M4 progression markers.
+The M4A boundary/status guards and M4B modifier/status guards are cumulative members of `npm run test:architecture`. M4A's status guard now protects historical M4A closure facts; M4B owns the current M4 progression markers.
 
 ## Architecture inspector
 
@@ -194,7 +204,7 @@ Architecture report version 6 currently combines:
 - M2E ownership, write-capability, selector, and dependency gates;
 - M3 command-architecture closure, including the reviewed live DNA command/runtime/settlement seams, generic package roots, queue-production-consumer count, prerequisite gate counts, cross-layer violations, and M3 architecture-test coverage violations.
 
-The report is not bumped solely for M4A because M4A adds no new report field. Its boundaries are enforced directly by the M4A architecture gates. A later calculation-architecture report extension should bump the report version when the report shape actually changes.
+The report is not bumped solely for M4B because M4B adds no new report field. M4A/M4B boundaries are enforced directly by their calculation/modifier and status architecture gates. A later calculation-architecture report extension should bump the report version when the report shape actually changes.
 
 M2D3/M2D4 and the M3G closure gate expose composable scanner functions directly, so the report consumes the same rule implementations as their standalone CLI gates rather than maintaining a second architecture truth.
 
@@ -217,6 +227,8 @@ When two documents appear to disagree:
 
 M4A is complete: **Calculation context and trace**.
 
-M4B is next: **Modifier pipeline**.
+M4B is complete: **Modifier pipeline**.
 
-M4B should add deterministic modifier operations, ordering and ownership on top of the M4A base-calculation/result/trace contract. It must preserve M4A's explicit-input, state-free calculation kernel and must not prematurely begin M4C resource primitives or M4D vanilla production cutover.
+M4C is next: **Resource calculation primitives**.
+
+M4C should define production, consumption, capacity, storage and resource-delta primitives on top of the hardened M4A/M4B calculation foundation. It must be deep-dived separately and must not silently begin the M4D vanilla production cutover.
