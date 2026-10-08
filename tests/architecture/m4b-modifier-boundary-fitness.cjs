@@ -80,21 +80,28 @@ function exportedNames(source, sourcefile){
 function moduleSurfaceViolations(root, filename, source){
     const relativeToCalculationRoot = reviewedModulePath(root, filename);
     const relative = path.relative(root, filename).split(path.sep).join('/');
-    if (!Object.prototype.hasOwnProperty.call(REVIEWED_CALCULATION_EXPORTS, relativeToCalculationRoot)){
-        return [`${relative}: unreviewed calculation-package module could create new runtime authority`];
+    const reviewed = Object.prototype.hasOwnProperty.call(
+        REVIEWED_CALCULATION_EXPORTS,
+        relativeToCalculationRoot
+    );
+    const violations = [];
+    if (!reviewed){
+        violations.push(`${relative}: unreviewed calculation-package module could create new runtime authority`);
     }
 
-    const allowed = new Set(REVIEWED_CALCULATION_EXPORTS[relativeToCalculationRoot]);
+    const allowed = new Set(reviewed ? REVIEWED_CALCULATION_EXPORTS[relativeToCalculationRoot] : []);
     let exports;
     try {
         exports = exportedNames(source, filename);
     }
     catch (error){
-        return [`${relative}: calculation export surface could not be parsed (${error.message})`];
+        violations.push(`${relative}: calculation export surface could not be parsed (${error.message})`);
+        return violations;
     }
-    return exports
+    violations.push(...exports
         .filter(name => !allowed.has(name))
-        .map(name => `${relative}: unreviewed calculation-package export ${JSON.stringify(name)} could create new runtime authority`);
+        .map(name => `${relative}: unreviewed calculation-package export ${JSON.stringify(name)} could create new runtime authority`));
+    return violations;
 }
 
 function findViolations(root){
