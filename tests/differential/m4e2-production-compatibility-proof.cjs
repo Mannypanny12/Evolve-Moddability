@@ -243,6 +243,13 @@ test('M4E2 production seam preserves the frozen legacy matrix and a real fast-lo
             assert.equal(runtime.space.gas_mining.count, 2);
             assert.equal(runtime.space.gas_mining.on, 2);
 
+            // This proof owns p_on explicitly. In the browserless harness there are no
+            // power-grid breaker nodes, so leaving the Power Grid UI active would make
+            // the legacy fast loop rebuild p_on from missing DOM state before production.
+            runtime.settings.tabLoad = false;
+            runtime.settings.civTabs = 1;
+            runtime.settings.govTabs = 0;
+
             delete runtime.tech.helium;
             api.setPoweredCount('gas_mining', 2);
             assert.equal(
@@ -255,7 +262,7 @@ test('M4E2 production seam preserves the frozen legacy matrix and a real fast-lo
             assert.equal(
                 lockedTransient.p_on.gas_mining,
                 2,
-                `gas-mining powered count changed during the fast loop: transient=${JSON.stringify(lockedTransient.p_on.gas_mining)} structure=${JSON.stringify(runtime.space.gas_mining)} settings=${JSON.stringify({ tabLoad: runtime.settings.tabLoad, civTabs: runtime.settings.civTabs, govTabs: runtime.settings.govTabs })}`
+                `gas-mining powered count changed during the fast loop: transient=${JSON.stringify(lockedTransient.p_on.gas_mining)} structure=${JSON.stringify(runtime.space.gas_mining)}`
             );
             const lockedValues = Object.values(api.productionBreakdown('Helium_3'));
             assert.ok(
