@@ -84,13 +84,6 @@ The full Node suite recursively discovers every `*.test.cjs` file. Architecture 
 
 `M1_CLOSURE_REVIEW.md` is the combined authority for M1. The later `M0_M3_RETROSPECTIVE_HARDENING.md` records the pre-M4 revalidation against the enlarged M2/M3 repository.
 
-The current authoritative root is GameState schema version 2:
-
-```text
-schemaVersion   metadata, not runtime writable
-achievements    authoritative domain owned by achievement-state
-```
-
 Current M1 structure is also emitted by `npm run inspect:architecture`:
 
 - canonical identity helpers and `Registry` kernel;
