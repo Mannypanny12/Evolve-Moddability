@@ -3,7 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { extractModuleReferences } = require('./architecture-fitness.cjs');
-const { productionCalculationConsumers } = require('./m4a-calculation-boundary-fitness.cjs');
+const { unreviewedProductionCalculationConsumers } = require('./m4a-calculation-boundary-fitness.cjs');
 
 const CALCULATION_ROOT = 'src/engine/calculations';
 const SOURCE_EXTENSIONS = new Set(['.js', '.mjs', '.cjs']);
@@ -70,9 +70,8 @@ function findViolations(root){
 
     violations.push(...coreResourceCouplingViolations(root));
 
-    const production = productionCalculationConsumers(root);
-    for (const consumer of production.consumers){
-        violations.push(`${consumer}: M4C must retain zero production calculation consumers before reviewed M4D cutover`);
+    for (const consumer of unreviewedProductionCalculationConsumers(root)){
+        violations.push(`${consumer}: M4C production calculation consumer is outside the reviewed M4D Oil Well cutover`);
     }
 
     return [...new Set(violations)].sort();
