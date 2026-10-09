@@ -21,15 +21,12 @@ function buildProductionHarness(){
             contents: `
                 import './tests/legacy/legacy-api.js';
                 import { production } from './src/prod.js';
-                import { p_on, breakdown } from './src/vars.js';
+                import { breakdown } from './src/vars.js';
 
                 globalThis.__M4E2_PRODUCTION_TEST_API__ = {
                     legacy: globalThis.__EVOLVE_LEGACY_TEST_API__,
                     productionValue(id, val, wiki){
                         return production(id, val, wiki);
-                    },
-                    setPoweredCount(id, count){
-                        p_on[id] = count;
                     },
                     productionBreakdown(resource){
                         return structuredClone((breakdown.p && breakdown.p[resource]) || {});
@@ -228,11 +225,23 @@ test('M4E2 production seam preserves the frozen legacy matrix and a real fast-lo
             const definition = fixtures.loadFixtureById('early-space-human');
             const persisted = fixtures.materializePersistedFixture(definition, legacy);
             persisted.tech = persisted.tech || {};
+            persisted.city = persisted.city || {};
             persisted.space = persisted.space || {};
+            persisted.resource = persisted.resource || {};
             persisted.tech.space = Math.max(persisted.tech.space || 0, 5);
             persisted.tech.gas_giant = 1;
             delete persisted.tech.helium;
             persisted.space.gas_mining = { count: 2, on: 2 };
+
+            // The legacy fast loop derives p_on from the real power allocator on every
+            // tick. Give this focused consumer proof deterministic surplus generation
+            // and make gas mining the first power priority instead of injecting p_on.
+            persisted.city.coal_power = { count: 3, on: 3 };
+            persisted.resource.Coal = persisted.resource.Coal || {};
+            persisted.resource.Coal.amount = Math.max(persisted.resource.Coal.amount || 0, 1000);
+            persisted.resource.Coal.max = Math.max(persisted.resource.Coal.max || 0, 1000);
+            persisted.resource.Coal.display = true;
+            persisted.power = ['spc_gas:gas_mining'];
 
             legacy.installLegacyState(persisted);
             await legacy.hydrateSimulationState();
@@ -242,27 +251,16 @@ test('M4E2 production seam preserves the frozen legacy matrix and a real fast-lo
             assert.equal(runtime.tech.gas_giant, 1, 'gas-mining proof requires the gas-giant unlock');
             assert.equal(runtime.space.gas_mining.count, 2);
             assert.equal(runtime.space.gas_mining.on, 2);
-
-            // This proof owns p_on explicitly. In the browserless harness there are no
-            // power-grid breaker nodes, so leaving the Power Grid UI active would make
-            // the legacy fast loop rebuild p_on from missing DOM state before production.
-            runtime.settings.tabLoad = false;
-            runtime.settings.civTabs = 1;
-            runtime.settings.govTabs = 0;
+            assert.equal(runtime.city.coal_power.on, 3);
+            assert.equal(runtime.power[0], 'spc_gas:gas_mining');
 
             delete runtime.tech.helium;
-            api.setPoweredCount('gas_mining', 2);
-            assert.equal(
-                legacy.transientSimulationState().p_on.gas_mining,
-                2,
-                'gas-mining proof requires two powered collectors before the fast loop'
-            );
             await legacy.runGameLoops(1);
             const lockedTransient = legacy.transientSimulationState();
             assert.equal(
                 lockedTransient.p_on.gas_mining,
                 2,
-                `gas-mining powered count changed during the fast loop: transient=${JSON.stringify(lockedTransient.p_on.gas_mining)} structure=${JSON.stringify(runtime.space.gas_mining)}`
+                `legacy power allocation did not keep both gas collectors online: ${JSON.stringify(lockedTransient.p_on.gas_mining)}`
             );
             const lockedValues = Object.values(api.productionBreakdown('Helium_3'));
             assert.ok(
@@ -271,8 +269,13 @@ test('M4E2 production seam preserves the frozen legacy matrix and a real fast-lo
             );
 
             runtime.tech.helium = 1;
-            api.setPoweredCount('gas_mining', 2);
             await legacy.runGameLoops(1);
+            const unlockedTransient = legacy.transientSimulationState();
+            assert.equal(
+                unlockedTransient.p_on.gas_mining,
+                2,
+                `legacy power allocation did not keep both upgraded gas collectors online: ${JSON.stringify(unlockedTransient.p_on.gas_mining)}`
+            );
             const unlockedValues = Object.values(api.productionBreakdown('Helium_3'));
             assert.ok(
                 unlockedValues.includes('1.3v'),
