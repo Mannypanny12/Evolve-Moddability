@@ -252,6 +252,7 @@ test('M4E2 production seam preserves the frozen legacy matrix and a real fast-lo
             // tick. Give this focused consumer proof deterministic surplus generation
             // and make gas mining the first power priority instead of injecting p_on.
             persisted.city.coal_power = { ...(persisted.city.coal_power || {}), count: 3, on: 3 };
+            persisted.city.coal_mine = { ...(persisted.city.coal_mine || {}), count: 0, on: 0 };
             persisted.resource.Coal = persisted.resource.Coal || {};
             persisted.resource.Coal.amount = Math.max(persisted.resource.Coal.amount || 0, 1000);
             persisted.resource.Coal.max = Math.max(persisted.resource.Coal.max || 0, 1000);
@@ -270,6 +271,7 @@ test('M4E2 production seam preserves the frozen legacy matrix and a real fast-lo
             assert.equal(runtime.space.gas_mining.count, 2);
             assert.equal(runtime.space.gas_mining.on, 2);
             assert.equal(runtime.city.coal_power.on, 3);
+            assert.equal(runtime.city.coal_mine.on, 0);
             assert.equal(runtime.power[0], 'spc_gas:gas_mining');
 
             delete runtime.tech.helium;
