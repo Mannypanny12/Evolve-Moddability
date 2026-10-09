@@ -42,11 +42,15 @@ export function resolveResourceDelta(rawInputs){
     const bounded = capacity.mode === 'bounded';
     let workingCapacity = null;
     if (bounded){
-        workingCapacity = finiteArithmetic(
-            capacity.value + startAmount,
-            'resourceDelta.workingCapacity',
-            { capacity: capacity.value, startAmount }
-        );
+        // Legacy resetResBuffer() adds the starting amount only when max > 0.
+        // A real zero bound therefore keeps a zero temporary ceiling.
+        workingCapacity = capacity.value > 0
+            ? finiteArithmetic(
+                capacity.value + startAmount,
+                'resourceDelta.workingCapacity',
+                { capacity: capacity.value, startAmount }
+            )
+            : 0;
     }
 
     let amount = startAmount;
@@ -60,21 +64,35 @@ export function resolveResourceDelta(rawInputs){
         const operation = operations[index];
         const before = amount;
         const workingCapacityBefore = workingCapacity;
+        const requestedSigned = signedRequestedDelta(operation.kind, operation.amount);
         requestedDelta = finiteArithmetic(
-            requestedDelta + signedRequestedDelta(operation.kind, operation.amount),
+            requestedDelta + requestedSigned,
             `resourceDelta.operations[${index}].requestedDelta`,
             { requestedDelta, amount: operation.amount, kind: operation.kind }
         );
 
+        const tentative = finiteArithmetic(
+            before + requestedSigned,
+            `resourceDelta.operations[${index}].${operation.kind}`,
+            { before, amount: operation.amount }
+        );
+
+        // Legacy modRes() applies the temporary upper bound before its zero floor for
+        // every delta, not only for positive deltas. The distinction is observable
+        // when a bounded-zero resource starts with a pre-existing positive amount.
+        if (bounded && tentative > workingCapacity){
+            amount = workingCapacity;
+        }
+        else if (tentative < 0){
+            amount = 0;
+        }
+        else {
+            amount = tentative;
+        }
+
         let stepOverflow = 0;
         let stepShortfall = 0;
         if (operation.kind === 'credit'){
-            const tentative = finiteArithmetic(
-                before + operation.amount,
-                `resourceDelta.operations[${index}].credit`,
-                { before, amount: operation.amount }
-            );
-            amount = bounded && tentative > workingCapacity ? workingCapacity : tentative;
             stepOverflow = finiteArithmetic(
                 operation.amount - (amount - before),
                 `resourceDelta.operations[${index}].overflow`
@@ -82,14 +100,8 @@ export function resolveResourceDelta(rawInputs){
             overflow = finiteArithmetic(overflow + stepOverflow, 'resourceDelta.overflow');
         }
         else {
-            const tentative = finiteArithmetic(
-                before - operation.amount,
-                `resourceDelta.operations[${index}].debit`,
-                { before, amount: operation.amount }
-            );
-            amount = tentative < 0 ? 0 : tentative;
             stepShortfall = finiteArithmetic(
-                operation.amount - (before - amount),
+                Math.max(0, operation.amount - (before - amount)),
                 `resourceDelta.operations[${index}].shortfall`
             );
             shortfall = finiteArithmetic(shortfall + stepShortfall, 'resourceDelta.shortfall');
