@@ -50,13 +50,13 @@ test('M4E1 shared-runtime consumer scanner catches alternate import spellings an
     try {
         fs.mkdirSync(path.join(fixture, 'src/application/evolve'), { recursive: true });
         fs.writeFileSync(path.join(fixture, SHARED_RUNTIME), 'export function calculateProductionCalculation(){}\n');
-        fs.writeFileSync(path.join(fixture, 'src/application/evolve/oil-well-production-runtime.mjs'), "import { calculateProductionCalculation } from './production-calculation-runtime.mjs';\n");
+        fs.writeFileSync(path.join(fixture, 'src/prod.js'), "import { calculateProductionCalculation } from './application/evolve/production-calculation-runtime.mjs';\n");
         fs.writeFileSync(path.join(fixture, 'src/root.js'), "import '/src/application/evolve/production-calculation-runtime.mjs';\n");
         fs.writeFileSync(path.join(fixture, 'src/repository.js'), "import 'src/application/evolve/production-calculation-runtime.mjs';\n");
         fs.writeFileSync(path.join(fixture, 'src/dynamic.js'), "export const load = () => import('/src/application/evolve/production-calculation-runtime.mjs');\n");
         assert.deepEqual(sharedRuntimeConsumers(fixture), [
-            'src/application/evolve/oil-well-production-runtime.mjs',
             'src/dynamic.js',
+            'src/prod.js',
             'src/repository.js',
             'src/root.js',
         ]);
