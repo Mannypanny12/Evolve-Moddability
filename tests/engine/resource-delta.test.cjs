@@ -18,6 +18,44 @@ function bounded(value){
     return { mode: 'bounded', value };
 }
 
+function legacyResolveReference({ startAmount, capacity, operations }){
+    let amount = startAmount;
+    let tempMax = capacity.mode === 'bounded' ? capacity.value : -1;
+    if (tempMax > 0){
+        tempMax += startAmount;
+    }
+    const steps = [];
+
+    for (const operation of operations){
+        const before = amount;
+        const workingCapacityBefore = capacity.mode === 'bounded' ? tempMax : null;
+        const delta = operation.kind === 'credit' ? operation.amount : -operation.amount;
+        let count = amount + delta;
+        if (count > tempMax && tempMax >= 0){
+            count = tempMax;
+        }
+        else if (count < 0){
+            count = 0;
+        }
+        amount = count;
+        if (delta < 0 && tempMax >= 0){
+            tempMax = Math.max(0, tempMax + delta);
+        }
+        steps.push({
+            before,
+            after: amount,
+            workingCapacityBefore,
+            workingCapacityAfter: capacity.mode === 'bounded' ? tempMax : null,
+        });
+    }
+
+    const bufferedEndAmount = amount;
+    const endAmount = capacity.mode === 'bounded' && amount > capacity.value
+        ? capacity.value
+        : amount;
+    return { bufferedEndAmount, endAmount, steps };
+}
+
 test('M4C bounded resolution preserves legacy produce-then-consume buffering at capacity', async () => {
     const { resolveResourceDelta } = await modules();
     const result = resolveResourceDelta({
@@ -113,7 +151,7 @@ test('M4C final capacity cleanup handles pre-existing amounts above a reduced bo
     assert.equal(result.netAppliedDelta, -50);
 });
 
-test('M4C bounded zero capacity is explicit and distinct from unbounded capacity', async () => {
+test('M4C bounded zero capacity is explicit and follows the legacy zero-buffer branch', async () => {
     const { resolveResourceDelta } = await modules();
     const boundedZero = resolveResourceDelta({
         startAmount: 5,
@@ -126,14 +164,97 @@ test('M4C bounded zero capacity is explicit and distinct from unbounded capacity
         operations: [{ kind: 'credit', amount: 10 }],
     });
 
-    assert.equal(boundedZero.bufferedEndAmount, 5);
-    assert.equal(boundedZero.overflow, 10);
+    assert.equal(boundedZero.steps[0].workingCapacityBefore, 0);
+    assert.equal(boundedZero.steps[0].after, 0);
+    assert.equal(boundedZero.steps[0].appliedDelta, -5);
+    assert.equal(boundedZero.bufferedEndAmount, 0);
+    assert.equal(boundedZero.operationAppliedDelta, -5);
+    assert.equal(boundedZero.overflow, 15);
     assert.equal(boundedZero.endAmount, 0);
-    assert.equal(boundedZero.finalCapacityDiscard, 5);
+    assert.equal(boundedZero.finalCapacityDiscard, 0);
     assert.equal(unbounded.endAmount, 15);
     assert.equal(unbounded.overflow, 0);
     assert.equal(unbounded.finalCapacityDiscard, 0);
     assert.equal(unbounded.steps[0].workingCapacityBefore, null);
+});
+
+test('M4C bounded-zero debit applies the legacy upper clamp before the zero floor', async () => {
+    const { resolveResourceDelta } = await modules();
+    const result = resolveResourceDelta({
+        startAmount: 5,
+        capacity: bounded(0),
+        operations: [
+            { kind: 'debit', amount: 2 },
+            { kind: 'credit', amount: 10 },
+        ],
+    });
+
+    assert.equal(result.steps[0].before, 5);
+    assert.equal(result.steps[0].after, 0);
+    assert.equal(result.steps[0].appliedDelta, -5);
+    assert.equal(result.steps[0].shortfall, 0);
+    assert.equal(result.steps[0].workingCapacityAfter, 0);
+    assert.equal(result.steps[1].before, 0);
+    assert.equal(result.steps[1].after, 0);
+    assert.equal(result.steps[1].overflow, 10);
+    assert.equal(result.endAmount, 0);
+});
+
+test('M4C ordered resolution differentially matches the legacy resetResBuffer/modRes amount and ceiling semantics', async () => {
+    const { resolveResourceDelta } = await modules();
+    const cases = [
+        {
+            startAmount: 100,
+            capacity: bounded(100),
+            operations: [{ kind: 'credit', amount: 10 }, { kind: 'debit', amount: 10 }],
+        },
+        {
+            startAmount: 0,
+            capacity: bounded(100),
+            operations: [{ kind: 'debit', amount: 10 }, { kind: 'credit', amount: 10 }],
+        },
+        {
+            startAmount: 3,
+            capacity: bounded(100),
+            operations: [{ kind: 'debit', amount: 5 }, { kind: 'credit', amount: 100 }],
+        },
+        {
+            startAmount: 5,
+            capacity: bounded(0),
+            operations: [{ kind: 'credit', amount: 10 }],
+        },
+        {
+            startAmount: 5,
+            capacity: bounded(0),
+            operations: [{ kind: 'debit', amount: 2 }, { kind: 'credit', amount: 10 }],
+        },
+        {
+            startAmount: 5,
+            capacity: bounded(0),
+            operations: [{ kind: 'debit', amount: 10 }, { kind: 'credit', amount: 10 }],
+        },
+        {
+            startAmount: 5,
+            capacity: { mode: 'unbounded' },
+            operations: [{ kind: 'credit', amount: 10 }, { kind: 'debit', amount: 3 }],
+        },
+    ];
+
+    for (const input of cases){
+        const expected = legacyResolveReference(input);
+        const actual = resolveResourceDelta(input);
+        assert.equal(actual.bufferedEndAmount, expected.bufferedEndAmount);
+        assert.equal(actual.endAmount, expected.endAmount);
+        assert.deepEqual(
+            actual.steps.map(step => ({
+                before: step.before,
+                after: step.after,
+                workingCapacityBefore: step.workingCapacityBefore,
+                workingCapacityAfter: step.workingCapacityAfter,
+            })),
+            expected.steps
+        );
+    }
 });
 
 test('M4C debit shortfall is a structured gameplay result rather than a contract error', async () => {
