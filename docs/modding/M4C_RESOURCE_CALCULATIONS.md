@@ -38,13 +38,15 @@ Amounts are non-negative finite magnitudes. Credits and debits are not pre-nette
 
 For bounded resources, M4C preserves the legacy fast-loop buffer behavior used by `resetResBuffer()` and `modRes()`:
 
-1. the working ceiling begins at `real capacity + starting amount`;
-2. credits are clipped against that working ceiling;
-3. debits floor stored amount at zero and report any shortfall;
-4. every requested debit lowers the working ceiling by the requested amount, even when the stored amount was insufficient to satisfy the full debit;
+1. when the real capacity is positive, the working ceiling begins at `real capacity + starting amount`;
+2. an explicit real capacity of zero keeps a zero working ceiling, matching the legacy `max > 0` buffer guard;
+3. each operation computes its tentative amount and applies the working upper ceiling before the zero floor, matching the branch order in legacy `modRes()`;
+4. debits report any lower-bound shortfall and every requested debit lowers the working ceiling by the requested amount, even when the stored amount was insufficient to satisfy the full debit;
 5. after all ordered operations, the remaining buffered amount is clamped to the real capacity.
 
-This is why an at-capacity `credit 10 -> debit 10` can finish at the original cap rather than losing the credit before the debit, while `debit 10 -> credit 10` from an empty resource finishes with 10 rather than being incorrectly netted to zero.
+The upper-bound-first rule is normally observable through credits. It also matters for a bounded-zero resource that begins with a pre-existing positive amount: the next tracked operation can discard that over-bound amount immediately, just as legacy `modRes()` does.
+
+This is why an at-capacity `credit 10 -> debit 10` can finish at the original cap rather than losing the credit before the debit, while `debit 10 -> credit 10` from an empty positive-capacity resource finishes with 10 rather than being incorrectly pre-netted to zero.
 
 ## Resolution evidence
 
@@ -54,10 +56,12 @@ The resolver returns deeply frozen inert evidence including:
 - requested signed delta;
 - operation-applied signed delta;
 - final net delta after capacity cleanup;
-- clipped credit overflow;
+- upper-bound overflow recorded on credit steps;
 - debit shortfall;
 - final capacity discard;
 - frozen ordered per-operation steps with requested amount, before/after amounts, applied delta, overflow/shortfall and the generic working ceiling before/after the step.
+
+For the bounded-zero compatibility edge case, credit overflow can exceed the requested credit because the same upper-bound operation also discards a pre-existing amount above the zero working ceiling. Requested, operation-applied and final-applied values therefore remain deliberately separate evidence.
 
 Overflow and shortfall are normal gameplay outcomes, not contract failures. Malformed inputs, negative magnitudes, non-finite values, unsupported operation kinds, sparse/oversized structures and non-finite arithmetic are contract failures.
 
@@ -87,6 +91,6 @@ The M4A/M4B trace remains numerical base plus ordered modifiers. Resource-delta 
 
 ## Implementation proof expected before M4C closure
 
-Implementation must prove the four numerical primitives, ordered legacy-compatible resolution, bounded-zero versus unbounded policy, requested/applied distinctions, overflow/shortfall behavior, hostile/malformed input rejection, M4A/M4B composition, unchanged calculation-engine surface, one-way dependency direction and zero live production consumers.
+Implementation must prove the four numerical primitives, ordered legacy-compatible resolution including the bounded-zero `max > 0` buffer edge, bounded-zero versus unbounded policy, requested/applied distinctions, overflow/shortfall behavior, hostile/malformed input rejection, M4A/M4B composition, unchanged calculation-engine surface, one-way dependency direction and zero live production consumers.
 
 M4C is not closed merely because these files exist or focused tests pass. Independent review/hardening and final CI proof are still required before the roadmap status advances to M4D.
