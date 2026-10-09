@@ -139,7 +139,7 @@
       "random": 42
     },
     "prod.js": {
-      "global": 103,
+      "global": 97,
       "browser": 0,
       "storage": 0,
       "clock": 0,

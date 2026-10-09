@@ -339,20 +339,8 @@ export function production(id,val,wiki){
         }
         case 'tau_farm':
         {
-            switch (val){
-                case 'food':
-                {
-                    return global.tech['isolation'] ? 15 : 9;
-                }
-                case 'lumber':
-                {
-                    return global.tech['isolation'] ? 12 : 5.5;
-                }
-                case 'water':
-                {
-                    return 0.35;
-                }
-            }
+            if (val !== 'food' && val !== 'lumber' && val !== 'water') return;
+            return simpleProduction('tau_farm', { variant: val, isolation: val === 'water' ? false : Boolean(global.tech['isolation']) });
         }
         case 'womling_mine':
         {
@@ -404,7 +392,7 @@ export function production(id,val,wiki){
         }
         case 'refueling_station':
         {
-            return global.tech['isolation'] ? 18.5 : 9.35;
+            return simpleProduction('refueling_station', { isolation: Boolean(global.tech['isolation']) });
         }
         case 'ore_refinery':
         {
@@ -427,32 +415,8 @@ export function production(id,val,wiki){
         }
         case 'mining_ship_ore':
         {
-            switch (val){
-                case 'iron':
-                {
-                    return global.tech['isolation'] ? 2.22 : 1.85;
-                }
-                case 'aluminium':
-                {
-                    return global.tech['isolation'] ? 2.22 : 1.85;
-                }
-                case 'iridium':
-                {
-                    return global.tech['isolation'] ? 0.42 : 0.35;
-                }
-                case 'neutronium':
-                {
-                    return global.tech['isolation'] ? 0.42 : 0.35;
-                }
-                case 'orichalcum':
-                {
-                    return global.tech['isolation'] ? 0.3 : 0.25;
-                }
-                case 'elerium':
-                {
-                    return global.tech['isolation'] ? 0.024 : 0.02;
-                }
-            }
+            if (val !== 'iron' && val !== 'aluminium' && val !== 'iridium' && val !== 'neutronium' && val !== 'orichalcum' && val !== 'elerium') return;
+            return simpleProduction('mining_ship_ore', { variant: val, isolation: Boolean(global.tech['isolation']) });
         }
         case 'whaling_ship':
         {
@@ -467,7 +431,7 @@ export function production(id,val,wiki){
         }
         case 'whaling_ship_oil':
         {
-            return global.tech['isolation'] ? 0.78 : 0.42;
+            return simpleProduction('whaling_ship_oil', { isolation: Boolean(global.tech['isolation']) });
         }
         case 'alien_outpost':
         {

@@ -36,6 +36,12 @@ const MIGRATED_FACT_CASES = Object.freeze({
     tank: "return simpleProduction('tank', { digsiteCount: global.space.digsite.count });",
     ore_refinery: "return simpleProduction('ore_refinery', { tauOreMiningUnlocked: Boolean(global.tech['tau_ore_mining']) });",
 });
+const MIGRATED_ISOLATION_CASES = Object.freeze({
+    tau_farm: "if (val !== 'food' && val !== 'lumber' && val !== 'water') return;\n            return simpleProduction('tau_farm', { variant: val, isolation: val === 'water' ? false : Boolean(global.tech['isolation']) });",
+    refueling_station: "return simpleProduction('refueling_station', { isolation: Boolean(global.tech['isolation']) });",
+    mining_ship_ore: "if (val !== 'iron' && val !== 'aluminium' && val !== 'iridium' && val !== 'neutronium' && val !== 'orichalcum' && val !== 'elerium') return;\n            return simpleProduction('mining_ship_ore', { variant: val, isolation: Boolean(global.tech['isolation']) });",
+    whaling_ship_oil: "return simpleProduction('whaling_ship_oil', { isolation: Boolean(global.tech['isolation']) });",
+});
 
 function productionCaseBody(source, id){
     const marker = `        case '${id}':`;
@@ -150,6 +156,30 @@ function analyzeFactCase(source, id, expectedDelegate){
     return violations;
 }
 
+function analyzeIsolationCase(source, id, expectedDelegate){
+    const violations = [];
+    const body = productionCaseBody(source, id);
+    if (body === null){
+        return [`${PROD}: migrated M4E2 Isolation-fed case ${id} is missing or could not be isolated`];
+    }
+    const code = maskNonCode(body);
+    if (/\bcalculateProductionCalculation\s*\(|\bSIMPLE_PRODUCTION_CALCULATION_IDS\b/.test(code)){
+        violations.push(`${PROD}: migrated M4E2 Isolation-fed case ${id} must delegate through simpleProduction() rather than bypassing the compatibility helper`);
+    }
+    if (/\breturn\s+[-+]?(?:\d|\.\d)/.test(code)){
+        violations.push(`${PROD}: migrated M4E2 Isolation-fed case ${id} may not retain numeric production authority`);
+    }
+    if (/\bswitch\s*\(\s*val\s*\)/.test(code)){
+        violations.push(`${PROD}: migrated M4E2 Isolation-fed case ${id} may not retain the legacy val switch`);
+    }
+
+    const expectedBody = `{ ${expectedDelegate} }`;
+    if (normalizeCode(body) !== normalizeCode(expectedBody)){
+        violations.push(`${PROD}: migrated M4E2 Isolation-fed case ${id} must preserve legacy variant/state-read compatibility, snapshot only the reviewed Isolation fact, and delegate to M4`);
+    }
+    return violations;
+}
+
 function analyzeProdSource(source){
     const violations = analyzeHelper(source);
     for (const id of MIGRATED_CONSTANT_IDS){
@@ -160,6 +190,9 @@ function analyzeProdSource(source){
     }
     for (const [id, expectedDelegate] of Object.entries(MIGRATED_FACT_CASES)){
         violations.push(...analyzeFactCase(source, id, expectedDelegate));
+    }
+    for (const [id, expectedDelegate] of Object.entries(MIGRATED_ISOLATION_CASES)){
+        violations.push(...analyzeIsolationCase(source, id, expectedDelegate));
     }
     return [...new Set(violations)].sort();
 }
@@ -187,6 +220,7 @@ module.exports = {
     MIGRATED_CONSTANT_IDS,
     MIGRATED_VARIANTS,
     MIGRATED_FACT_CASES,
+    MIGRATED_ISOLATION_CASES,
     productionCaseBody,
     analyzeProdSource,
     findViolations,

@@ -9,6 +9,7 @@ const {
     MIGRATED_CONSTANT_IDS,
     MIGRATED_VARIANTS,
     MIGRATED_FACT_CASES,
+    MIGRATED_ISOLATION_CASES,
     analyzeProdSource,
     findViolations,
 } = require('./m4e2-simple-production-cutover-fitness.cjs');
@@ -34,9 +35,18 @@ test('M4E2 migrated scalar cutover groups are routed through the shared calculat
         'tank',
         'ore_refinery',
     ]);
+    assert.deepEqual(Object.keys(MIGRATED_ISOLATION_CASES), [
+        'tau_farm',
+        'refueling_station',
+        'mining_ship_ore',
+        'whaling_ship_oil',
+    ]);
     assert.equal(
-        MIGRATED_CONSTANT_IDS.length + Object.keys(MIGRATED_VARIANTS).length + Object.keys(MIGRATED_FACT_CASES).length,
-        23
+        MIGRATED_CONSTANT_IDS.length
+        + Object.keys(MIGRATED_VARIANTS).length
+        + Object.keys(MIGRATED_FACT_CASES).length
+        + Object.keys(MIGRATED_ISOLATION_CASES).length,
+        27
     );
     assert.deepEqual(findViolations(root), []);
 });
@@ -115,4 +125,41 @@ test('M4E2 cutover guard rejects changing the reviewed explicit fact snapshot', 
     );
     const violations = analyzeProdSource(mutated);
     assert.equal(violations.some(value => value.includes('ore_refinery') && value.includes('reviewed explicit fact')), true);
+});
+
+test('M4E2 Isolation cutover guard rejects loss of legacy undefined compatibility for mining ore variants', () => {
+    const mutated = prodSource().replace(
+        "if (val !== 'iron' && val !== 'aluminium' && val !== 'iridium' && val !== 'neutronium' && val !== 'orichalcum' && val !== 'elerium') return;\n            ",
+        ''
+    );
+    const violations = analyzeProdSource(mutated);
+    assert.equal(violations.some(value => value.includes('mining_ship_ore') && value.includes('legacy variant/state-read compatibility')), true);
+});
+
+test('M4E2 Isolation cutover guard rejects numeric Isolation authority returning to prod.js', () => {
+    const mutated = prodSource().replace(
+        MIGRATED_ISOLATION_CASES.refueling_station,
+        "return global.tech['isolation'] ? 18.5 : 9.35;"
+    );
+    const violations = analyzeProdSource(mutated);
+    assert.equal(violations.some(value => value.includes('refueling_station') && value.includes('numeric production authority')), true);
+    assert.equal(violations.some(value => value.includes('refueling_station') && value.includes('reviewed Isolation fact')), true);
+});
+
+test('M4E2 tau farm cutover preserves the legacy water path without reading Isolation', () => {
+    const mutated = prodSource().replace(
+        "isolation: val === 'water' ? false : Boolean(global.tech['isolation'])",
+        "isolation: Boolean(global.tech['isolation'])"
+    );
+    const violations = analyzeProdSource(mutated);
+    assert.equal(violations.some(value => value.includes('tau_farm') && value.includes('legacy variant/state-read compatibility')), true);
+});
+
+test('M4E2 Isolation cutover guard rejects an extra hidden state snapshot', () => {
+    const mutated = prodSource().replace(
+        MIGRATED_ISOLATION_CASES.whaling_ship_oil,
+        "return simpleProduction('whaling_ship_oil', { isolation: Boolean(global.tech['isolation']), hidden: global.tech['tau_ore_mining'] });"
+    );
+    const violations = analyzeProdSource(mutated);
+    assert.equal(violations.some(value => value.includes('whaling_ship_oil') && value.includes('reviewed Isolation fact')), true);
 });
