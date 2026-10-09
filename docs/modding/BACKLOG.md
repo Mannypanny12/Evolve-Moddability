@@ -280,7 +280,7 @@ M3B does not cut over vanilla actions and does not own payment semantics.
 Closed the effect-planning layer after implementation and hardening:
 
 - explicit inert `EffectPlan` data with no execution or mutation authority;
-- first generic operations `resource.grant` and `resource.consume` with canonical typed IDs and positive finite amounts;
+- first generic operations `resource.grant` and `resource.consume` with canonical typed resource IDs and positive finite amounts;
 - exact operation order/duplicate preservation and fail-closed hostile-input handling;
 - cumulative architecture guards keeping M3C state-free, mutation-free, payment-free, presentation-free and free of first-party Evolve namespace knowledge;
 - DNA differential closure proving the complete successful legacy mutation is `RNA -2` plus `DNA +1`, while the M3C representation contains only `resource.grant(evolve:resource/dna, 1)`;
@@ -358,7 +358,13 @@ Completed the generic state-free resource calculation layer:
 
 No live vanilla production or resource-state path is migrated by M4C. See [M4C_RESOURCE_CALCULATIONS.md](M4C_RESOURCE_CALCULATIONS.md).
 
-M4D-M4E remain as defined in [ROADMAP.md](ROADMAP.md).
+### M4D - First live production vertical - complete
+
+Migrated exactly `production('oil_well')` through the M4 calculation pipeline while preserving the legacy caller surface and exact vanilla multiplication order. The independent hardening pass added explicit nullable biome absence, real `prod.js` seam characterization across biome/governor/Warlord states, alternate-import runtime-consumer guards, and exact floating-operation differential proof. See [M4D_OIL_WELL_PRODUCTION_CUTOVER.md](M4D_OIL_WELL_PRODUCTION_CUTOVER.md).
+
+M4E expand across `prod.js` - next
+
+M4E remains separately scoped. It must migrate additional production paths through bounded reviewed verticals and must not treat M4D as permission for arbitrary calculation consumers.
 
 ## Immediate sequence
 
@@ -381,14 +387,16 @@ M4B modifier pipeline - complete
    |
 M4C resource calculation primitives - complete
    |
-M4D migrate one production vertical - next
+M4D first live production vertical - complete
+   |
+M4E expand across prod.js - next
 ```
 
-Do not jump directly to mod loading, total conversions, bulk content conversion, an unreviewed production migration, or later simulation work. M4D must be deep-dived separately before any live production cutover.
+Do not jump directly to mod loading, total conversions, bulk content conversion, an unreviewed production migration, or later simulation work. M4E must be deep-dived separately before additional live production cutovers.
 
 ## Later milestones
 
-- M4D-M4E remaining calculation/modifier migration;
+- M4E remaining calculation/modifier migration;
 - M5 deterministic simulation;
 - M6 vanilla migration waves;
 - M7 persistence v2;
