@@ -29,6 +29,11 @@ function finiteNumber(fields, field){
     return Object.is(value, -0) ? 0 : value;
 }
 
+function finiteNumberOrNull(fields, field){
+    const value = fields.get(field);
+    return value === null ? null : finiteNumber(fields, field);
+}
+
 function validateInputs(rawInputs){
     const fields = readClosedCalculationObject(rawInputs, {
         path: 'oilWellProductionInputs',
@@ -46,7 +51,7 @@ function validateInputs(rawInputs){
     return {
         oilTechLevel: finiteNumber(fields, 'oilTechLevel'),
         geologyBonus: finiteNumber(fields, 'geologyBonus'),
-        biomeOilMultiplier: finiteNumber(fields, 'biomeOilMultiplier'),
+        biomeOilMultiplier: finiteNumberOrNull(fields, 'biomeOilMultiplier'),
         dirtyJobsPercent: finiteNumber(fields, 'dirtyJobsPercent'),
         warlord,
         pumpjackRank: finiteNumber(fields, 'pumpjackRank'),
@@ -95,7 +100,7 @@ export function createOilWellProductionModifiers(){
             calculationId: OIL_WELL_PRODUCTION_CALCULATION_ID,
             order: 300,
             operation: 'multiply',
-            applies: inputs => inputs.biomeOilMultiplier !== 1,
+            applies: inputs => inputs.biomeOilMultiplier !== null,
             operand: inputs => inputs.biomeOilMultiplier,
         }),
         Object.freeze({

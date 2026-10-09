@@ -65,14 +65,21 @@ test('M4D prod shim rejects retained legacy arithmetic', () => {
     assert.equal(violations.some(value => value.includes('embedded technology thresholds')), true);
 });
 
-test('M4D runtime consumer scanner catches an additional production caller', () => {
+test('M4D runtime consumer scanner catches relative, root-style and dynamic extra callers', () => {
     const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'm4d-runtime-consumer-'));
     try {
         fs.mkdirSync(path.join(fixture, 'src/application/evolve'), { recursive: true });
         fs.writeFileSync(path.join(fixture, 'src/application/evolve/oil-well-production-runtime.mjs'), 'export function calculateOilWellProduction(){}\n');
         fs.writeFileSync(path.join(fixture, 'src/prod.js'), "import { calculateOilWellProduction } from './application/evolve/oil-well-production-runtime.mjs';\n");
-        fs.writeFileSync(path.join(fixture, 'src/extra.js'), "import { calculateOilWellProduction } from './application/evolve/oil-well-production-runtime.mjs';\n");
-        assert.deepEqual(runtimeConsumers(fixture), ['src/extra.js', 'src/prod.js']);
+        fs.writeFileSync(path.join(fixture, 'src/root.js'), "import { calculateOilWellProduction } from '/src/application/evolve/oil-well-production-runtime.mjs';\n");
+        fs.writeFileSync(path.join(fixture, 'src/repo-root.js'), "import { calculateOilWellProduction } from 'src/application/evolve/oil-well-production-runtime.mjs';\n");
+        fs.writeFileSync(path.join(fixture, 'src/dynamic.js'), "export async function load(){ return import('/src/application/evolve/oil-well-production-runtime.mjs'); }\n");
+        assert.deepEqual(runtimeConsumers(fixture), [
+            'src/dynamic.js',
+            'src/prod.js',
+            'src/repo-root.js',
+            'src/root.js',
+        ]);
     }
     finally {
         fs.rmSync(fixture, { recursive: true, force: true });

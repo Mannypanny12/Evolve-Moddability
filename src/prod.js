@@ -33,7 +33,7 @@ export function production(id,val,wiki){
         }
         case 'oil_well':
         {
-            let biomeOilMultiplier = 1;
+            let biomeOilMultiplier = null;
             if (global.city.biome === 'desert'){
                 biomeOilMultiplier = biomes.desert.vars()[1];
             }

@@ -30,6 +30,13 @@ function resolveRelative(fromRelativePath, specifier){
     return target;
 }
 
+function resolveRuntimeReference(fromRelativePath, specifier){
+    if (specifier.startsWith('.')) return resolveRelative(fromRelativePath, specifier);
+    if (specifier.startsWith('/')) return path.posix.normalize(specifier.slice(1));
+    if (specifier.startsWith('src/')) return path.posix.normalize(specifier);
+    return null;
+}
+
 function listSourceFiles(dir){
     if (!fs.existsSync(dir)) return [];
     const files = [];
@@ -89,6 +96,7 @@ function analyzeContentSource(source){
         'order: 400',
         'order: 500',
         'calculateProduction({',
+        'inputs.biomeOilMultiplier !== null',
     ]){
         if (!source.includes(marker)) violations.push(`${CONTENT}: reviewed M4D marker is missing: ${marker}`);
     }
@@ -140,7 +148,7 @@ function analyzeProdSource(source){
         return violations;
     }
     for (const marker of [
-        'let biomeOilMultiplier = 1;',
+        'let biomeOilMultiplier = null;',
         'biomes.desert.vars()[1]',
         'biomes.tundra.vars()[1]',
         'biomes.taiga.vars()[2]',
@@ -173,8 +181,8 @@ function runtimeConsumers(root){
         if (relative === RUNTIME) continue;
         const source = fs.readFileSync(filename, 'utf8');
         for (const reference of extractModuleReferences(source, relative)){
-            if (!reference.specifier.startsWith('.')) continue;
-            if (resolveRelative(relative, reference.specifier) === RUNTIME){
+            const target = resolveRuntimeReference(relative, reference.specifier);
+            if (target === RUNTIME){
                 consumers.push(relative);
                 break;
             }

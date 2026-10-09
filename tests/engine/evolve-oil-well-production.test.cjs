@@ -32,7 +32,7 @@ function legacyOilWellProduction(inputs){
     if (inputs.geologyBonus){
         oil *= inputs.geologyBonus + 1;
     }
-    if (inputs.biomeOilMultiplier !== 1){
+    if (inputs.biomeOilMultiplier !== null){
         oil *= inputs.biomeOilMultiplier;
     }
     if (inputs.dirtyJobsPercent){
@@ -60,7 +60,7 @@ test('M4D oil well calculation exactly matches the legacy multiplication order a
     const { calculateOilWellProduction } = await modules();
     const techLevels = [0, 3, 4, 5, 6, 7, 8];
     const geologyBonuses = [0, 0.25, 1.5];
-    const biomeMultipliers = [1, 1.1, 1.18, 0.9, 0.92];
+    const biomeMultipliers = [null, 1, 1.1, 1.18, 0.9, 0.8, 0.92, 0.88];
     const dirtyJobsValues = [0, 10, 17.5];
     const warlordCases = [
         { warlord: false, pumpjackRank: 0 },
@@ -102,7 +102,7 @@ test('M4D oil well calculation preserves every technology threshold exactly', as
         assert.equal(calculateOilWellProduction(representativeInputs({
             oilTechLevel,
             geologyBonus: 0,
-            biomeOilMultiplier: 1,
+            biomeOilMultiplier: null,
             dirtyJobsPercent: 0,
             warlord: false,
             pumpjackRank: 0,
@@ -115,7 +115,7 @@ test('M4D Warlord pumpjack keeps the legacy zero-rank fallback to rank one', asy
     const base = representativeInputs({
         oilTechLevel: 0,
         geologyBonus: 0,
-        biomeOilMultiplier: 1,
+        biomeOilMultiplier: null,
         dirtyJobsPercent: 0,
         warlord: true,
     });
@@ -162,6 +162,52 @@ test('M4D explain attributes the real vanilla modifiers in legacy order', async 
     assert.equal(result.trace.steps.at(-1).after, result.value);
 });
 
+test('M4D explain distinguishes an active identity biome multiplier from no biome contribution', async () => {
+    const {
+        createCalculationEngine,
+        createOilWellProductionRegistration,
+        createOilWellProductionModifiers,
+        OIL_WELL_PRODUCTION_CALCULATION_ID,
+    } = await modules();
+    const engine = createCalculationEngine({
+        registrations: [createOilWellProductionRegistration()],
+        modifiers: createOilWellProductionModifiers(),
+    });
+
+    const active = engine.explain({
+        id: OIL_WELL_PRODUCTION_CALCULATION_ID,
+        inputs: representativeInputs({
+            oilTechLevel: 4,
+            geologyBonus: 0,
+            biomeOilMultiplier: 1,
+            dirtyJobsPercent: 0,
+            warlord: false,
+            pumpjackRank: 0,
+        }),
+    });
+    const absent = engine.explain({
+        id: OIL_WELL_PRODUCTION_CALCULATION_ID,
+        inputs: representativeInputs({
+            oilTechLevel: 4,
+            geologyBonus: 0,
+            biomeOilMultiplier: null,
+            dirtyJobsPercent: 0,
+            warlord: false,
+            pumpjackRank: 0,
+        }),
+    });
+    const activeBiome = active.trace.steps.find(step => step.modifierId === 'evolve:modifier/production/oil-well/biome');
+    const absentBiome = absent.trace.steps.find(step => step.modifierId === 'evolve:modifier/production/oil-well/biome');
+
+    assert.equal(active.value, 0.48);
+    assert.equal(activeBiome.applied, true);
+    assert.equal(activeBiome.operand, 1);
+    assert.equal(activeBiome.before, activeBiome.after);
+    assert.equal(absent.value, 0.48);
+    assert.equal(absentBiome.applied, false);
+    assert.equal(absentBiome.operand, null);
+});
+
 test('M4D skipped modifiers stay explicit in explain without evaluating operands', async () => {
     const {
         createCalculationEngine,
@@ -178,7 +224,7 @@ test('M4D skipped modifiers stay explicit in explain without evaluating operands
         inputs: representativeInputs({
             oilTechLevel: 4,
             geologyBonus: 0,
-            biomeOilMultiplier: 1,
+            biomeOilMultiplier: null,
             dirtyJobsPercent: 0,
             warlord: false,
             pumpjackRank: 0,
@@ -205,6 +251,14 @@ test('M4D first-party oil well inputs are closed, typed, finite, detached and fa
     assert.throws(
         () => calculateOilWellProduction({ ...representativeInputs(), geologyBonus: Infinity }),
         error => error instanceof EngineContractError && error.code === 'INVALID_CALCULATION_DATA'
+    );
+    assert.throws(
+        () => calculateOilWellProduction({ ...representativeInputs(), biomeOilMultiplier: '1.1' }),
+        error => error instanceof EngineContractError && error.code === 'INVALID_OIL_WELL_PRODUCTION_INPUTS'
+    );
+    assert.equal(
+        calculateOilWellProduction(representativeInputs({ biomeOilMultiplier: null })),
+        legacyOilWellProduction(representativeInputs({ biomeOilMultiplier: null }))
     );
 
     let getterCalls = 0;
