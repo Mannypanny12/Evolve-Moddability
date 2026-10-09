@@ -251,6 +251,12 @@ test('M4E2 production seam preserves the frozen legacy matrix and a real fast-lo
                 'gas-mining proof requires two powered collectors before the fast loop'
             );
             await legacy.runGameLoops(1);
+            const lockedTransient = legacy.transientSimulationState();
+            assert.equal(
+                lockedTransient.p_on.gas_mining,
+                2,
+                `gas-mining powered count changed during the fast loop: transient=${JSON.stringify(lockedTransient.p_on.gas_mining)} structure=${JSON.stringify(runtime.space.gas_mining)} settings=${JSON.stringify({ tabLoad: runtime.settings.tabLoad, civTabs: runtime.settings.civTabs, govTabs: runtime.settings.govTabs })}`
+            );
             const lockedValues = Object.values(api.productionBreakdown('Helium_3'));
             assert.ok(
                 lockedValues.includes('1v'),
