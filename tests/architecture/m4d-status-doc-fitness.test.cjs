@@ -40,6 +40,7 @@ function validSources(){
             '**Runtime-consumer enforcement was closed against alternate import spellings.**',
             '**The real legacy composition seam is now executed.**',
             '**Exact floating-point proof was tightened.**',
+            '**Hidden runtime capability bypasses are now blocked.**',
             '19b361962adb437f9d4662a24d4545890b893321',
             'workflow run 1330',
             'M4D is complete.',
@@ -81,7 +82,7 @@ test('M4D status-document guard requires M4E to become the next roadmap and back
 
 test('M4D status-document guard requires the hardening findings and exact code-bearing proof', () => {
     const sources = validSources();
-    const missingHardening = sources.authority.replace('**The real legacy composition seam is now executed.**', 'Live proof omitted.');
+    const missingHardening = sources.authority.replace('**Hidden runtime capability bypasses are now blocked.**', 'Ambient capability guard omitted.');
     assert.notDeepEqual(
         statusDocViolations(sources.roadmap, sources.backlog, sources.currentArchitecture, missingHardening),
         []
