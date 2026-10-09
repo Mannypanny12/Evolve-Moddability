@@ -11,6 +11,7 @@ const INERT_DATA_CONTRACT_FILE = 'src/engine/contracts/inert-data.mjs';
 const REVIEWED_PRODUCTION_CALCULATION_CONSUMERS = Object.freeze([
     'src/application/evolve/production-calculation-runtime.mjs',
     'src/content/evolve/calculations/oil-well-production.mjs',
+    'src/content/evolve/calculations/simple-production.mjs',
 ]);
 const REVIEWED_PRODUCTION_CALCULATION_CONSUMER_SET = new Set(REVIEWED_PRODUCTION_CALCULATION_CONSUMERS);
 
