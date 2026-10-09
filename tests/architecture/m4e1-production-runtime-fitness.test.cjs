@@ -8,6 +8,7 @@ const test = require('node:test');
 const {
     SHARED_RUNTIME,
     PRODUCTION_IDS,
+    REVIEWED_SHARED_RUNTIME_CONSUMERS,
     analyzeSharedRuntimeSource,
     sharedRuntimeConsumers,
     productionIdsFromProd,
@@ -18,7 +19,7 @@ const root = path.resolve(__dirname, '../..');
 
 test('M4E1 shared production runtime and frozen migration inventory satisfy their architecture boundary', () => {
     assert.deepEqual(findViolations(root), []);
-    assert.deepEqual(sharedRuntimeConsumers(root), ['src/application/evolve/oil-well-production-runtime.mjs']);
+    assert.deepEqual(sharedRuntimeConsumers(root), REVIEWED_SHARED_RUNTIME_CONSUMERS);
     const prod = fs.readFileSync(path.join(root, 'src/prod.js'), 'utf8');
     assert.deepEqual(productionIdsFromProd(prod), PRODUCTION_IDS);
 });

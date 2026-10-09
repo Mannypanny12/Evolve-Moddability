@@ -17,6 +17,10 @@ const SHARED_RUNTIME = 'src/application/evolve/production-calculation-runtime.mj
 const SIMPLE_PRODUCTION_CONTENT = 'src/content/evolve/calculations/simple-production.mjs';
 const MANIFEST = 'docs/modding/M4E_PRODUCTION_MIGRATION.md';
 const SOURCE_EXTENSIONS = new Set(['.js', '.mjs', '.cjs']);
+const REVIEWED_SHARED_RUNTIME_CONSUMERS = Object.freeze([
+    OIL_WELL_ADAPTER,
+    PROD,
+].sort());
 const ALLOWED_RUNTIME_IMPORTS = new Set([
     'src/engine/calculations/calculation-engine.mjs',
     CONTENT,
@@ -191,8 +195,8 @@ function findViolations(root){
     }
 
     const consumers = sharedRuntimeConsumers(root);
-    if (JSON.stringify(consumers) !== JSON.stringify([OIL_WELL_ADAPTER])){
-        violations.push(`${SHARED_RUNTIME}: M4E1 consumer set must be exactly ${OIL_WELL_ADAPTER}; found ${consumers.join(', ') || '<none>'}`);
+    if (JSON.stringify(consumers) !== JSON.stringify(REVIEWED_SHARED_RUNTIME_CONSUMERS)){
+        violations.push(`${SHARED_RUNTIME}: reviewed shared-runtime consumer set must be exactly ${REVIEWED_SHARED_RUNTIME_CONSUMERS.join(', ')}; found ${consumers.join(', ') || '<none>'}`);
     }
 
     const prodPath = path.join(root, ...PROD.split('/'));
@@ -246,6 +250,7 @@ module.exports = {
     SHARED_RUNTIME,
     MANIFEST,
     PRODUCTION_IDS,
+    REVIEWED_SHARED_RUNTIME_CONSUMERS,
     analyzeSharedRuntimeSource,
     sharedRuntimeConsumers,
     productionIdsFromProd,
