@@ -1,6 +1,8 @@
 'use strict';
 
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
 const test = require('node:test');
 const path = require('node:path');
 const {
@@ -70,4 +72,33 @@ test('M4A calculation boundary permits only identity, inert-data and sibling cal
         export const probe = EngineContractError && inspectPlainInertObject && normalizeCalculationContext;
     `;
     assert.deepEqual(analyzeCalculationModule(source, 'src/engine/calculations/probe.mjs'), []);
+});
+
+test('M4A zero-consumer scanner rejects root-style and bare repository calculation imports', () => {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'm4a-root-consumer-negative-control-'));
+    try {
+        const src = path.join(tempRoot, 'src');
+        fs.mkdirSync(src, { recursive: true });
+        fs.writeFileSync(
+            path.join(src, 'root-static.js'),
+            "import '/src/engine/calculations/resource-delta.mjs';\n"
+        );
+        fs.writeFileSync(
+            path.join(src, 'root-dynamic.js'),
+            "export const load = () => import('/src/engine/calculations/resource-primitives.mjs');\n"
+        );
+        fs.writeFileSync(
+            path.join(src, 'bare-repository.js'),
+            "import 'src/engine/calculations/resource-contract.mjs';\n"
+        );
+
+        assert.deepEqual(productionCalculationConsumers(tempRoot).consumers, [
+            'src/bare-repository.js',
+            'src/root-dynamic.js',
+            'src/root-static.js',
+        ]);
+    }
+    finally {
+        fs.rmSync(tempRoot, { recursive: true, force: true });
+    }
 });
