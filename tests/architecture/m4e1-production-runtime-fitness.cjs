@@ -14,11 +14,13 @@ const {
 } = require('./m4a-calculation-boundary-fitness.cjs');
 
 const SHARED_RUNTIME = 'src/application/evolve/production-calculation-runtime.mjs';
+const SIMPLE_PRODUCTION_CONTENT = 'src/content/evolve/calculations/simple-production.mjs';
 const MANIFEST = 'docs/modding/M4E_PRODUCTION_MIGRATION.md';
 const SOURCE_EXTENSIONS = new Set(['.js', '.mjs', '.cjs']);
 const ALLOWED_RUNTIME_IMPORTS = new Set([
     'src/engine/calculations/calculation-engine.mjs',
     CONTENT,
+    SIMPLE_PRODUCTION_CONTENT,
 ]);
 const PRODUCTION_IDS = Object.freeze([
     'transmitter',
