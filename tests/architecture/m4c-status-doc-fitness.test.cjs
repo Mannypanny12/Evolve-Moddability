@@ -15,6 +15,11 @@ const {
     SECOND_REVIEW_CLOSURE_FINDING,
     SECOND_REVIEW_SCOPE_FINDING,
     SECOND_REVIEW_CODE_PROOF,
+    SECOND_REVIEW_FINAL_CLOSURE_PROOF,
+    THIRD_REVIEW_HEADING,
+    THIRD_REVIEW_ALIAS_FINDING,
+    THIRD_REVIEW_CONSUMER_FINDING,
+    THIRD_REVIEW_CLOSURE_FINDING,
     STALE_FINAL_PROOF_PENDING,
     statusDocViolations,
 } = require('./m4c-status-doc-fitness.cjs');
@@ -71,7 +76,7 @@ test('M4C status-document guard rejects truncated roadmap tail', () => {
     assert.ok(violations.some(value => value.includes('Behavioral compatibility is more important')));
 });
 
-test('M4C status-document guard requires original closure and both independent hardening records', () => {
+test('M4C status-document guard requires original closure and all independent hardening records', () => {
     const staleAuthority = m4cAuthority
         .replace('## Independent review and hardening', '## Review notes')
         .replace(HARDENED_CODE_PROOF, 'Hardening passed.')
@@ -82,7 +87,12 @@ test('M4C status-document guard requires original closure and both independent h
         .replace(SECOND_REVIEW_DEPENDENCY_FINDING, '**Dependency notes.**')
         .replace(SECOND_REVIEW_CLOSURE_FINDING, '**Closure notes.**')
         .replace(SECOND_REVIEW_SCOPE_FINDING, '**Legacy notes.**')
-        .replace(SECOND_REVIEW_CODE_PROOF, 'Second review passed.');
+        .replace(SECOND_REVIEW_CODE_PROOF, 'Second review passed.')
+        .replace(SECOND_REVIEW_FINAL_CLOSURE_PROOF, 'Second review closure passed.')
+        .replace(THIRD_REVIEW_HEADING, '## Another review')
+        .replace(THIRD_REVIEW_ALIAS_FINDING, '**Alias notes.**')
+        .replace(THIRD_REVIEW_CONSUMER_FINDING, '**Consumer notes.**')
+        .replace(THIRD_REVIEW_CLOSURE_FINDING, '**Durability notes.**');
 
     const violations = violationsFor({ m4cAuthorityText: staleAuthority });
     assert.ok(violations.some(value => value.includes('Independent review and hardening')));
@@ -95,6 +105,23 @@ test('M4C status-document guard requires original closure and both independent h
     assert.ok(violations.some(value => value.includes('in-repo closure authority')));
     assert.ok(violations.some(value => value.includes('Legacy parity wording')));
     assert.ok(violations.some(value => value.includes('384529a1ceeb6683')));
+    assert.ok(violations.some(value => value.includes('1bb81295c1fab825')));
+    assert.ok(violations.some(value => value.includes('Third post-merge independent review and hardening')));
+    assert.ok(violations.some(value => value.includes('Repeated resource-delta operation identity')));
+    assert.ok(violations.some(value => value.includes('Zero-production-consumer discovery')));
+    assert.ok(violations.some(value => value.includes('second review\'s final closure chain')));
+});
+
+test('M4C status-document guard rejects losing third-review contract clarifications', () => {
+    const staleAuthority = m4cAuthority
+        .replace('Each operation must also be a distinct input object identity.', 'Operation objects may be reused.')
+        .replace(
+            'Consumer discovery covers ordinary relative imports plus repository/root-style calculation imports, including dynamic imports',
+            'Consumer discovery covers ordinary relative imports'
+        );
+    const violations = violationsFor({ m4cAuthorityText: staleAuthority });
+    assert.ok(violations.some(value => value.includes('distinct input object identity')));
+    assert.ok(violations.some(value => value.includes('repository/root-style calculation imports')));
 });
 
 test('M4C status-document guard rejects obsolete pending-proof prose', () => {
