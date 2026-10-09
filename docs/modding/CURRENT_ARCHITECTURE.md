@@ -65,10 +65,11 @@ Permanent direction rules:
 - M4C resource-delta resolution is a pure ordered transformation over explicit starting amount, bounded/unbounded capacity policy and credit/debit operations. It preserves legacy buffer ordering, including the `max > 0` temporary-capacity rule and bounded-zero upper-clamp behavior, without mutating gameplay state.
 - M4C keeps requested, operation-applied and final-applied resource evidence distinct and reports overflow/shortfall from actual clamp conditions rather than floating-point subtraction artifacts.
 - M4D introduced exactly one reviewed live production vertical, `production('oil_well')`. Its numerical semantics and `src/prod.js` compatibility/state-snapshot seam remain unchanged as historical closure evidence.
-- `src/application/evolve/production-calculation-runtime.mjs` is now the shared first-party production composition root. At the M4E1 checkpoint it constructs one fixed calculation engine from the reviewed Oil-Well registration/modifiers and exposes one synchronous scalar calculation entry point without reading legacy/runtime/platform state or owning mutation authority.
-- `src/application/evolve/oil-well-production-runtime.mjs` is now a temporary compatibility adapter: `src/prod.js` remains its sole live consumer, while the adapter delegates the canonical Oil-Well calculation ID and explicit inputs to the shared production runtime.
-- M4E1 freezes the current 44 top-level `production(id, val, wiki)` IDs as the migration ledger and establishes the default `evolve:calculation/production/<production-source>` identity convention for later registrations.
-- M4E1 does not migrate another production formula. Downstream Oil aggregation, mutation, `oil_extractor`, `fastLoop()` production composition and every other `production()` branch remain legacy until their reviewed M4E checkpoints.
+- `src/application/evolve/production-calculation-runtime.mjs` is the shared first-party production composition root. At M4E2 it constructs one fixed calculation engine from the reviewed Oil-Well registration/modifiers plus the reviewed simple-production registrations and exposes one synchronous scalar calculation entry point without reading legacy/runtime/platform state or owning mutation authority.
+- `src/application/evolve/oil-well-production-runtime.mjs` was removed in M4E2. `src/prod.js` now directly consumes the shared runtime for Oil Well and the migrated simple-production cases; architecture guards prevent the deleted adapter from returning.
+- M4E1 froze the current 44 top-level `production(id, val, wiki)` IDs as the migration ledger and established the default `evolve:calculation/production/<production-source>` identity convention.
+- M4E2 migrates exactly the reviewed 27 simple scalar/variant/fact-fed production identities. `src/prod.js` remains the compatibility seam that snapshots explicit legacy facts and variants before delegation; the calculation module itself contains no direct legacy state reads.
+- M4E2 does not move `fastLoop()` orchestration, breakdown presentation or resource mutation. Its gas-mining differential proof deliberately exercises one real fast-loop consumer through coherent legacy power allocation; broader fast-loop numerical composition remains for later M4E work and resource application remains M5-owned.
 - M4E calculation/content/application composition remains synchronous and mutation-free; production-specific architecture guards reject transaction commit/rollback capability names and direct Promise construction in addition to the existing state/platform/runtime restrictions.
 
 ## M0 authority: safety net
@@ -202,12 +203,14 @@ Current M4 laws:
 - an absent biome contribution is represented by `null`; a real multiplier of `1` remains an applied modifier in `explain()`;
 - the five Oil-Well modifiers preserve vanilla multiplication order: technology, geology, biome, Dirty Jobs, Warlord;
 - `src/prod.js` remains the compatibility seam that reads legacy facts and resolves dynamic biome/governor state; the shared application production runtime contains no legacy state reads;
-- the Oil-Well compatibility adapter has exactly one reviewed live consumer, `src/prod.js`; the shared production runtime is consumed only by that adapter at M4E1, and alternate import spellings/dynamic consumers are architecture-gated;
-- live characterization executes the real seam for normal/rejuvenated Desert, Tundra and Taiga values, Dirty Jobs, Warlord rank fallback, and the full floating-operation sequence;
-- the 44-ID legacy production inventory is frozen for M4E migration planning, and each manifest row is required exactly once;
-- all downstream Oil aggregation and every non-Oil-Well production branch remain outside M4E1.
+- the historical Oil-Well compatibility adapter is gone as of M4E2; `src/prod.js` directly consumes the shared production runtime, and alternate import spellings/dynamic consumers remain architecture-gated;
+- live characterization continues to execute the real Oil-Well seam for normal/rejuvenated Desert, Tundra and Taiga values, Dirty Jobs, Warlord rank fallback, and the full floating-operation sequence;
+- the 44-ID legacy production inventory remains frozen for M4E migration planning, and each manifest row is required exactly once;
+- M4E2 adds exactly 27 reviewed simple-production identities to the shared engine and preserves legacy compatibility through explicit fact/variant snapshotting in `src/prod.js`;
+- M4E2 differential coverage includes a real gas-mining fast-loop consumer whose powered collector count is produced by the legacy power allocator rather than injected as transient test state;
+- downstream resource application and non-migrated M4E3/M4E4 production families remain legacy until their reviewed checkpoints.
 
-The M4A boundary/status guards, M4B modifier/status guards, M4C resource/status guards, M4D production/status guards and M4E1 production-runtime guard are cumulative members of `npm run test:architecture`. M4A-M4D retain their historical closure facts; M4E1 owns the current production-composition/inventory ratchet and M4E progression markers.
+The M4A boundary/status guards, M4B modifier/status guards, M4C resource/status guards, M4D production/status guards, M4E1 production-runtime guard and M4E2 simple-production cutover guard are cumulative members of `npm run test:architecture`. M4A-M4D retain their historical closure facts; the M4E production-runtime/status guard and M4E2 cutover guard own the current production-composition, migration and status ratchets.
 
 ## Architecture inspector
 
@@ -227,7 +230,7 @@ Architecture report version 6 currently combines:
 - M2E ownership, write-capability, selector, and dependency gates;
 - M3 command-architecture closure, including the reviewed live DNA command/runtime/settlement seams, generic package roots, queue-production-consumer count, prerequisite gate counts, cross-layer violations, and M3 architecture-test coverage violations.
 
-The report is not bumped solely for M4A-M4E1 because these checkpoints add no new report field. Their boundaries are enforced directly by their calculation/modifier/resource/production and status architecture gates. A later calculation-architecture report extension should bump the report version when the report shape actually changes.
+The report is not bumped solely for M4A-M4E2 because these checkpoints add no new report field. Their boundaries are enforced directly by their calculation/modifier/resource/production and status architecture gates. A later calculation-architecture report extension should bump the report version when the report shape actually changes.
 
 M2D3/M2D4 and the M3G closure gate expose composable scanner functions directly, so the report consumes the same rule implementations as their standalone CLI gates rather than maintaining a second architecture truth.
 
@@ -258,8 +261,10 @@ M4D is complete: **Migrate one production vertical**, using `production('oil_wel
 
 M4E is in progress: **Expand across `prod.js`**.
 
-M4E1 is complete at the implementation/review checkpoint: the shared production composition root and frozen production migration inventory are established. Exact-head CI remains the closure authority for the hardening head.
+M4E1 is complete: the shared production composition root and frozen production migration inventory are established.
 
-M4E2 is next: **Simple scalar production family**.
+M4E2 has completed implementation and independent hardening: **Simple scalar production family**. Exact-head CI is the closure authority for the hardening head.
 
-M4E must continue through separately reviewed bounded production checkpoints and must include related calculations embedded in `fastLoop()` before M4 can exit. M4E1 does not pre-authorize broader production consumers, downstream Oil aggregation, resource mutation, or later M5 simulation/application authority.
+M4E3 is next only after M4E2 closes: **Explicit-state scalar production family**.
+
+M4E must continue through separately reviewed bounded production checkpoints and must include related calculations embedded in `fastLoop()` before M4 can exit. M4E2 does not pre-authorize broader production consumers, downstream resource mutation, or later M5 simulation/application authority.

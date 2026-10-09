@@ -293,7 +293,7 @@ Adds the frozen `createWorkQueueSelector()` readiness/selection boundary with tr
 
 Closes M3E with executable legacy build/research queue evidence, a zero-execution `prepare -> WorkItem -> WorkQueue -> selection` integration proof, and a cumulative architecture gate that pins the four-file generic queue package, keeps it first-party-neutral, and prevents any production consumer before reviewed cutover. Command-specific admission, execution progress, reconciliation, prediction, scheduling and persistence remain deferred to their owning later milestones. See `M3E4_QUEUE_CLOSURE.md`.
 
-M3E is closed without modifying vanilla build/research gameplay. M3F and M3G are closed; M4A through M4D are complete, and M4E is in progress with M4E1 complete and M4E2 next.
+M3E is closed without modifying vanilla build/research gameplay. M3F and M3G are closed; M4A through M4D are complete, and M4E is in progress with M4E1 complete and M4E2 independently hardened pending exact-head closure CI.
 
 ### M3F First real vanilla cutover - complete
 
@@ -382,9 +382,11 @@ Migrates exactly `production('oil_well')` through the fixed M4 calculation/runti
 
 Systematically remove hard-coded production switch cases as their logic moves to definitions/calculations.
 
-M4E1 is complete at the implementation/review checkpoint: the fixed shared production calculation composition root and frozen 44-ID migration inventory are established, with the historical Oil-Well live seam preserved through a temporary compatibility adapter. See `M4E_PRODUCTION_MIGRATION.md`.
+M4E1 is complete: the fixed shared production calculation composition root and frozen 44-ID migration inventory are established. See `M4E_PRODUCTION_MIGRATION.md`.
 
-M4E2 is next: migrate the reviewed simple-scalar production family through the shared runtime while preserving legacy caller behavior.
+M4E2 simple scalar production family has completed implementation and independent hardening; exact-head CI is the closure authority. It migrates the reviewed 27 simple scalar/variant/fact-fed production identities through the shared runtime, removes the redundant one-off Oil-Well runtime adapter, preserves the legacy `production()` compatibility surface, and proves a real gas-mining `fastLoop()` consumer through coherent legacy power allocation.
+
+M4E3 explicit-state scalar family is next only after M4E2 exact-head CI closes.
 
 Important: completion requires migrating related calculations currently embedded in `fastLoop()`, not merely emptying `prod.js`.
 

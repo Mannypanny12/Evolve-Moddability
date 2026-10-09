@@ -184,7 +184,7 @@ function findViolations(root){
     const violations = [];
     for (const relative of [SHARED_RUNTIME, CONTENT, PROD, MANIFEST]){
         const filename = path.join(root, ...relative.split('/'));
-        if (!fs.existsSync(filename)) violations.push(`${relative}: required M4E1 file is missing`);
+        if (!fs.existsSync(filename)) violations.push(`${relative}: required M4E file is missing`);
     }
 
     const sharedPath = path.join(root, ...SHARED_RUNTIME.split('/'));
@@ -209,11 +209,13 @@ function findViolations(root){
     if (fs.existsSync(manifestPath)){
         const manifest = fs.readFileSync(manifestPath, 'utf8');
         for (const marker of [
-            'Status: M4E1 implementation and checkpoint review complete; exact-head CI is the closure authority. M4E remains in progress.',
+            'Status: M4E2 implementation and independent hardening complete; exact-head CI is the closure authority. M4E remains in progress.',
             '## M4E1 review and hardening',
+            '## M4E2 review and hardening',
             '`evolve:calculation/production/<production-source>`',
+            'The redundant one-off Oil-Well runtime adapter is removed in M4E2.',
         ]){
-            if (!manifest.includes(marker)) violations.push(`${MANIFEST}: reviewed M4E1 marker is missing: ${marker}`);
+            if (!manifest.includes(marker)) violations.push(`${MANIFEST}: reviewed M4E marker is missing: ${marker}`);
         }
         for (const id of PRODUCTION_IDS){
             const row = `| \`${id}\` |`;
@@ -226,7 +228,7 @@ function findViolations(root){
 
     const calculationConsumers = productionCalculationConsumers(root).consumers;
     if (JSON.stringify(calculationConsumers) !== JSON.stringify(REVIEWED_PRODUCTION_CALCULATION_CONSUMERS)){
-        violations.push(`M4E1 calculation-package consumers must remain exactly ${REVIEWED_PRODUCTION_CALCULATION_CONSUMERS.join(', ')}; found ${calculationConsumers.join(', ') || '<none>'}`);
+        violations.push(`M4E calculation-package consumers must remain exactly ${REVIEWED_PRODUCTION_CALCULATION_CONSUMERS.join(', ')}; found ${calculationConsumers.join(', ') || '<none>'}`);
     }
 
     return [...new Set(violations)].sort();
@@ -236,12 +238,12 @@ function main(){
     const root = path.resolve(__dirname, '../..');
     const violations = findViolations(root);
     if (violations.length){
-        console.error('M4E1 production runtime fitness failed:');
+        console.error('M4E production runtime fitness failed:');
         for (const violation of violations) console.error(`- ${violation}`);
         process.exitCode = 1;
         return;
     }
-    console.log('M4E1 production runtime fitness passed.');
+    console.log('M4E production runtime fitness passed.');
 }
 
 module.exports = {

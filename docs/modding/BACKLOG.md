@@ -57,7 +57,7 @@ Implement:
 - source/package ownership;
 - duplicate detection;
 - legacy aliases;
-- deterministic lookup/iteration;
+- deterministic iteration;
 - validation.
 
 This is an internal engine primitive, not yet a public Mod API.
@@ -364,11 +364,13 @@ Migrated exactly `production('oil_well')` through the M4 calculation pipeline wh
 
 ### M4E - Expand across `prod.js` - in progress
 
-M4E1 shared production runtime foundation - implementation and checkpoint review complete; exact-head CI is the closure authority. It establishes the fixed shared production calculation composition root, freezes the 44 top-level legacy production IDs as the migration ledger, preserves the M4D Oil-Well seam through a temporary adapter, and hardens the production boundary against hidden mutation/Promise capabilities. See [M4E_PRODUCTION_MIGRATION.md](M4E_PRODUCTION_MIGRATION.md).
+M4E1 shared production runtime foundation - complete. It established the fixed shared production calculation composition root and froze the 44 top-level legacy production IDs as the migration ledger.
 
-M4E2 simple scalar production family - next.
+M4E2 simple scalar production family - implementation and independent hardening complete; exact-head CI is the closure authority. It migrates the reviewed 27 simple scalar/variant/fact-fed production identities through the shared runtime, removes the redundant one-off Oil-Well runtime adapter, preserves the legacy `production()` compatibility surface, and adds differential proof through a real gas-mining fast-loop consumer. See [M4E_PRODUCTION_MIGRATION.md](M4E_PRODUCTION_MIGRATION.md).
 
-M4E remains separately scoped. It must migrate additional production paths through bounded reviewed checkpoints, include related numerical composition embedded in `fastLoop()`, and must not treat M4D/M4E1 as permission for arbitrary calculation consumers or M5-owned resource application.
+M4E3 explicit-state scalar family - next only after M4E2 exact-head CI closes.
+
+M4E remains separately scoped. It must migrate additional production paths through bounded reviewed checkpoints, include related numerical composition embedded in `fastLoop()`, and must not treat M4D/M4E1/M4E2 as permission for arbitrary calculation consumers or M5-owned resource application.
 
 ## Immediate sequence
 
@@ -393,7 +395,7 @@ M4C resource calculation primitives - complete
    |
 M4D first live production vertical - complete
    |
-M4E expand across prod.js - in progress (M4E1 complete; M4E2 next)
+M4E expand across prod.js - in progress (M4E1 complete; M4E2 hardened, exact-head closure CI pending; M4E3 next)
 ```
 
 Do not jump directly to mod loading, total conversions, bulk content conversion, an unreviewed production migration, or later simulation work. The approved M4E deep dive governs the remaining bounded checkpoints; each checkpoint must preserve its reviewed scope and the full M4E slice still requires independent hardening and final CI proof before closure.
