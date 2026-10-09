@@ -19,6 +19,10 @@ function requireExactlyOnce(source, needle, label, violations){
     }
 }
 
+function normalizeHorizontalWhitespace(source){
+    return source.replace(/[ \t]+/g, ' ');
+}
+
 function forbid(source, needle, label, violations){
     if (source.includes(needle)){
         violations.push(`${label} retains stale status text ${JSON.stringify(needle)}`);
@@ -40,7 +44,12 @@ function statusDocViolations(roadmap, backlog, currentArchitecture, m4aAuthority
     forbid(backlog, 'M4A calculation context and trace - next', BACKLOG, violations);
 
     requireExactlyOnce(currentArchitecture, 'M4A is complete: **Calculation context and trace**.', CURRENT_ARCHITECTURE, violations);
-    requireExactlyOnce(currentArchitecture, '+-- calculation context + base trace                [M4A]', CURRENT_ARCHITECTURE, violations);
+    requireExactlyOnce(
+        normalizeHorizontalWhitespace(currentArchitecture),
+        '+-- calculation context + base trace [M4A]',
+        CURRENT_ARCHITECTURE,
+        violations
+    );
     forbid(currentArchitecture, '| M4 Calculation and modifier engine | next | `ROADMAP.md` |', CURRENT_ARCHITECTURE, violations);
     forbid(currentArchitecture, 'M4A is next: **Calculation context and trace**.', CURRENT_ARCHITECTURE, violations);
 

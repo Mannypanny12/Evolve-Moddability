@@ -26,6 +26,10 @@ function requireExactlyOnce(source, needle, label, violations){
     }
 }
 
+function normalizeHorizontalWhitespace(source){
+    return source.replace(/[ \t]+/g, ' ');
+}
+
 function forbid(source, needle, label, violations){
     if (source.includes(needle)){
         violations.push(`${label} retains stale status text ${JSON.stringify(needle)}`);
@@ -49,7 +53,12 @@ function statusDocViolations(roadmap, backlog, currentArchitecture, m4bAuthority
     forbid(backlog, 'M4B modifier pipeline - next', BACKLOG, violations);
 
     requireExactlyOnce(currentArchitecture, 'Architecture report version 6 currently combines:', CURRENT_ARCHITECTURE, violations);
-    requireExactlyOnce(currentArchitecture, '+-- deterministic modifier pipeline                 [M4B]', CURRENT_ARCHITECTURE, violations);
+    requireExactlyOnce(
+        normalizeHorizontalWhitespace(currentArchitecture),
+        '+-- deterministic modifier pipeline [M4B]',
+        CURRENT_ARCHITECTURE,
+        violations
+    );
     requireExactlyOnce(currentArchitecture, 'M4B is complete: **Modifier pipeline**.', CURRENT_ARCHITECTURE, violations);
     forbid(currentArchitecture, 'M4B is next: **Modifier pipeline**.', CURRENT_ARCHITECTURE, violations);
 

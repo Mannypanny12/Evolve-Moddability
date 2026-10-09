@@ -5,7 +5,6 @@ const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
 const {
-    CURRENT_M4_ROW,
     HARDENED_CODE_PROOF,
     ORIGINAL_FINAL_CLOSURE_PROOF,
     BOUNDED_ZERO_FINDING,
@@ -41,22 +40,18 @@ function violationsFor({
     return statusDocViolations(roadmapText, backlogText, currentArchitectureText, m4cAuthorityText);
 }
 
-test('M4C status-document guard accepts M4C complete with M4D next', () => {
+test('M4C status-document guard preserves historical M4C closure after later M4 slices advance', () => {
     assert.deepEqual(violationsFor(), []);
 });
 
-test('M4C status-document guard rejects stale M4C-next markers and lost M4D ownership', () => {
+test('M4C status-document guard rejects stale M4C-next markers without owning current M4 progression', () => {
     const staleRoadmap = roadmap
-        .replace('### M4C Resource calculation primitives - complete', '### M4C Resource calculation primitives - next')
-        .replace('### M4D Migrate one production vertical - next', '### M4D Migrate one production vertical');
+        .replace('### M4C Resource calculation primitives - complete', '### M4C Resource calculation primitives - next');
     const staleBacklog = backlog
         .replace('### M4C - Resource calculation primitives - complete', '### M4C - Resource calculation primitives - next')
-        .replace('M4C resource calculation primitives - complete', 'M4C resource calculation primitives - next')
-        .replace('M4D migrate one production vertical - next', 'M4D migrate one production vertical');
+        .replace('M4C resource calculation primitives - complete', 'M4C resource calculation primitives - next');
     const staleCurrent = currentArchitecture
-        .replace(CURRENT_M4_ROW, '| M4 Calculation and modifier engine | in progress | `M4B_MODIFIER_PIPELINE.md`, `ROADMAP.md` |')
-        .replace('M4C is complete: **Resource calculation primitives**.', 'M4C is next: **Resource calculation primitives**.')
-        .replace('M4D is next: **Migrate one production vertical**.', 'M4D remains later work.');
+        .replace('M4C is complete: **Resource calculation primitives**.', 'M4C is next: **Resource calculation primitives**.');
 
     const violations = violationsFor({
         roadmapText: staleRoadmap,
@@ -66,7 +61,6 @@ test('M4C status-document guard rejects stale M4C-next markers and lost M4D owne
     assert.ok(violations.some(value => value.includes('M4C Resource calculation primitives - next')));
     assert.ok(violations.some(value => value.includes('M4C resource calculation primitives - next')));
     assert.ok(violations.some(value => value.includes('M4C is next')));
-    assert.ok(violations.some(value => value.includes('M4D is next')));
 });
 
 test('M4C status-document guard rejects truncated roadmap tail', () => {

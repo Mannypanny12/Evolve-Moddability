@@ -8,7 +8,6 @@ const BACKLOG = 'docs/modding/BACKLOG.md';
 const CURRENT_ARCHITECTURE = 'docs/modding/CURRENT_ARCHITECTURE.md';
 const M4C_AUTHORITY = 'docs/modding/M4C_RESOURCE_CALCULATIONS.md';
 
-const CURRENT_M4_ROW = '| M4 Calculation and modifier engine | in progress | `M4C_RESOURCE_CALCULATIONS.md`, `ROADMAP.md` |';
 const HARDENED_CODE_PROOF = 'The hardened code-bearing head passed complete Baseline run `37879876389`, including Node tests, cumulative architecture fitness, game/wiki build, generated-output cleanliness, the injected startup-failure browser negative control and the normal real-browser smoke.';
 const ORIGINAL_FINAL_CLOSURE_PROOF = 'The original final M4C branch head `11548b584f95116b3060bdfbf72045e88365600c` passed Baseline run `37880678649`; PR #59 passed Baseline run `37880877583`, merged as `4ad71b8233023fdaba758bf4011c0da98e63269d`, and merged master passed Baseline run `37881028936` plus Android test-site run `37881028942`, including Pages deployment.';
 const BOUNDED_ZERO_FINDING = '**Bounded-zero buffering was initially too permissive.**';
@@ -38,6 +37,10 @@ function requireExactlyOnce(source, needle, label, violations){
     }
 }
 
+function normalizeHorizontalWhitespace(source){
+    return source.replace(/[ \t]+/g, ' ');
+}
+
 function forbid(source, needle, label, violations){
     if (source.includes(needle)){
         violations.push(`${label} retains stale status text ${JSON.stringify(needle)}`);
@@ -49,7 +52,6 @@ function statusDocViolations(roadmap, backlog, currentArchitecture, m4cAuthority
 
     requireExactlyOnce(roadmap, '### M4C Resource calculation primitives - complete', ROADMAP, violations);
     requireExactlyOnce(roadmap, 'See `M4C_RESOURCE_CALCULATIONS.md`.', ROADMAP, violations);
-    requireExactlyOnce(roadmap, '### M4D Migrate one production vertical - next', ROADMAP, violations);
     requireExactlyOnce(roadmap, 'Android packages the engine. It must not become a separate gameplay implementation.', ROADMAP, violations);
     requireExactlyOnce(roadmap, '## Cross-cutting migration rules', ROADMAP, violations);
     requireExactlyOnce(roadmap, 'Behavioral compatibility is more important than preserving legacy file structure.', ROADMAP, violations);
@@ -57,15 +59,16 @@ function statusDocViolations(roadmap, backlog, currentArchitecture, m4cAuthority
 
     requireExactlyOnce(backlog, '### M4C - Resource calculation primitives - complete', BACKLOG, violations);
     requireExactlyOnce(backlog, 'M4C resource calculation primitives - complete', BACKLOG, violations);
-    requireExactlyOnce(backlog, 'M4D migrate one production vertical - next', BACKLOG, violations);
     requireExactlyOnce(backlog, 'See [M4C_RESOURCE_CALCULATIONS.md](M4C_RESOURCE_CALCULATIONS.md).', BACKLOG, violations);
     forbid(backlog, 'M4C resource calculation primitives - next', BACKLOG, violations);
 
-    requireExactlyOnce(currentArchitecture, CURRENT_M4_ROW, CURRENT_ARCHITECTURE, violations);
-    requireExactlyOnce(currentArchitecture, '`M4C_RESOURCE_CALCULATIONS.md` is the current M4 authority.', CURRENT_ARCHITECTURE, violations);
-    requireExactlyOnce(currentArchitecture, '+-- resource calculation primitives                 [M4C]', CURRENT_ARCHITECTURE, violations);
+    requireExactlyOnce(
+        normalizeHorizontalWhitespace(currentArchitecture),
+        '+-- resource calculation primitives [M4C]',
+        CURRENT_ARCHITECTURE,
+        violations
+    );
     requireExactlyOnce(currentArchitecture, 'M4C is complete: **Resource calculation primitives**.', CURRENT_ARCHITECTURE, violations);
-    requireExactlyOnce(currentArchitecture, 'M4D is next: **Migrate one production vertical**.', CURRENT_ARCHITECTURE, violations);
     forbid(currentArchitecture, 'M4C is next: **Resource calculation primitives**.', CURRENT_ARCHITECTURE, violations);
 
     requireExactlyOnce(m4cAuthority, '# M4C Resource calculation primitives', M4C_AUTHORITY, violations);
@@ -119,7 +122,6 @@ function main(){
 }
 
 module.exports = {
-    CURRENT_M4_ROW,
     HARDENED_CODE_PROOF,
     ORIGINAL_FINAL_CLOSURE_PROOF,
     BOUNDED_ZERO_FINDING,
