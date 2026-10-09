@@ -76,14 +76,16 @@ export function resolveResourceDelta(rawInputs){
             `resourceDelta.operations[${index}].${operation.kind}`,
             { before, amount: operation.amount }
         );
+        const clippedByUpperBound = bounded && tentative > workingCapacity;
+        const clippedByZeroFloor = tentative < 0;
 
         // Legacy modRes() applies the temporary upper bound before its zero floor for
         // every delta, not only for positive deltas. The distinction is observable
         // when a bounded-zero resource starts with a pre-existing positive amount.
-        if (bounded && tentative > workingCapacity){
+        if (clippedByUpperBound){
             amount = workingCapacity;
         }
-        else if (tentative < 0){
+        else if (clippedByZeroFloor){
             amount = 0;
         }
         else {
@@ -93,17 +95,18 @@ export function resolveResourceDelta(rawInputs){
         let stepOverflow = 0;
         let stepShortfall = 0;
         if (operation.kind === 'credit'){
-            stepOverflow = finiteArithmetic(
-                operation.amount - (amount - before),
-                `resourceDelta.operations[${index}].overflow`
-            );
+            stepOverflow = clippedByUpperBound
+                ? finiteArithmetic(
+                    tentative - workingCapacityBefore,
+                    `resourceDelta.operations[${index}].overflow`
+                )
+                : 0;
             overflow = finiteArithmetic(overflow + stepOverflow, 'resourceDelta.overflow');
         }
         else {
-            stepShortfall = finiteArithmetic(
-                Math.max(0, operation.amount - (before - amount)),
-                `resourceDelta.operations[${index}].shortfall`
-            );
+            stepShortfall = clippedByZeroFloor
+                ? finiteArithmetic(-tentative, `resourceDelta.operations[${index}].shortfall`)
+                : 0;
             shortfall = finiteArithmetic(shortfall + stepShortfall, 'resourceDelta.shortfall');
             if (bounded){
                 workingCapacity = Math.max(0, finiteArithmetic(
