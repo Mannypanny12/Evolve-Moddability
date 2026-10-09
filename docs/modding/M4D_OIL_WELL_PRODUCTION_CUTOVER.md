@@ -59,12 +59,13 @@ The old embedded Oil-Well arithmetic has been removed from the live branch. The 
 
 The independent pass re-read the original Oil-Well branch, current biome definitions, the real `govActive('dirty_jobs', 2)` implementation, M4A/M4B/M4C contracts, the live production seam, cumulative architecture guards, tests, and lifecycle documents.
 
-Four justified hardening changes were made:
+Five justified hardening changes were made:
 
 1. **Biome absence became explicit.** The implementation no longer overloads multiplier `1` as "no relevant biome". `null` now represents absence and an active multiplier of `1` remains visible as an applied modifier in the explain trace.
 2. **Runtime-consumer enforcement was closed against alternate import spellings.** The M4D architecture scanner now catches relative, repository-root, leading-slash, and dynamic references to the Oil-Well application runtime. Negative controls prove those spellings cannot create an unreviewed caller.
 3. **The real legacy composition seam is now executed.** `tests/characterization/m4d-oil-well-live-seam.test.cjs` bundles the actual `src/prod.js` path and proves normal/rejuvenated Desert, Tundra, and Taiga values from `races.js`, real Dirty Jobs governor resolution including the enhanced-governor value, Warlord rank-zero fallback, and the full modifier sequence.
 4. **Exact floating-point proof was tightened.** The live differential expectation uses the original arithmetic operations rather than rounded-equivalent decimal literals. The first hardened run caught this distinction in the test itself, after which the corrected proof passed.
+5. **Hidden runtime capability bypasses are now blocked.** The final review found that the first-party calculation/runtime scanners rejected ordinary `global` access but did not cover equivalent ambient paths such as `globalThis`/`self`, browser storage/network APIs, Node globals, clocks/randomness, timers/microtasks, or dynamic code. Those capability families are now explicitly rejected with negative controls, so the reviewed vertical cannot silently bypass its explicit-input boundary without importing anything.
 
 The browser negative-control failure seen on the implementation candidate was also re-investigated. The exact same commit passed on rerun, and the immediately preceding executable head had already passed both browser stages. No M0E4 guard was weakened or changed.
 
@@ -74,7 +75,7 @@ The browser negative-control failure seen on the implementation candidate was al
 
 `tests/characterization/m4d-oil-well-live-seam.test.cjs` proves the actual legacy compatibility seam against real biome/governor/Warlord state resolution.
 
-`tests/architecture/m4d-oil-well-production-fitness.cjs` pins the reviewed content/runtime/compatibility boundaries. It rejects hidden legacy authority in the first-party calculation, widened runtime authority, retained Oil-Well arithmetic in `prod.js`, alternate-spelling runtime consumers, and additional unreviewed production consumers.
+`tests/architecture/m4d-oil-well-production-fitness.cjs` pins the reviewed content/runtime/compatibility boundaries. It rejects hidden legacy or ambient runtime authority in the first-party calculation and application runtime, widened runtime authority, retained Oil-Well arithmetic in `prod.js`, alternate-spelling runtime consumers, and additional unreviewed production consumers.
 
 The cumulative M4A/M4B/M4C consumer guards retain the exact reviewed M4D calculation-consumer set. This is a ratchet, not a general permission for production code to import calculation internals.
 
