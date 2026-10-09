@@ -343,9 +343,20 @@ Completed the generic numeric contribution layer on top of M4A:
 
 No vanilla production or cost path is migrated by M4B. See [M4B_MODIFIER_PIPELINE.md](M4B_MODIFIER_PIPELINE.md).
 
-### M4C - Resource calculation primitives - next
+### M4C - Resource calculation primitives - complete
 
-Define production, consumption, capacity, storage and resource-delta primitives on the hardened M4A/M4B calculation/modifier foundation. M4C must not silently begin the M4D vanilla production cutover.
+Completed the generic state-free resource calculation layer:
+
+- production and consumption contribution sums;
+- capacity and storage primitives;
+- explicit bounded versus unbounded capacity policy;
+- pure ordered resource-delta resolution with separate requested, applied, overflow, shortfall and final-discard evidence;
+- legacy-compatible temporary-capacity/debit ordering, including the bounded-zero `max > 0` branch;
+- direct hostile-input and deterministic differential hardening;
+- one-way resource-to-generic-calculation dependency enforcement;
+- zero production calculation consumers before M4D.
+
+No live vanilla production or resource-state path is migrated by M4C. See [M4C_RESOURCE_CALCULATIONS.md](M4C_RESOURCE_CALCULATIONS.md).
 
 M4D-M4E remain as defined in [ROADMAP.md](ROADMAP.md).
 
@@ -368,14 +379,16 @@ M4A calculation context and trace - complete
    |
 M4B modifier pipeline - complete
    |
-M4C resource calculation primitives - next
+M4C resource calculation primitives - complete
+   |
+M4D migrate one production vertical - next
 ```
 
-Do not jump directly to mod loading, total conversions, bulk content conversion, a vanilla production cutover, or later simulation work. Those would lock in assumptions before their owning slices are reviewed.
+Do not jump directly to mod loading, total conversions, bulk content conversion, an unreviewed production migration, or later simulation work. M4D must be deep-dived separately before any live production cutover.
 
 ## Later milestones
 
-- M4C-M4E calculation/modifier engine;
+- M4D-M4E remaining calculation/modifier migration;
 - M5 deterministic simulation;
 - M6 vanilla migration waves;
 - M7 persistence v2;
