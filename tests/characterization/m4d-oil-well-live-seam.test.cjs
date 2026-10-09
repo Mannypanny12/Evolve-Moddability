@@ -109,21 +109,24 @@ test('M4D live prod.js seam resolves every Oil Well biome variant through races.
 
 test('M4D live prod.js seam resolves Dirty Jobs through the real governor helper', () => {
     assert.equal(oilWellFromLiveSeam({ dirtyJobs: false }), 0.4);
-    assert.equal(oilWellFromLiveSeam({ dirtyJobs: true }), 0.4 * 1.14);
+    assert.equal(
+        oilWellFromLiveSeam({ dirtyJobs: true }),
+        0.4 * (1 + (14 / 100))
+    );
     assert.equal(
         oilWellFromLiveSeam({ dirtyJobs: true, enhancedGovernor: true }),
-        0.4 * 1.18
+        0.4 * (1 + (18 / 100))
     );
 });
 
 test('M4D live prod.js seam preserves Warlord pumpjack rank-zero fallback', () => {
     assert.equal(
         oilWellFromLiveSeam({ warlord: true, pumpjackRank: 0 }),
-        0.4 * 1.24
+        0.4 * (1 + (1 * 0.24))
     );
     assert.equal(
         oilWellFromLiveSeam({ warlord: true, pumpjackRank: 3 }),
-        0.4 * 1.72
+        0.4 * (1 + (3 * 0.24))
     );
 });
 
@@ -139,6 +142,6 @@ test('M4D live prod.js seam preserves the complete legacy modifier order', () =>
             warlord: true,
             pumpjackRank: 3,
         }),
-        0.48 * 1.75 * 1.25 * 1.18 * 1.18 * 1.72
+        0.48 * 1.75 * (0.25 + 1) * 1.18 * (1 + (18 / 100)) * (1 + (3 * 0.24))
     );
 });
