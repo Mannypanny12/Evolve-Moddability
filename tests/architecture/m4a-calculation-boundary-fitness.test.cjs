@@ -15,7 +15,7 @@ const {
 
 const root = path.resolve(__dirname, '../..');
 
-test('M4A calculation package satisfies its dedicated architecture boundary with only the reviewed M4D consumers', () => {
+test('M4A calculation package satisfies its dedicated architecture boundary with only reviewed M4 production consumers', () => {
     assert.deepEqual(findViolations(root), []);
     assert.deepEqual(productionCalculationConsumers(root).consumers, REVIEWED_PRODUCTION_CALCULATION_CONSUMERS);
     assert.deepEqual(unreviewedProductionCalculationConsumers(root), []);

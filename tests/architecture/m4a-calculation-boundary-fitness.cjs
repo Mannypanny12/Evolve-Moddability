@@ -9,7 +9,7 @@ const CALCULATION_ROOT = 'src/engine/calculations';
 const IDENTITY_FILE = 'src/engine/identity.mjs';
 const INERT_DATA_CONTRACT_FILE = 'src/engine/contracts/inert-data.mjs';
 const REVIEWED_PRODUCTION_CALCULATION_CONSUMERS = Object.freeze([
-    'src/application/evolve/oil-well-production-runtime.mjs',
+    'src/application/evolve/production-calculation-runtime.mjs',
     'src/content/evolve/calculations/oil-well-production.mjs',
 ]);
 const REVIEWED_PRODUCTION_CALCULATION_CONSUMER_SET = new Set(REVIEWED_PRODUCTION_CALCULATION_CONSUMERS);
@@ -184,7 +184,7 @@ function findViolations(root){
     }
 
     for (const consumer of unreviewedProductionCalculationConsumers(root)){
-        violations.push(`${consumer}: calculation-package production consumer is outside the reviewed M4D Oil Well cutover`);
+        violations.push(`${consumer}: calculation-package production consumer is outside the reviewed M4 production composition`);
     }
     return [...new Set(violations)].sort();
 }

@@ -10,6 +10,7 @@ const {
 
 const CONTENT = 'src/content/evolve/calculations/oil-well-production.mjs';
 const RUNTIME = 'src/application/evolve/oil-well-production-runtime.mjs';
+const SHARED_RUNTIME = 'src/application/evolve/production-calculation-runtime.mjs';
 const PROD = 'src/prod.js';
 const SOURCE_EXTENSIONS = new Set(['.js', '.mjs', '.cjs']);
 const ALLOWED_CONTENT_IMPORTS = new Set([
@@ -18,8 +19,8 @@ const ALLOWED_CONTENT_IMPORTS = new Set([
     'src/engine/calculations/resource-primitives.mjs',
 ]);
 const ALLOWED_RUNTIME_IMPORTS = new Set([
-    'src/engine/calculations/calculation-engine.mjs',
     CONTENT,
+    SHARED_RUNTIME,
 ]);
 
 function normalize(value){ return value.split(path.sep).join('/'); }
@@ -129,13 +130,21 @@ function analyzeRuntimeSource(source){
         ['legacy gameplay helpers', /\b(?:biomes|govActive|production)\b/],
         ['async/dynamic loading', /\b(?:async|await)\b|\bimport\s*\(|\brequire\s*\(/],
     ]){
-        if (pattern.test(code)) violations.push(`${RUNTIME}: composition runtime may not access ${label}`);
+        if (pattern.test(code)) violations.push(`${RUNTIME}: compatibility runtime may not access ${label}`);
     }
-    if ((code.match(/\bcreateCalculationEngine\s*\(/g) || []).length !== 1){
-        violations.push(`${RUNTIME}: reviewed calculation engine must be constructed exactly once`);
+    if (/\bcreateCalculationEngine\s*\(/.test(code)){
+        violations.push(`${RUNTIME}: Oil Well compatibility adapter may not construct a calculation engine`);
     }
-    if ((code.match(/\boilWellProductionEngine\s*\.\s*calculate\s*\(/g) || []).length !== 1){
-        violations.push(`${RUNTIME}: calculateOilWellProduction() must forward exactly one engine calculation`);
+    if ((code.match(/\bcalculateProductionCalculation\s*\(/g) || []).length !== 1){
+        violations.push(`${RUNTIME}: calculateOilWellProduction() must forward exactly one shared production calculation`);
+    }
+    for (const marker of [
+        'OIL_WELL_PRODUCTION_CALCULATION_ID',
+        'calculateProductionCalculation({',
+        'id: OIL_WELL_PRODUCTION_CALCULATION_ID',
+        'inputs,',
+    ]){
+        if (!source.includes(marker)) violations.push(`${RUNTIME}: reviewed M4E1 compatibility marker is missing: ${marker}`);
     }
     return violations;
 }
@@ -151,7 +160,7 @@ function analyzeProdSource(source){
     const violations = [];
     const importPattern = /import\s*\{\s*calculateOilWellProduction\s*\}\s*from\s*['"]\.\/application\/evolve\/oil-well-production-runtime\.mjs['"]\s*;/;
     if (!importPattern.test(source)){
-        violations.push(`${PROD}: Oil Well compatibility seam must import only calculateOilWellProduction from the reviewed runtime`);
+        violations.push(`${PROD}: Oil Well compatibility seam must import only calculateOilWellProduction from the reviewed adapter`);
     }
     const body = oilWellCaseBody(source);
     if (body === null){
@@ -204,10 +213,10 @@ function runtimeConsumers(root){
 
 function findViolations(root){
     const violations = [];
-    for (const relative of [CONTENT, RUNTIME, PROD]){
+    for (const relative of [CONTENT, RUNTIME, SHARED_RUNTIME, PROD]){
         const filename = path.join(root, ...relative.split('/'));
         if (!fs.existsSync(filename)){
-            violations.push(`${relative}: required M4D source is missing`);
+            violations.push(`${relative}: required M4D/M4E1 source is missing`);
         }
     }
     const contentPath = path.join(root, ...CONTENT.split('/'));
@@ -219,12 +228,12 @@ function findViolations(root){
 
     const consumers = runtimeConsumers(root);
     if (consumers.length !== 1 || consumers[0] !== PROD){
-        violations.push(`${RUNTIME}: reviewed runtime consumer set must be exactly ${PROD}; found ${consumers.join(', ') || '<none>'}`);
+        violations.push(`${RUNTIME}: reviewed compatibility-adapter consumer set must be exactly ${PROD}; found ${consumers.join(', ') || '<none>'}`);
     }
 
     const calculationConsumers = productionCalculationConsumers(root).consumers;
     if (JSON.stringify(calculationConsumers) !== JSON.stringify(REVIEWED_PRODUCTION_CALCULATION_CONSUMERS)){
-        violations.push(`M4D calculation-package consumers must remain exactly ${REVIEWED_PRODUCTION_CALCULATION_CONSUMERS.join(', ')}; found ${calculationConsumers.join(', ') || '<none>'}`);
+        violations.push(`M4D/M4E1 calculation-package consumers must remain exactly ${REVIEWED_PRODUCTION_CALCULATION_CONSUMERS.join(', ')}; found ${calculationConsumers.join(', ') || '<none>'}`);
     }
     return [...new Set(violations)].sort();
 }
@@ -244,6 +253,7 @@ function main(){
 module.exports = {
     CONTENT,
     RUNTIME,
+    SHARED_RUNTIME,
     PROD,
     analyzeContentSource,
     analyzeRuntimeSource,
