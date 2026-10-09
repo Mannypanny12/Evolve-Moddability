@@ -136,7 +136,7 @@ export function production(id,val,wiki){
         }
         case 'gas_mining':
         {
-            return (global.tech['helium'] ? 0.65 : 0.5);
+            return simpleProduction('gas_mining', { heliumUnlocked: Boolean(global.tech['helium']) });
         }
         case 'outpost':
         {
@@ -158,26 +158,19 @@ export function production(id,val,wiki){
         }
         case 'oil_extractor':
         {
-            let oil = global.tech['oil'] >= 4 ? 0.48 : 0.4;
-            if (global.tech['oil'] >= 7){
-                oil *= 2;
-            }
-            else if (global.tech['oil'] >= 5){
-                oil *= global.tech['oil'] >= 6 ? 1.75 : 1.25;
-            }
-            return oil;
+            return simpleProduction('oil_extractor', { oilTechLevel: global.tech['oil'] || 0 });
         }
         case 'elerium_ship':
         {
-            return (global.tech.asteroid >= 6 ? (global.tech.asteroid >= 7 ? 0.009 : 0.0075) : 0.005);
+            return simpleProduction('elerium_ship', { asteroidTechLevel: global.tech.asteroid || 0 });
         }
         case 'iridium_ship':
         {
-            return (global.tech.asteroid >= 6 ? (global.tech.asteroid >= 7 ? 0.1 : 0.08) : 0.055);
+            return simpleProduction('iridium_ship', { asteroidTechLevel: global.tech.asteroid || 0 });
         }
         case 'iron_ship':
         {
-            return (global.tech.asteroid >= 6 ? (global.tech.asteroid >= 7 ? 4 : 3) : 2);
+            return simpleProduction('iron_ship', { asteroidTechLevel: global.tech.asteroid || 0 });
         }
         case 'g_factory':
         {
@@ -256,10 +249,7 @@ export function production(id,val,wiki){
         }
         case 'lander':
         {
-            if (global.space.crashed_ship.count === 100){
-                return 0.005;
-            }
-            return 0;
+            return simpleProduction('lander', { crashedShipCount: global.space.crashed_ship.count });
         }
         case 'orichalcum_mine':
         {
@@ -279,17 +269,11 @@ export function production(id,val,wiki){
         }
         case 'shock_trooper':
         {
-            if (global.space.digsite.count === 100){
-                return 0.0018;
-            }
-            return 0;
+            return simpleProduction('shock_trooper', { digsiteCount: global.space.digsite.count });
         }
         case 'tank':
         {
-            if (global.space.digsite.count === 100){
-                return 0.0018;
-            }
-            return 0;
+            return simpleProduction('tank', { digsiteCount: global.space.digsite.count });
         }
         case 'mining_pit':
         {
@@ -424,7 +408,7 @@ export function production(id,val,wiki){
         }
         case 'ore_refinery':
         {
-            return global.tech['tau_ore_mining'] ? 40 : 25;
+            return simpleProduction('ore_refinery', { tauOreMiningUnlocked: Boolean(global.tech['tau_ore_mining']) });
         }
         case 'whaling_station':
         {
