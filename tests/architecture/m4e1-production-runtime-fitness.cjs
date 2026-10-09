@@ -5,7 +5,6 @@ const path = require('node:path');
 const { extractModuleReferences, maskNonCode } = require('./architecture-fitness.cjs');
 const {
     CONTENT,
-    RUNTIME: OIL_WELL_ADAPTER,
     PROD,
 } = require('./m4d-oil-well-production-fitness.cjs');
 const {
@@ -18,9 +17,8 @@ const SIMPLE_PRODUCTION_CONTENT = 'src/content/evolve/calculations/simple-produc
 const MANIFEST = 'docs/modding/M4E_PRODUCTION_MIGRATION.md';
 const SOURCE_EXTENSIONS = new Set(['.js', '.mjs', '.cjs']);
 const REVIEWED_SHARED_RUNTIME_CONSUMERS = Object.freeze([
-    OIL_WELL_ADAPTER,
     PROD,
-].sort());
+]);
 const ALLOWED_RUNTIME_IMPORTS = new Set([
     'src/engine/calculations/calculation-engine.mjs',
     CONTENT,
@@ -184,7 +182,7 @@ function occurrences(source, needle){
 
 function findViolations(root){
     const violations = [];
-    for (const relative of [SHARED_RUNTIME, OIL_WELL_ADAPTER, CONTENT, PROD, MANIFEST]){
+    for (const relative of [SHARED_RUNTIME, CONTENT, PROD, MANIFEST]){
         const filename = path.join(root, ...relative.split('/'));
         if (!fs.existsSync(filename)) violations.push(`${relative}: required M4E1 file is missing`);
     }

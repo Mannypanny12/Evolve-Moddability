@@ -18,10 +18,6 @@ const ALLOWED_CONTENT_IMPORTS = new Set([
     'src/engine/calculations/common.mjs',
     'src/engine/calculations/resource-primitives.mjs',
 ]);
-const ALLOWED_RUNTIME_IMPORTS = new Set([
-    CONTENT,
-    SHARED_RUNTIME,
-]);
 
 function normalize(value){ return value.split(path.sep).join('/'); }
 
@@ -109,46 +105,6 @@ function analyzeContentSource(source){
     return violations;
 }
 
-function analyzeRuntimeSource(source){
-    const violations = [];
-    const code = maskNonCode(source);
-    violations.push(...importViolations(source, RUNTIME, ALLOWED_RUNTIME_IMPORTS));
-    const exportCount = (code.match(/\bexport\b/g) || []).length;
-    if (exportCount !== 1 || !/\bexport\s+function\s+calculateOilWellProduction\s*\(/.test(code)){
-        violations.push(`${RUNTIME}: public surface must export only calculateOilWellProduction()`);
-    }
-    for (const [label, pattern] of [
-        ['legacy/global runtime state', /\b(?:global|globalThis|self)\b/],
-        ['browser/UI capability', /\b(?:window|document|navigator|jQuery|Vue)\b|\$\s*\(/],
-        ['browser storage', /\b(?:localStorage|sessionStorage|indexedDB)\b/],
-        ['browser/network API', /\b(?:fetch|XMLHttpRequest|WebSocket)\b/],
-        ['Node/platform global', /\b(?:process|Buffer)\b/],
-        ['clock/random capability', /\b(?:Date|performance|crypto)\b|\bMath\s*\.\s*(?:random|rand)\s*\(/],
-        ['timer or microtask scheduling', /\b(?:setTimeout|setInterval|setImmediate|queueMicrotask|requestAnimationFrame|cancelAnimationFrame)\s*\(/],
-        ['dynamic code capability', /\be[v]al\s*\(|\bnew\s+F[u]nction\b|\bWebA[s]sembly\b/],
-        ['mutation authority', /\b(?:mutationAuthority|createMutationScope|beginTransaction|commitTransaction|rollbackTransaction|modRes|setGlobal)\b/],
-        ['legacy gameplay helpers', /\b(?:biomes|govActive|production)\b/],
-        ['async/Promise/dynamic loading', /\b(?:async|await|Promise)\b|\bimport\s*\(|\brequire\s*\(/],
-    ]){
-        if (pattern.test(code)) violations.push(`${RUNTIME}: compatibility runtime may not access ${label}`);
-    }
-    if (/\bcreateCalculationEngine\s*\(/.test(code)){
-        violations.push(`${RUNTIME}: Oil Well compatibility adapter may not construct a calculation engine`);
-    }
-    if ((code.match(/\bcalculateProductionCalculation\s*\(/g) || []).length !== 1){
-        violations.push(`${RUNTIME}: calculateOilWellProduction() must forward exactly one shared production calculation`);
-    }
-    for (const marker of [
-        'OIL_WELL_PRODUCTION_CALCULATION_ID',
-        'calculateProductionCalculation({',
-        'id: OIL_WELL_PRODUCTION_CALCULATION_ID',
-        'inputs,',
-    ]){
-        if (!source.includes(marker)) violations.push(`${RUNTIME}: reviewed M4E1 compatibility marker is missing: ${marker}`);
-    }
-    return violations;
-}
-
 function oilWellCaseBody(source){
     const start = source.indexOf("case 'oil_well':");
     const end = source.indexOf("case 'iridium_mine':", start + 1);
@@ -158,10 +114,18 @@ function oilWellCaseBody(source){
 
 function analyzeProdSource(source){
     const violations = [];
-    const importPattern = /import\s*\{\s*calculateOilWellProduction\s*\}\s*from\s*['"]\.\/application\/evolve\/oil-well-production-runtime\.mjs['"]\s*;/;
-    if (!importPattern.test(source)){
-        violations.push(`${PROD}: Oil Well compatibility seam must import only calculateOilWellProduction from the reviewed adapter`);
+    const sharedImport = "import { calculateProductionCalculation } from './application/evolve/production-calculation-runtime.mjs';";
+    const idImport = "import { OIL_WELL_PRODUCTION_CALCULATION_ID } from './content/evolve/calculations/oil-well-production.mjs';";
+    if (!source.includes(sharedImport)){
+        violations.push(`${PROD}: Oil Well compatibility seam must use the reviewed shared production runtime`);
     }
+    if (!source.includes(idImport)){
+        violations.push(`${PROD}: Oil Well compatibility seam must import its canonical calculation id`);
+    }
+    if (source.includes('oil-well-production-runtime.mjs') || /\bcalculateOilWellProduction\b/.test(maskNonCode(source))){
+        violations.push(`${PROD}: removed Oil Well runtime adapter may not be reintroduced`);
+    }
+
     const body = oilWellCaseBody(source);
     if (body === null){
         violations.push(`${PROD}: production('oil_well') case could not be located unambiguously`);
@@ -177,12 +141,17 @@ function analyzeProdSource(source){
         "dirtyJobsPercent: govActive('dirty_jobs',2) || 0",
         "warlord: Boolean(global.race['warlord'])",
         'pumpjackRank: global.portal?.pumpjack?.rank || 0',
-        'return calculateOilWellProduction({',
+        'return calculateProductionCalculation({',
+        'id: OIL_WELL_PRODUCTION_CALCULATION_ID,',
+        'inputs: {',
     ]){
         if (!body.includes(marker)) violations.push(`${PROD}: reviewed Oil Well compatibility marker is missing: ${marker}`);
     }
-    if ((body.match(/\bcalculateOilWellProduction\s*\(/g) || []).length !== 1){
-        violations.push(`${PROD}: Oil Well compatibility case must delegate exactly once`);
+    if ((body.match(/\bcalculateProductionCalculation\s*\(/g) || []).length !== 1){
+        violations.push(`${PROD}: Oil Well compatibility case must delegate exactly once to the shared production runtime`);
+    }
+    if (/evolve:calculation\/production\/oil-well/.test(body)){
+        violations.push(`${PROD}: Oil Well case must use the imported canonical id rather than duplicating its string identity`);
     }
     for (const [label, pattern] of [
         ['embedded base production arithmetic', /\blet\s+oil\s*=|\boil\s*\*=/],
@@ -194,15 +163,13 @@ function analyzeProdSource(source){
     return violations;
 }
 
-function runtimeConsumers(root){
+function removedRuntimeReferences(root){
     const consumers = [];
     for (const filename of listSourceFiles(path.join(root, 'src'))){
         const relative = normalize(path.relative(root, filename));
-        if (relative === RUNTIME) continue;
         const source = fs.readFileSync(filename, 'utf8');
         for (const reference of extractModuleReferences(source, relative)){
-            const target = resolveRuntimeReference(relative, reference.specifier);
-            if (target === RUNTIME){
+            if (resolveRuntimeReference(relative, reference.specifier) === RUNTIME){
                 consumers.push(relative);
                 break;
             }
@@ -213,27 +180,28 @@ function runtimeConsumers(root){
 
 function findViolations(root){
     const violations = [];
-    for (const relative of [CONTENT, RUNTIME, SHARED_RUNTIME, PROD]){
+    for (const relative of [CONTENT, SHARED_RUNTIME, PROD]){
         const filename = path.join(root, ...relative.split('/'));
-        if (!fs.existsSync(filename)){
-            violations.push(`${relative}: required M4D/M4E1 source is missing`);
-        }
+        if (!fs.existsSync(filename)) violations.push(`${relative}: required M4D/M4E source is missing`);
     }
+    const removedRuntimePath = path.join(root, ...RUNTIME.split('/'));
+    if (fs.existsSync(removedRuntimePath)){
+        violations.push(`${RUNTIME}: redundant per-formula runtime adapter must remain removed after M4E2 cutover`);
+    }
+
     const contentPath = path.join(root, ...CONTENT.split('/'));
-    const runtimePath = path.join(root, ...RUNTIME.split('/'));
     const prodPath = path.join(root, ...PROD.split('/'));
     if (fs.existsSync(contentPath)) violations.push(...analyzeContentSource(fs.readFileSync(contentPath, 'utf8')));
-    if (fs.existsSync(runtimePath)) violations.push(...analyzeRuntimeSource(fs.readFileSync(runtimePath, 'utf8')));
     if (fs.existsSync(prodPath)) violations.push(...analyzeProdSource(fs.readFileSync(prodPath, 'utf8')));
 
-    const consumers = runtimeConsumers(root);
-    if (consumers.length !== 1 || consumers[0] !== PROD){
-        violations.push(`${RUNTIME}: reviewed compatibility-adapter consumer set must be exactly ${PROD}; found ${consumers.join(', ') || '<none>'}`);
+    const removedReferences = removedRuntimeReferences(root);
+    if (removedReferences.length){
+        violations.push(`${RUNTIME}: removed adapter may not have source consumers; found ${removedReferences.join(', ')}`);
     }
 
     const calculationConsumers = productionCalculationConsumers(root).consumers;
     if (JSON.stringify(calculationConsumers) !== JSON.stringify(REVIEWED_PRODUCTION_CALCULATION_CONSUMERS)){
-        violations.push(`M4D/M4E1 calculation-package consumers must remain exactly ${REVIEWED_PRODUCTION_CALCULATION_CONSUMERS.join(', ')}; found ${calculationConsumers.join(', ') || '<none>'}`);
+        violations.push(`M4D/M4E calculation-package consumers must remain exactly ${REVIEWED_PRODUCTION_CALCULATION_CONSUMERS.join(', ')}; found ${calculationConsumers.join(', ') || '<none>'}`);
     }
     return [...new Set(violations)].sort();
 }
@@ -256,9 +224,8 @@ module.exports = {
     SHARED_RUNTIME,
     PROD,
     analyzeContentSource,
-    analyzeRuntimeSource,
     analyzeProdSource,
-    runtimeConsumers,
+    removedRuntimeReferences,
     findViolations,
 };
 
