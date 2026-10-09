@@ -124,6 +124,8 @@ The legacy amount, upper-clamp, zero-floor and debit-working-ceiling arithmetic 
 
 The third-review code-bearing head `8cbc4ef0d9b2760ce78f443c65da57265c658368` passed complete Baseline run `37883267513`: Node tests, cumulative architecture fitness, game/wiki build, generated-output cleanliness, injected startup-failure browser negative control and normal real-browser smoke all passed.
 
+The third-review final branch head `a65cb725877c9582982732ec7b3687ac32116bcb` passed Baseline run `37883497135`; PR #61 passed Baseline run `37883716282`, merged as `587311a01d72420cd78accf708d1b17a0fa050b2`, and merged master passed Baseline run `37883917422` plus Android test-site run `37883917521`, including Pages deployment.
+
 ## Deliberate deferrals
 
 M4C does not:
