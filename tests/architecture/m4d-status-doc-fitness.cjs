@@ -10,13 +10,17 @@ const M4D_AUTHORITY = 'docs/modding/M4D_OIL_WELL_PRODUCTION_CUTOVER.md';
 
 const CLOSURE_STATUS = 'Status: complete after independent review and hardening; final exact-head CI is the closure authority.';
 const ROADMAP_COMPLETE = '### M4D Migrate one production vertical - complete';
-const ROADMAP_NEXT = '### M4E Expand across `prod.js` - next';
+const ROADMAP_IN_PROGRESS = '### M4E Expand across `prod.js` - in progress';
 const BACKLOG_COMPLETE = '### M4D - First live production vertical - complete';
-const BACKLOG_NEXT = 'M4E expand across `prod.js` - next';
-const CURRENT_M4_AUTHORITY = '`M4D_OIL_WELL_PRODUCTION_CUTOVER.md` is the current M4 authority.';
+const BACKLOG_IN_PROGRESS = '### M4E - Expand across `prod.js` - in progress';
+const CURRENT_M4_AUTHORITY = '`M4E_PRODUCTION_MIGRATION.md` is the current M4 working authority.';
+const CURRENT_M4E1_ROOT = '`src/application/evolve/production-calculation-runtime.mjs` is now the shared first-party production composition root.';
 const STALE_IMPLEMENTATION_STATUS = 'Status: implementation candidate complete; independent review and hardening pending.';
 const STALE_ROADMAP_PENDING = '### M4D Migrate one production vertical - next';
+const STALE_ROADMAP_NEXT = '### M4E Expand across `prod.js` - next';
+const STALE_BACKLOG_NEXT = 'M4E expand across `prod.js` - next';
 const STALE_M4C_AUTHORITY = '`M4C_RESOURCE_CALCULATIONS.md` is the current M4 authority.';
+const STALE_M4D_AUTHORITY = '`M4D_OIL_WELL_PRODUCTION_CUTOVER.md` is the current M4 authority.';
 
 function occurrences(source, needle){
     return source.split(needle).length - 1;
@@ -30,20 +34,24 @@ function requireExactlyOnce(source, needle, label, violations){
 }
 
 function forbid(source, needle, label, violations){
-    if (source.includes(needle)) violations.push(`${label} must not contain stale M4D lifecycle marker ${JSON.stringify(needle)}`);
+    if (source.includes(needle)) violations.push(`${label} must not contain stale M4 lifecycle marker ${JSON.stringify(needle)}`);
 }
 
 function statusDocViolations(roadmap, backlog, currentArchitecture, m4dAuthority){
     const violations = [];
 
     requireExactlyOnce(roadmap, ROADMAP_COMPLETE, ROADMAP, violations);
-    requireExactlyOnce(roadmap, ROADMAP_NEXT, ROADMAP, violations);
+    requireExactlyOnce(roadmap, ROADMAP_IN_PROGRESS, ROADMAP, violations);
     requireExactlyOnce(backlog, BACKLOG_COMPLETE, BACKLOG, violations);
-    requireExactlyOnce(backlog, BACKLOG_NEXT, BACKLOG, violations);
+    requireExactlyOnce(backlog, BACKLOG_IN_PROGRESS, BACKLOG, violations);
     requireExactlyOnce(currentArchitecture, CURRENT_M4_AUTHORITY, CURRENT_ARCHITECTURE, violations);
+    requireExactlyOnce(currentArchitecture, CURRENT_M4E1_ROOT, CURRENT_ARCHITECTURE, violations);
 
     forbid(roadmap, STALE_ROADMAP_PENDING, ROADMAP, violations);
+    forbid(roadmap, STALE_ROADMAP_NEXT, ROADMAP, violations);
+    forbid(backlog, STALE_BACKLOG_NEXT, BACKLOG, violations);
     forbid(currentArchitecture, STALE_M4C_AUTHORITY, CURRENT_ARCHITECTURE, violations);
+    forbid(currentArchitecture, STALE_M4D_AUTHORITY, CURRENT_ARCHITECTURE, violations);
 
     requireExactlyOnce(m4dAuthority, '# M4D Oil Well production cutover', M4D_AUTHORITY, violations);
     requireExactlyOnce(m4dAuthority, CLOSURE_STATUS, M4D_AUTHORITY, violations);
@@ -82,24 +90,28 @@ function main(){
     const root = path.resolve(__dirname, '../..');
     const violations = findViolations(root);
     if (violations.length > 0){
-        console.error('M4D status-document fitness failed:');
+        console.error('M4D/M4E progression status-document fitness failed:');
         for (const violation of violations) console.error(`- ${violation}`);
         process.exitCode = 1;
         return;
     }
-    console.log('M4D status-document fitness passed.');
+    console.log('M4D/M4E progression status-document fitness passed.');
 }
 
 module.exports = {
     CLOSURE_STATUS,
     ROADMAP_COMPLETE,
-    ROADMAP_NEXT,
+    ROADMAP_IN_PROGRESS,
     BACKLOG_COMPLETE,
-    BACKLOG_NEXT,
+    BACKLOG_IN_PROGRESS,
     CURRENT_M4_AUTHORITY,
+    CURRENT_M4E1_ROOT,
     STALE_IMPLEMENTATION_STATUS,
     STALE_ROADMAP_PENDING,
+    STALE_ROADMAP_NEXT,
+    STALE_BACKLOG_NEXT,
     STALE_M4C_AUTHORITY,
+    STALE_M4D_AUTHORITY,
     statusDocViolations,
     findViolations,
 };

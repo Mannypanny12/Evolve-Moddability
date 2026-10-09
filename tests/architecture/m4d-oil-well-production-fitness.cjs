@@ -79,11 +79,11 @@ function analyzeContentSource(source){
         ['browser storage', /\b(?:localStorage|sessionStorage|indexedDB)\b/],
         ['browser/network API', /\b(?:fetch|XMLHttpRequest|WebSocket)\b/],
         ['Node/platform global', /\b(?:process|Buffer)\b/],
-        ['mutation authority', /\b(?:modRes|setGlobal|mutationAuthority|createMutationScope|beginTransaction)\b/],
+        ['mutation authority', /\b(?:mutationAuthority|createMutationScope|beginTransaction|commitTransaction|rollbackTransaction|modRes|setGlobal)\b/],
         ['clock/random capability', /\b(?:Date|performance|crypto)\b|\bMath\s*\.\s*(?:random|rand)\s*\(/],
         ['timer or microtask scheduling', /\b(?:setTimeout|setInterval|setImmediate|queueMicrotask|requestAnimationFrame|cancelAnimationFrame)\s*\(/],
         ['dynamic code capability', /\be[v]al\s*\(|\bnew\s+F[u]nction\b|\bWebA[s]sembly\b/],
-        ['async/dynamic loading', /\b(?:async|await)\b|\bimport\s*\(|\brequire\s*\(/],
+        ['async/Promise/dynamic loading', /\b(?:async|await|Promise)\b|\bimport\s*\(|\brequire\s*\(/],
     ]){
         if (pattern.test(code)) violations.push(`${CONTENT}: first-party calculation may not access ${label}`);
     }
@@ -126,9 +126,9 @@ function analyzeRuntimeSource(source){
         ['clock/random capability', /\b(?:Date|performance|crypto)\b|\bMath\s*\.\s*(?:random|rand)\s*\(/],
         ['timer or microtask scheduling', /\b(?:setTimeout|setInterval|setImmediate|queueMicrotask|requestAnimationFrame|cancelAnimationFrame)\s*\(/],
         ['dynamic code capability', /\be[v]al\s*\(|\bnew\s+F[u]nction\b|\bWebA[s]sembly\b/],
-        ['mutation authority', /\b(?:modRes|setGlobal|mutationAuthority|createMutationScope|beginTransaction)\b/],
+        ['mutation authority', /\b(?:mutationAuthority|createMutationScope|beginTransaction|commitTransaction|rollbackTransaction|modRes|setGlobal)\b/],
         ['legacy gameplay helpers', /\b(?:biomes|govActive|production)\b/],
-        ['async/dynamic loading', /\b(?:async|await)\b|\bimport\s*\(|\brequire\s*\(/],
+        ['async/Promise/dynamic loading', /\b(?:async|await|Promise)\b|\bimport\s*\(|\brequire\s*\(/],
     ]){
         if (pattern.test(code)) violations.push(`${RUNTIME}: compatibility runtime may not access ${label}`);
     }

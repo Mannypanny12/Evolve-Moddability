@@ -121,7 +121,7 @@ function analyzeSharedRuntimeSource(source){
     }
     for (const [label, pattern] of [
         ['legacy/global runtime state', /\b(?:global|globalThis|self)\b/],
-        ['legacy gameplay helpers', /\b(?:biomes|govActive|govEffect|traits|fathomCheck|production|modRes)\b/],
+        ['legacy gameplay helpers', /\b(?:biomes|govActive|govEffect|traits|fathomCheck|production)\b/],
         ['browser/UI capability', /\b(?:window|document|navigator|jQuery|Vue)\b|\$\s*\(/],
         ['browser storage', /\b(?:localStorage|sessionStorage|indexedDB)\b/],
         ['browser/network API', /\b(?:fetch|XMLHttpRequest|WebSocket)\b/],
@@ -129,8 +129,8 @@ function analyzeSharedRuntimeSource(source){
         ['clock/random capability', /\b(?:Date|performance|crypto)\b|\bMath\s*\.\s*(?:random|rand)\s*\(/],
         ['timer or microtask scheduling', /\b(?:setTimeout|setInterval|setImmediate|queueMicrotask|requestAnimationFrame|cancelAnimationFrame)\s*\(/],
         ['dynamic code capability', /\be[v]al\s*\(|\bnew\s+F[u]nction\b|\bWebA[s]sembly\b/],
-        ['mutation authority', /\b(?:setGlobal|mutationAuthority|createMutationScope|beginTransaction)\b/],
-        ['async/dynamic loading', /\b(?:async|await)\b|\bimport\s*\(|\brequire\s*\(/],
+        ['mutation authority', /\b(?:mutationAuthority|createMutationScope|beginTransaction|commitTransaction|rollbackTransaction|modRes|setGlobal)\b/],
+        ['async/Promise/dynamic loading', /\b(?:async|await|Promise)\b|\bimport\s*\(|\brequire\s*\(/],
     ]){
         if (pattern.test(code)) violations.push(`${SHARED_RUNTIME}: shared production runtime may not access ${label}`);
     }
@@ -172,6 +172,10 @@ function productionIdsFromProd(source){
     return [...source.matchAll(/^        case '([^']+)':/gm)].map(match => match[1]);
 }
 
+function occurrences(source, needle){
+    return source.split(needle).length - 1;
+}
+
 function findViolations(root){
     const violations = [];
     for (const relative of [SHARED_RUNTIME, OIL_WELL_ADAPTER, CONTENT, PROD, MANIFEST]){
@@ -200,12 +204,18 @@ function findViolations(root){
     const manifestPath = path.join(root, ...MANIFEST.split('/'));
     if (fs.existsSync(manifestPath)){
         const manifest = fs.readFileSync(manifestPath, 'utf8');
-        if (!manifest.includes('Status: M4E1 implementation checkpoint')){
-            violations.push(`${MANIFEST}: M4E1 status marker is missing`);
+        for (const marker of [
+            'Status: M4E1 implementation and checkpoint review complete; exact-head CI is the closure authority. M4E remains in progress.',
+            '## M4E1 review and hardening',
+            '`evolve:calculation/production/<production-source>`',
+        ]){
+            if (!manifest.includes(marker)) violations.push(`${MANIFEST}: reviewed M4E1 marker is missing: ${marker}`);
         }
         for (const id of PRODUCTION_IDS){
-            if (!manifest.includes(`| \`${id}\` |`)){
-                violations.push(`${MANIFEST}: frozen production id is missing: ${id}`);
+            const row = `| \`${id}\` |`;
+            const count = occurrences(manifest, row);
+            if (count !== 1){
+                violations.push(`${MANIFEST}: frozen production id must appear exactly once: ${id}; found ${count}`);
             }
         }
     }

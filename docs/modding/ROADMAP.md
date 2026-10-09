@@ -195,7 +195,7 @@ Achievements are the first real domain migrated end to end.
 
 The M0E5 architecture gate is extended with explicit GameState ownership, mutation-boundary, selector, state-layer dependency, and whole-M2 closure rules.
 
-M2E1 pins domain ownership and composition. M2E2 confines write capabilities and semantic mutation surfaces. M2E3 confines semantic reads and the state-layer dependency DAG. M2E4 integrates the M2C/M2D/M2E guards into a versioned JSON architecture report and cross-checks the complete state architecture as one closure gate.
+M2E1 pins domain ownership and composition. M2E2 confines write capabilities and semantic mutation surfaces. M2E3 confines semantic reads and the state-layer dependency DAG. M2E4 integrates M2C/M2D/M2E into a versioned JSON architecture report and cross-checks the complete state architecture as one closure gate.
 
 The full M2 exit audit is recorded in `M2_CLOSURE_REVIEW.md`.
 
@@ -293,7 +293,7 @@ Adds the frozen `createWorkQueueSelector()` readiness/selection boundary with tr
 
 Closes M3E with executable legacy build/research queue evidence, a zero-execution `prepare -> WorkItem -> WorkQueue -> selection` integration proof, and a cumulative architecture gate that pins the four-file generic queue package, keeps it first-party-neutral, and prevents any production consumer before reviewed cutover. Command-specific admission, execution progress, reconciliation, prediction, scheduling and persistence remain deferred to their owning later milestones. See `M3E4_QUEUE_CLOSURE.md`.
 
-M3E is closed without modifying vanilla build/research gameplay. M3F and M3G are closed; M4A through M4D are complete, and M4E is next.
+M3E is closed without modifying vanilla build/research gameplay. M3F and M3G are closed; M4A through M4D are complete, and M4E is in progress with M4E1 complete and M4E2 next.
 
 ### M3F First real vanilla cutover - complete
 
@@ -378,9 +378,13 @@ M4C does not cut over vanilla production or mutate resource state. See `M4C_RESO
 
 Migrates exactly `production('oil_well')` through the fixed M4 calculation/runtime composition while preserving the legacy caller surface and exact vanilla multiplication order. Independent hardening adds explicit nullable biome absence, real compatibility-seam characterization across dynamic biome/governor/Warlord state, alternate-import consumer guards, and exact floating-operation proof. See `M4D_OIL_WELL_PRODUCTION_CUTOVER.md`.
 
-### M4E Expand across `prod.js` - next
+### M4E Expand across `prod.js` - in progress
 
 Systematically remove hard-coded production switch cases as their logic moves to definitions/calculations.
+
+M4E1 is complete at the implementation/review checkpoint: the fixed shared production calculation composition root and frozen 44-ID migration inventory are established, with the historical Oil-Well live seam preserved through a temporary compatibility adapter. See `M4E_PRODUCTION_MIGRATION.md`.
+
+M4E2 is next: migrate the reviewed simple-scalar production family through the shared runtime while preserving legacy caller behavior.
 
 Important: completion requires migrating related calculations currently embedded in `fastLoop()`, not merely emptying `prod.js`.
 

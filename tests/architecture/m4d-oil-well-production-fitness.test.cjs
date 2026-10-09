@@ -21,30 +21,36 @@ test('M4D Oil Well live vertical satisfies its dedicated architecture boundary',
     assert.deepEqual(runtimeConsumers(root), [PROD]);
 });
 
-test('M4D first-party calculation rejects hidden runtime state, ambient capabilities and mutation authority', () => {
+test('M4D first-party calculation rejects hidden runtime state, ambient capabilities, Promise wrapping and mutation authority', () => {
     const source = `
         import { calculateProduction } from '../../../engine/calculations/resource-primitives.mjs';
         const hidden = globalThis.resource.Oil.amount;
         const stored = localStorage.getItem('oil');
         const jitter = Math.random();
-        modRes('Oil', 1);
-        export const probe = calculateProduction({ contributions: [hidden + Number(stored || 0) + jitter] });
+        commitTransaction();
+        rollbackTransaction();
+        const promised = Promise.resolve(1);
+        export const probe = calculateProduction({ contributions: [hidden + Number(stored || 0) + jitter + promised] });
     `;
     const violations = analyzeContentSource(source);
     assert.equal(violations.some(value => value.includes('legacy/global runtime state')), true);
     assert.equal(violations.some(value => value.includes('browser storage')), true);
     assert.equal(violations.some(value => value.includes('clock/random capability')), true);
     assert.equal(violations.some(value => value.includes('mutation authority')), true);
+    assert.equal(violations.some(value => value.includes('async/Promise/dynamic loading')), true);
 });
 
-test('M4D runtime rejects hidden runtime state, ambient capabilities and widened public surface', () => {
+test('M4D runtime rejects hidden runtime state, mutation, Promise wrapping, ambient capabilities and widened public surface', () => {
     const source = `
         import { createCalculationEngine } from '../../engine/calculations/calculation-engine.mjs';
         import { createOilWellProductionRegistration } from '../../content/evolve/calculations/oil-well-production.mjs';
         const state = globalThis.tech.oil;
         const cached = sessionStorage.getItem('oil');
         const timestamp = Date.now();
-        export function calculateOilWellProduction(){ return state + Number(cached || 0) + timestamp; }
+        commitTransaction();
+        rollbackTransaction();
+        const promised = Promise.resolve(1);
+        export function calculateOilWellProduction(){ return state + Number(cached || 0) + timestamp + promised; }
         export function explainOilWellProduction(){ return createCalculationEngine && createOilWellProductionRegistration; }
     `;
     const violations = analyzeRuntimeSource(source);
@@ -52,6 +58,8 @@ test('M4D runtime rejects hidden runtime state, ambient capabilities and widened
     assert.equal(violations.some(value => value.includes('legacy/global runtime state')), true);
     assert.equal(violations.some(value => value.includes('browser storage')), true);
     assert.equal(violations.some(value => value.includes('clock/random capability')), true);
+    assert.equal(violations.some(value => value.includes('mutation authority')), true);
+    assert.equal(violations.some(value => value.includes('async/Promise/dynamic loading')), true);
 });
 
 test('M4D prod shim rejects retained legacy arithmetic', () => {

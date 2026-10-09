@@ -362,9 +362,13 @@ No live vanilla production or resource-state path is migrated by M4C. See [M4C_R
 
 Migrated exactly `production('oil_well')` through the M4 calculation pipeline while preserving the legacy caller surface and exact vanilla multiplication order. The independent hardening pass added explicit nullable biome absence, real `prod.js` seam characterization across biome/governor/Warlord states, alternate-import runtime-consumer guards, and exact floating-operation differential proof. See [M4D_OIL_WELL_PRODUCTION_CUTOVER.md](M4D_OIL_WELL_PRODUCTION_CUTOVER.md).
 
-M4E expand across `prod.js` - next
+### M4E - Expand across `prod.js` - in progress
 
-M4E remains separately scoped. It must migrate additional production paths through bounded reviewed verticals and must not treat M4D as permission for arbitrary calculation consumers.
+M4E1 shared production runtime foundation - implementation and checkpoint review complete; exact-head CI is the closure authority. It establishes the fixed shared production calculation composition root, freezes the 44 top-level legacy production IDs as the migration ledger, preserves the M4D Oil-Well seam through a temporary adapter, and hardens the production boundary against hidden mutation/Promise capabilities. See [M4E_PRODUCTION_MIGRATION.md](M4E_PRODUCTION_MIGRATION.md).
+
+M4E2 simple scalar production family - next.
+
+M4E remains separately scoped. It must migrate additional production paths through bounded reviewed checkpoints, include related numerical composition embedded in `fastLoop()`, and must not treat M4D/M4E1 as permission for arbitrary calculation consumers or M5-owned resource application.
 
 ## Immediate sequence
 
@@ -389,10 +393,10 @@ M4C resource calculation primitives - complete
    |
 M4D first live production vertical - complete
    |
-M4E expand across prod.js - next
+M4E expand across prod.js - in progress (M4E1 complete; M4E2 next)
 ```
 
-Do not jump directly to mod loading, total conversions, bulk content conversion, an unreviewed production migration, or later simulation work. M4E must be deep-dived separately before additional live production cutovers.
+Do not jump directly to mod loading, total conversions, bulk content conversion, an unreviewed production migration, or later simulation work. The approved M4E deep dive governs the remaining bounded checkpoints; each checkpoint must preserve its reviewed scope and the full M4E slice still requires independent hardening and final CI proof before closure.
 
 ## Later milestones
 

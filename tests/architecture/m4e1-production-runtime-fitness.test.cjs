@@ -23,22 +23,25 @@ test('M4E1 shared production runtime and frozen migration inventory satisfy thei
     assert.deepEqual(productionIdsFromProd(prod), PRODUCTION_IDS);
 });
 
-test('M4E1 shared runtime rejects hidden state, mutation, clocks and widened public surface', () => {
+test('M4E1 shared runtime rejects hidden state, mutation, Promise wrapping, clocks and widened public surface', () => {
     const source = `
         import { createCalculationEngine } from '../../engine/calculations/calculation-engine.mjs';
         import { createOilWellProductionRegistration, createOilWellProductionModifiers } from '../../content/evolve/calculations/oil-well-production.mjs';
         const hidden = globalThis.resource.Oil.amount;
         const now = Date.now();
-        modRes('Oil', 1);
+        commitTransaction();
+        rollbackTransaction();
+        const promised = Promise.resolve(1);
         const productionCalculationEngine = createCalculationEngine({ registrations: [createOilWellProductionRegistration()], modifiers: [...createOilWellProductionModifiers()] });
-        export function calculateProductionCalculation({ id, inputs }){ return productionCalculationEngine.calculate({ id, inputs }).value + hidden + now; }
+        export function calculateProductionCalculation({ id, inputs }){ return productionCalculationEngine.calculate({ id, inputs }).value + hidden + now + promised; }
         export function explainProductionCalculation(){ return 1; }
     `;
     const violations = analyzeSharedRuntimeSource(source);
     assert.equal(violations.some(value => value.includes('public surface')), true);
     assert.equal(violations.some(value => value.includes('legacy/global runtime state')), true);
     assert.equal(violations.some(value => value.includes('clock/random capability')), true);
-    assert.equal(violations.some(value => value.includes('legacy gameplay helpers')), true);
+    assert.equal(violations.some(value => value.includes('mutation authority')), true);
+    assert.equal(violations.some(value => value.includes('async/Promise/dynamic loading')), true);
 });
 
 test('M4E1 shared-runtime consumer scanner catches alternate import spellings and dynamic callers', () => {
