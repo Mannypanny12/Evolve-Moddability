@@ -225,20 +225,31 @@ test('M4E2 production seam preserves the frozen legacy matrix and a real fast-lo
         });
 
         await t.test('gas-mining fast-loop contribution stays differential-compatible with the legacy formula', async () => {
-            const definition = fixtures.loadFixtureById('early-civilization-human');
+            const definition = fixtures.loadFixtureById('early-space-human');
             const persisted = fixtures.materializePersistedFixture(definition, legacy);
+            persisted.tech = persisted.tech || {};
+            persisted.space = persisted.space || {};
+            persisted.tech.space = Math.max(persisted.tech.space || 0, 5);
+            persisted.tech.gas_giant = 1;
+            delete persisted.tech.helium;
+            persisted.space.gas_mining = { count: 2, on: 2 };
+
             legacy.installLegacyState(persisted);
             await legacy.hydrateSimulationState();
 
             const runtime = legacy.legacyState();
-            runtime.tech = runtime.tech || {};
-            runtime.space = runtime.space || {};
-            runtime.space.gas_mining = runtime.space.gas_mining || {};
-            runtime.space.gas_mining.count = 2;
-            runtime.space.gas_mining.on = 2;
+            assert.ok(runtime.tech.space >= 5, 'gas-mining proof requires gas-giant-era space progression');
+            assert.equal(runtime.tech.gas_giant, 1, 'gas-mining proof requires the gas-giant unlock');
+            assert.equal(runtime.space.gas_mining.count, 2);
+            assert.equal(runtime.space.gas_mining.on, 2);
 
             delete runtime.tech.helium;
             api.setPoweredCount('gas_mining', 2);
+            assert.equal(
+                legacy.transientSimulationState().p_on.gas_mining,
+                2,
+                'gas-mining proof requires two powered collectors before the fast loop'
+            );
             await legacy.runGameLoops(1);
             const lockedValues = Object.values(api.productionBreakdown('Helium_3'));
             assert.ok(
