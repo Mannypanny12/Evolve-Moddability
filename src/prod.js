@@ -6,6 +6,7 @@ import { hellSupression } from './portal.js';
 import { flib } from './functions.js';
 import { govActive } from './governor.js';
 import { hasLegacyAchievement, legacyAchievementRank } from './legacy/bridge/achievement-state-reader.mjs';
+import { calculateOilWellProduction } from './application/evolve/oil-well-production-runtime.mjs';
 
 export function highPopAdjust(v){
     if (global.race['high_pop']){
@@ -32,33 +33,24 @@ export function production(id,val,wiki){
         }
         case 'oil_well':
         {
-            let oil = global.tech['oil'] >= 4 ? 0.48 : 0.4;
-            if (global.tech['oil'] >= 7){
-                oil *= 2;
-            }
-            else if (global.tech['oil'] >= 5){
-                oil *= global.tech['oil'] >= 6 ? 1.75 : 1.25;
-            }
-            if (global.city.geology['Oil']){
-                oil *= global.city.geology['Oil'] + 1;
-            }
+            let biomeOilMultiplier = 1;
             if (global.city.biome === 'desert'){
-                oil *= biomes.desert.vars()[1];
+                biomeOilMultiplier = biomes.desert.vars()[1];
             }
             else if (global.city.biome === 'tundra'){
-                oil *= biomes.tundra.vars()[1];
+                biomeOilMultiplier = biomes.tundra.vars()[1];
             }
             else if (global.city.biome === 'taiga'){
-                oil *= biomes.taiga.vars()[2];
+                biomeOilMultiplier = biomes.taiga.vars()[2];
             }
-            let dirtVal = govActive('dirty_jobs',2);
-            if (dirtVal){
-                oil *= 1 + (dirtVal / 100);
-            }
-            if (global.race['warlord']){
-                oil *= 1 + (global.portal?.pumpjack?.rank || 1) * 0.24;
-            } 
-            return oil;
+            return calculateOilWellProduction({
+                oilTechLevel: global.tech['oil'] || 0,
+                geologyBonus: global.city.geology['Oil'] || 0,
+                biomeOilMultiplier,
+                dirtyJobsPercent: govActive('dirty_jobs',2) || 0,
+                warlord: Boolean(global.race['warlord']),
+                pumpjackRank: global.portal?.pumpjack?.rank || 0,
+            });
         }
         case 'iridium_mine':
         {
