@@ -36,7 +36,7 @@ Legacy Evolve overloads non-positive `resource.max` values as special storage se
 { kind: 'debit', amount: 4 }
 ```
 
-Amounts are non-negative finite magnitudes. Credits and debits are not pre-netted because legacy ordering is observable.
+Amounts are non-negative finite magnitudes. Credits and debits are not pre-netted because legacy ordering is observable. Each operation must also be a distinct input object identity. Reusing the same operation object is rejected so hostile/stateful object wrappers cannot be semantically re-inspected at multiple positions in one resolution.
 
 For bounded resources, M4C preserves the tracked numeric fast-loop buffer behavior used by `resetResBuffer()` and ordinary tracked `modRes()` calls:
 
@@ -69,7 +69,7 @@ For the bounded-zero compatibility edge case, a clamped operation can discard a 
 
 Overflow and shortfall are derived from actual clamp conditions rather than subtracting floating-point applied deltas from requested amounts. Unclipped fractional operations therefore cannot manufacture tiny negative overflow or shortfall values through IEEE-754 rounding.
 
-Overflow and shortfall are normal gameplay outcomes, not contract failures. Malformed inputs, negative magnitudes, non-finite values, unsupported operation kinds, sparse/oversized structures and non-finite arithmetic are contract failures.
+Overflow and shortfall are normal gameplay outcomes, not contract failures. Malformed inputs, negative magnitudes, non-finite values, unsupported operation kinds, aliased operation identities, sparse/oversized structures and non-finite arithmetic are contract failures.
 
 ## Architecture boundary
 
@@ -77,7 +77,7 @@ M4C remains inside `src/engine/calculations/**` and inherits the M4A restriction
 
 Dependency direction is one-way: M4C resource modules may use the generic calculation contracts, but the generic M4A/M4B core may not import M4C resource modules. The M4C architecture gate enumerates every current and future JavaScript source module in the calculation package that is not in the explicit resource-module set, so adding another generic calculation module cannot silently bypass this direction rule. A later resource-specific module must be deliberately admitted to the reviewed resource-module set. The fixed calculation-engine surface remains `calculate`, `explain`, `has`, and `ids`.
 
-M4C also retains zero production consumers of the calculation package. No live `prod.js`, `fastLoop()`, `modRes()` or resource-state path is cut over before M4D.
+M4C also retains zero production consumers of the calculation package. Consumer discovery covers ordinary relative imports plus repository/root-style calculation imports, including dynamic imports, so changing import spelling cannot silently start the M4D cutover. No live `prod.js`, `fastLoop()`, `modRes()` or resource-state path is cut over before M4D.
 
 ## Independent review and hardening
 
@@ -108,6 +108,20 @@ The second review also expanded direct primitive hostile-input coverage and adde
 
 The second-review code-bearing head `384529a1ceeb6683a5cadce9d1653ec5398932e6` passed complete Baseline run `37881759568`: Node tests, cumulative architecture fitness, game/wiki build, generated-output cleanliness, injected startup-failure browser negative control and normal real-browser smoke all passed.
 
+The second-review final branch head `1bb81295c1fab825eb2ed5ce45b6713e32c0fa0a` passed Baseline run `37882000860`; PR #60 passed Baseline run `37882181642`, merged as `9d828c66d3e4cb7c8bb8930ebb01f645a116caf2`, and merged master passed Baseline run `37882384076` plus Android test-site run `37882384169`, including Pages deployment.
+
+## Third post-merge independent review and hardening
+
+A third fresh review restarted from merged master `9d828c66d3e4cb7c8bb8930ebb01f645a116caf2` and deliberately concentrated on failure classes that the earlier passes had not centered: repeated input identity, hostile semantic re-inspection, import-spelling escape hatches and whether the second review's claimed durable closure proof was actually enforced.
+
+It found three justified hardening gaps:
+
+1. **Repeated resource-delta operation identity was not rejected.** Ordinary repeated objects were harmless, but a repeated stateful Proxy could expose different descriptor values when M4C inspected the same semantic input object a second time. Delta normalization now rejects repeated operation identity before a second semantic inspection, restoring the no-alias/no-hidden-mutable-input property expected from the M4 calculation contracts.
+2. **Zero-production-consumer discovery ignored non-relative calculation imports.** A root-style `/src/engine/calculations/...` import, or repository-root `src/engine/calculations/...` spelling, could evade the pre-M4D consumer scanner. Consumer discovery now recognizes those spellings as calculation dependencies, including dynamic imports, and negative controls prove they are caught.
+3. **The second review's final closure chain was not actually durable in-repo.** The authority and status guard recorded only its earlier code-bearing proof even though the completed review later had a final branch, PR, merge, merged-master Baseline and Android deployment proof. That complete second-review chain is now recorded above and is required by the status guard.
+
+The legacy amount, upper-clamp, zero-floor and debit-working-ceiling arithmetic was rechecked against the actual `resetResBuffer()` / ordinary tracked `modRes()` code again and required no semantic change in this third pass.
+
 ## Deliberate deferrals
 
 M4C does not:
@@ -126,6 +140,6 @@ The M4A/M4B trace remains numerical base plus ordered modifiers. Resource-delta 
 
 ## Closure criteria
 
-M4C closure requires proof of the four numerical primitives, ordered legacy-compatible tracked numeric resolution including the bounded-zero `max > 0` buffer edge, bounded-zero versus unbounded policy, requested/applied distinctions, overflow/shortfall behavior, hostile/malformed input rejection, M4A/M4B composition, unchanged calculation-engine surface, one-way dependency direction and zero live production consumers.
+M4C closure requires proof of the four numerical primitives, ordered legacy-compatible tracked numeric resolution including the bounded-zero `max > 0` buffer edge, bounded-zero versus unbounded policy, requested/applied distinctions, overflow/shortfall behavior, hostile/malformed input rejection including operation alias rejection, M4A/M4B composition, unchanged calculation-engine surface, one-way dependency direction and zero live production consumers.
 
-The second post-merge review retains M4C as complete only if its final documentation/status-bearing head passes the complete relevant CI chain and the current roadmap/architecture authorities still identify M4D as the next separately reviewed slice.
+The third post-merge review retains M4C as complete only if its final documentation/status-bearing head passes the complete relevant CI chain and the current roadmap/architecture authorities still identify M4D as the next separately reviewed slice.
