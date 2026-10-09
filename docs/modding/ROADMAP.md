@@ -293,7 +293,7 @@ Adds the frozen `createWorkQueueSelector()` readiness/selection boundary with tr
 
 Closes M3E with executable legacy build/research queue evidence, a zero-execution `prepare -> WorkItem -> WorkQueue -> selection` integration proof, and a cumulative architecture gate that pins the four-file generic queue package, keeps it first-party-neutral, and prevents any production consumer before reviewed cutover. Command-specific admission, execution progress, reconciliation, prediction, scheduling and persistence remain deferred to their owning later milestones. See `M3E4_QUEUE_CLOSURE.md`.
 
-M3E is closed without modifying vanilla build/research gameplay. M3F and M3G are closed; M4A, M4B, and M4C are complete, and M4D is next.
+M3E is closed without modifying vanilla build/research gameplay. M3F and M3G are closed; M4A through M4D are complete, and M4E is next.
 
 ### M3F First real vanilla cutover - complete
 
@@ -374,11 +374,11 @@ M4C adds generic state-free resource calculation vocabulary on top of M4A/M4B:
 
 M4C does not cut over vanilla production or mutate resource state. See `M4C_RESOURCE_CALCULATIONS.md`.
 
-### M4D Migrate one production vertical - next
+### M4D Migrate one production vertical - complete
 
-Pick a controlled resource path and produce exact legacy-equivalent results through the new pipeline.
+Migrates exactly `production('oil_well')` through the fixed M4 calculation/runtime composition while preserving the legacy caller surface and exact vanilla multiplication order. Independent hardening adds explicit nullable biome absence, real compatibility-seam characterization across dynamic biome/governor/Warlord state, alternate-import consumer guards, and exact floating-operation proof. See `M4D_OIL_WELL_PRODUCTION_CUTOVER.md`.
 
-### M4E Expand across `prod.js`
+### M4E Expand across `prod.js` - next
 
 Systematically remove hard-coded production switch cases as their logic moves to definitions/calculations.
 
