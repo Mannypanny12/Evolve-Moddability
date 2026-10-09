@@ -12,14 +12,6 @@ const RESOURCE_MODULES = Object.freeze([
     'src/engine/calculations/resource-primitives.mjs',
     'src/engine/calculations/resource-delta.mjs',
 ]);
-const CORE_CALCULATION_MODULES = Object.freeze([
-    'src/engine/calculations/calculation-context.mjs',
-    'src/engine/calculations/calculation-engine.mjs',
-    'src/engine/calculations/calculation-result.mjs',
-    'src/engine/calculations/common.mjs',
-    'src/engine/calculations/modifier-contract.mjs',
-    'src/engine/calculations/modifier-pipeline.mjs',
-]);
 const RESOURCE_MODULE_SET = new Set(RESOURCE_MODULES);
 
 function normalize(relativePath){
@@ -101,7 +93,6 @@ function main(){
 module.exports = {
     CALCULATION_ROOT,
     RESOURCE_MODULES,
-    CORE_CALCULATION_MODULES,
     coreResourceCouplingViolations,
     findViolations,
 };
