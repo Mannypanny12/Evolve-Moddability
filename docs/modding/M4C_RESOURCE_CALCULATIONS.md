@@ -122,6 +122,8 @@ It found three justified hardening gaps:
 
 The legacy amount, upper-clamp, zero-floor and debit-working-ceiling arithmetic was rechecked against the actual `resetResBuffer()` / ordinary tracked `modRes()` code again and required no semantic change in this third pass.
 
+The third-review code-bearing head `8cbc4ef0d9b2760ce78f443c65da57265c658368` passed complete Baseline run `37883267513`: Node tests, cumulative architecture fitness, game/wiki build, generated-output cleanliness, injected startup-failure browser negative control and normal real-browser smoke all passed.
+
 ## Deliberate deferrals
 
 M4C does not:
