@@ -1,0 +1,80 @@
+'use strict';
+
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const test = require('node:test');
+const {
+    CURRENT_M4_ROW,
+    HARDENED_CODE_PROOF,
+    BOUNDED_ZERO_FINDING,
+    FRACTIONAL_EVIDENCE_FINDING,
+    STALE_FINAL_PROOF_PENDING,
+    statusDocViolations,
+} = require('./m4c-status-doc-fitness.cjs');
+
+const root = path.resolve(__dirname, '../..');
+const roadmap = fs.readFileSync(path.join(root, 'docs/modding/ROADMAP.md'), 'utf8');
+const backlog = fs.readFileSync(path.join(root, 'docs/modding/BACKLOG.md'), 'utf8');
+const currentArchitecture = fs.readFileSync(path.join(root, 'docs/modding/CURRENT_ARCHITECTURE.md'), 'utf8');
+const m4cAuthority = fs.readFileSync(path.join(root, 'docs/modding/M4C_RESOURCE_CALCULATIONS.md'), 'utf8');
+
+function violationsFor({
+    roadmapText = roadmap,
+    backlogText = backlog,
+    currentArchitectureText = currentArchitecture,
+    m4cAuthorityText = m4cAuthority,
+} = {}){
+    return statusDocViolations(roadmapText, backlogText, currentArchitectureText, m4cAuthorityText);
+}
+
+test('M4C status-document guard accepts M4C complete with M4D next', () => {
+    assert.deepEqual(violationsFor(), []);
+});
+
+test('M4C status-document guard rejects stale M4C-next markers and lost M4D ownership', () => {
+    const staleRoadmap = roadmap
+        .replace('### M4C Resource calculation primitives - complete', '### M4C Resource calculation primitives - next')
+        .replace('### M4D Migrate one production vertical - next', '### M4D Migrate one production vertical');
+    const staleBacklog = backlog
+        .replace('### M4C - Resource calculation primitives - complete', '### M4C - Resource calculation primitives - next')
+        .replace('M4C resource calculation primitives - complete', 'M4C resource calculation primitives - next')
+        .replace('M4D migrate one production vertical - next', 'M4D migrate one production vertical');
+    const staleCurrent = currentArchitecture
+        .replace(CURRENT_M4_ROW, '| M4 Calculation and modifier engine | in progress | `M4B_MODIFIER_PIPELINE.md`, `ROADMAP.md` |')
+        .replace('M4C is complete: **Resource calculation primitives**.', 'M4C is next: **Resource calculation primitives**.')
+        .replace('M4D is next: **Migrate one production vertical**.', 'M4D remains later work.');
+
+    const violations = violationsFor({
+        roadmapText: staleRoadmap,
+        backlogText: staleBacklog,
+        currentArchitectureText: staleCurrent,
+    });
+    assert.ok(violations.some(value => value.includes('M4C Resource calculation primitives - next')));
+    assert.ok(violations.some(value => value.includes('M4C resource calculation primitives - next')));
+    assert.ok(violations.some(value => value.includes('M4C is next')));
+    assert.ok(violations.some(value => value.includes('M4D is next')));
+});
+
+test('M4C status-document guard rejects truncated roadmap tail', () => {
+    const tailStart = roadmap.indexOf('\nAndroid packages the engine. It must not become a separate gameplay implementation.');
+    assert.notEqual(tailStart, -1);
+    const violations = violationsFor({ roadmapText: roadmap.slice(0, tailStart) });
+    assert.ok(violations.some(value => value.includes('Android packages the engine')));
+    assert.ok(violations.some(value => value.includes('Cross-cutting migration rules')));
+    assert.ok(violations.some(value => value.includes('Behavioral compatibility is more important')));
+});
+
+test('M4C status-document guard requires independent hardening evidence and removes pending-proof prose', () => {
+    const staleAuthority = `${m4cAuthority
+        .replace('## Independent review and hardening', '## Review notes')
+        .replace(HARDENED_CODE_PROOF, 'Hardening passed.')
+        .replace(BOUNDED_ZERO_FINDING, '**Buffer notes.**')
+        .replace(FRACTIONAL_EVIDENCE_FINDING, '**Arithmetic notes.**')}\n${STALE_FINAL_PROOF_PENDING}\n`;
+    const violations = violationsFor({ m4cAuthorityText: staleAuthority });
+    assert.ok(violations.some(value => value.includes('Independent review and hardening')));
+    assert.ok(violations.some(value => value.includes('37879876389')));
+    assert.ok(violations.some(value => value.includes('Bounded-zero buffering')));
+    assert.ok(violations.some(value => value.includes('Fractional clamp evidence')));
+    assert.ok(violations.some(value => value.includes('stale status text')));
+});
