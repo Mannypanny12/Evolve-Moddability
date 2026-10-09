@@ -59,8 +59,18 @@ export function normalizeResourceCapacity(rawCapacity, path = 'resourceCapacity'
 
 export function normalizeResourceDeltaOperations(rawOperations, path = 'resourceDelta.operations'){
     const operations = readDenseCalculationArray(rawOperations, path, 'INVALID_RESOURCE_DELTA');
+    const seenOperationObjects = new WeakSet();
     return Object.freeze(operations.map((rawOperation, index) => {
         const operationPath = `${path}[${index}]`;
+        if ((typeof rawOperation === 'object' && rawOperation !== null) || typeof rawOperation === 'function'){
+            if (seenOperationObjects.has(rawOperation)){
+                fail('INVALID_RESOURCE_DELTA', `${operationPath} must not reuse an earlier operation object identity.`, {
+                    path: operationPath,
+                    index,
+                });
+            }
+            seenOperationObjects.add(rawOperation);
+        }
         const fields = readClosedCalculationObject(rawOperation, {
             path: operationPath,
             allowed: ['kind', 'amount'],
