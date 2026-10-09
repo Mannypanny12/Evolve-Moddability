@@ -60,6 +60,7 @@ function statusDocViolations(roadmap, backlog, currentArchitecture, m4dAuthority
     requireExactlyOnce(m4dAuthority, '**Runtime-consumer enforcement was closed against alternate import spellings.**', M4D_AUTHORITY, violations);
     requireExactlyOnce(m4dAuthority, '**The real legacy composition seam is now executed.**', M4D_AUTHORITY, violations);
     requireExactlyOnce(m4dAuthority, '**Exact floating-point proof was tightened.**', M4D_AUTHORITY, violations);
+    requireExactlyOnce(m4dAuthority, '**Hidden runtime capability bypasses are now blocked.**', M4D_AUTHORITY, violations);
     requireExactlyOnce(m4dAuthority, '19b361962adb437f9d4662a24d4545890b893321', M4D_AUTHORITY, violations);
     requireExactlyOnce(m4dAuthority, 'workflow run 1330', M4D_AUTHORITY, violations);
     requireExactlyOnce(m4dAuthority, 'M4D is complete.', M4D_AUTHORITY, violations);
