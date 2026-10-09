@@ -6,16 +6,19 @@ const os = require('node:os');
 const test = require('node:test');
 const path = require('node:path');
 const {
+    REVIEWED_PRODUCTION_CALCULATION_CONSUMERS,
     analyzeCalculationModule,
     productionCalculationConsumers,
+    unreviewedProductionCalculationConsumers,
     findViolations,
 } = require('./m4a-calculation-boundary-fitness.cjs');
 
 const root = path.resolve(__dirname, '../..');
 
-test('M4A calculation package satisfies its dedicated architecture boundary', () => {
+test('M4A calculation package satisfies its dedicated architecture boundary with only the reviewed M4D consumers', () => {
     assert.deepEqual(findViolations(root), []);
-    assert.deepEqual(productionCalculationConsumers(root).consumers, []);
+    assert.deepEqual(productionCalculationConsumers(root).consumers, REVIEWED_PRODUCTION_CALCULATION_CONSUMERS);
+    assert.deepEqual(unreviewedProductionCalculationConsumers(root), []);
 });
 
 test('M4A calculation boundary rejects state, legacy, M3, runtime and inert Registry dependencies', () => {
@@ -74,7 +77,7 @@ test('M4A calculation boundary permits only identity, inert-data and sibling cal
     assert.deepEqual(analyzeCalculationModule(source, 'src/engine/calculations/probe.mjs'), []);
 });
 
-test('M4A zero-consumer scanner rejects root-style and bare repository calculation imports', () => {
+test('M4A production-consumer scanner rejects root-style, bare repository and unreviewed calculation imports', () => {
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'm4a-root-consumer-negative-control-'));
     try {
         const src = path.join(tempRoot, 'src');
@@ -92,11 +95,13 @@ test('M4A zero-consumer scanner rejects root-style and bare repository calculati
             "import 'src/engine/calculations/resource-contract.mjs';\n"
         );
 
-        assert.deepEqual(productionCalculationConsumers(tempRoot).consumers, [
+        const expected = [
             'src/bare-repository.js',
             'src/root-dynamic.js',
             'src/root-static.js',
-        ]);
+        ];
+        assert.deepEqual(productionCalculationConsumers(tempRoot).consumers, expected);
+        assert.deepEqual(unreviewedProductionCalculationConsumers(tempRoot), expected);
     }
     finally {
         fs.rmSync(tempRoot, { recursive: true, force: true });
