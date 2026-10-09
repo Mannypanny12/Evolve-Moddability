@@ -6,8 +6,8 @@ import { hellSupression } from './portal.js';
 import { flib } from './functions.js';
 import { govActive } from './governor.js';
 import { hasLegacyAchievement, legacyAchievementRank } from './legacy/bridge/achievement-state-reader.mjs';
-import { calculateOilWellProduction } from './application/evolve/oil-well-production-runtime.mjs';
 import { calculateProductionCalculation } from './application/evolve/production-calculation-runtime.mjs';
+import { OIL_WELL_PRODUCTION_CALCULATION_ID } from './content/evolve/calculations/oil-well-production.mjs';
 import { SIMPLE_PRODUCTION_CALCULATION_IDS } from './content/evolve/calculations/simple-production.mjs';
 
 export function highPopAdjust(v){
@@ -52,13 +52,16 @@ export function production(id,val,wiki){
             else if (global.city.biome === 'taiga'){
                 biomeOilMultiplier = biomes.taiga.vars()[2];
             }
-            return calculateOilWellProduction({
-                oilTechLevel: global.tech['oil'] || 0,
-                geologyBonus: global.city.geology['Oil'] || 0,
-                biomeOilMultiplier,
-                dirtyJobsPercent: govActive('dirty_jobs',2) || 0,
-                warlord: Boolean(global.race['warlord']),
-                pumpjackRank: global.portal?.pumpjack?.rank || 0,
+            return calculateProductionCalculation({
+                id: OIL_WELL_PRODUCTION_CALCULATION_ID,
+                inputs: {
+                    oilTechLevel: global.tech['oil'] || 0,
+                    geologyBonus: global.city.geology['Oil'] || 0,
+                    biomeOilMultiplier,
+                    dirtyJobsPercent: govActive('dirty_jobs',2) || 0,
+                    warlord: Boolean(global.race['warlord']),
+                    pumpjackRank: global.portal?.pumpjack?.rank || 0,
+                },
             });
         }
         case 'iridium_mine':
