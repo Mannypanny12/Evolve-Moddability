@@ -20,6 +20,7 @@ const {
     THIRD_REVIEW_ALIAS_FINDING,
     THIRD_REVIEW_CONSUMER_FINDING,
     THIRD_REVIEW_CLOSURE_FINDING,
+    THIRD_REVIEW_CODE_PROOF,
     STALE_FINAL_PROOF_PENDING,
     statusDocViolations,
 } = require('./m4c-status-doc-fitness.cjs');
@@ -92,7 +93,8 @@ test('M4C status-document guard requires original closure and all independent ha
         .replace(THIRD_REVIEW_HEADING, '## Another review')
         .replace(THIRD_REVIEW_ALIAS_FINDING, '**Alias notes.**')
         .replace(THIRD_REVIEW_CONSUMER_FINDING, '**Consumer notes.**')
-        .replace(THIRD_REVIEW_CLOSURE_FINDING, '**Durability notes.**');
+        .replace(THIRD_REVIEW_CLOSURE_FINDING, '**Durability notes.**')
+        .replace(THIRD_REVIEW_CODE_PROOF, 'Third review passed.');
 
     const violations = violationsFor({ m4cAuthorityText: staleAuthority });
     assert.ok(violations.some(value => value.includes('Independent review and hardening')));
@@ -110,6 +112,7 @@ test('M4C status-document guard requires original closure and all independent ha
     assert.ok(violations.some(value => value.includes('Repeated resource-delta operation identity')));
     assert.ok(violations.some(value => value.includes('Zero-production-consumer discovery')));
     assert.ok(violations.some(value => value.includes('second review\'s final closure chain')));
+    assert.ok(violations.some(value => value.includes('8cbc4ef0d9b2760c')));
 });
 
 test('M4C status-document guard rejects losing third-review contract clarifications', () => {
