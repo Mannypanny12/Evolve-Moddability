@@ -29,7 +29,7 @@ test('M4B modifier package satisfies its dedicated architecture boundary', () =>
     assert.deepEqual(findViolations(root), []);
 });
 
-test('M4B boundary rejects production consumers before M4D', () => {
+test('M4B boundary rejects production consumers outside the reviewed M4D vertical', () => {
     const fixture = createFixture();
     try {
         fs.writeFileSync(
@@ -37,7 +37,7 @@ test('M4B boundary rejects production consumers before M4D', () => {
             "import { createCalculationEngine } from '../engine/calculations/calculation-engine.mjs';\nexport { createCalculationEngine };\n"
         );
         const violations = findViolations(fixture);
-        assert.equal(violations.some(value => value.includes('zero production calculation consumers')), true);
+        assert.equal(violations.some(value => value.includes('outside the reviewed M4D Oil Well cutover')), true);
     }
     finally {
         fs.rmSync(fixture, { recursive: true, force: true });
