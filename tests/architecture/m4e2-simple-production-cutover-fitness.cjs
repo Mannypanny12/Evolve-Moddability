@@ -25,6 +25,17 @@ const MIGRATED_VARIANTS = Object.freeze({
     harvester: Object.freeze(['helium', 'deuterium']),
     shadow_mine: Object.freeze(['elerium', 'infernite', 'vitreloy']),
 });
+const MIGRATED_FACT_CASES = Object.freeze({
+    gas_mining: "return simpleProduction('gas_mining', { heliumUnlocked: Boolean(global.tech['helium']) });",
+    oil_extractor: "return simpleProduction('oil_extractor', { oilTechLevel: global.tech['oil'] || 0 });",
+    elerium_ship: "return simpleProduction('elerium_ship', { asteroidTechLevel: global.tech.asteroid || 0 });",
+    iridium_ship: "return simpleProduction('iridium_ship', { asteroidTechLevel: global.tech.asteroid || 0 });",
+    iron_ship: "return simpleProduction('iron_ship', { asteroidTechLevel: global.tech.asteroid || 0 });",
+    lander: "return simpleProduction('lander', { crashedShipCount: global.space.crashed_ship.count });",
+    shock_trooper: "return simpleProduction('shock_trooper', { digsiteCount: global.space.digsite.count });",
+    tank: "return simpleProduction('tank', { digsiteCount: global.space.digsite.count });",
+    ore_refinery: "return simpleProduction('ore_refinery', { tauOreMiningUnlocked: Boolean(global.tech['tau_ore_mining']) });",
+});
 
 function productionCaseBody(source, id){
     const marker = `        case '${id}':`;
@@ -39,6 +50,10 @@ function productionCaseBody(source, id){
     else end = productionEnd;
     if (end < 0) return null;
     return tail.slice(0, end);
+}
+
+function normalizeCode(source){
+    return maskNonCode(source).replace(/\s+/g, ' ').trim();
 }
 
 function analyzeHelper(source){
@@ -110,6 +125,31 @@ function analyzeMigratedCase(source, id, variantValues = null){
     return violations;
 }
 
+function analyzeFactCase(source, id, expectedDelegate){
+    const violations = [];
+    const body = productionCaseBody(source, id);
+    if (body === null){
+        return [`${PROD}: migrated M4E2 fact-fed case ${id} is missing or could not be isolated`];
+    }
+    const code = maskNonCode(body);
+
+    if (/\bcalculateProductionCalculation\s*\(|\bSIMPLE_PRODUCTION_CALCULATION_IDS\b/.test(code)){
+        violations.push(`${PROD}: migrated M4E2 fact-fed case ${id} must delegate through simpleProduction() rather than bypassing the compatibility helper`);
+    }
+    if (/\breturn\s+[-+]?(?:\d|\.\d)/.test(code)){
+        violations.push(`${PROD}: migrated M4E2 fact-fed case ${id} may not retain numeric production authority`);
+    }
+    if (/\b(?:if|switch)\s*\(|(?:===|!==|>=|<=|>|<)|\?/.test(code)){
+        violations.push(`${PROD}: migrated M4E2 fact-fed case ${id} may not retain threshold or completion logic`);
+    }
+
+    const expectedBody = `{ ${expectedDelegate} }`;
+    if (normalizeCode(body) !== normalizeCode(expectedBody)){
+        violations.push(`${PROD}: migrated M4E2 fact-fed case ${id} must only snapshot its reviewed explicit fact and delegate to M4`);
+    }
+    return violations;
+}
+
 function analyzeProdSource(source){
     const violations = analyzeHelper(source);
     for (const id of MIGRATED_CONSTANT_IDS){
@@ -117,6 +157,9 @@ function analyzeProdSource(source){
     }
     for (const [id, variants] of Object.entries(MIGRATED_VARIANTS)){
         violations.push(...analyzeMigratedCase(source, id, variants));
+    }
+    for (const [id, expectedDelegate] of Object.entries(MIGRATED_FACT_CASES)){
+        violations.push(...analyzeFactCase(source, id, expectedDelegate));
     }
     return [...new Set(violations)].sort();
 }
@@ -143,6 +186,7 @@ module.exports = {
     PROD,
     MIGRATED_CONSTANT_IDS,
     MIGRATED_VARIANTS,
+    MIGRATED_FACT_CASES,
     productionCaseBody,
     analyzeProdSource,
     findViolations,

@@ -8,6 +8,7 @@ const {
     PROD,
     MIGRATED_CONSTANT_IDS,
     MIGRATED_VARIANTS,
+    MIGRATED_FACT_CASES,
     analyzeProdSource,
     findViolations,
 } = require('./m4e2-simple-production-cutover-fitness.cjs');
@@ -19,9 +20,24 @@ function prodSource(){
     return fs.readFileSync(prodPath, 'utf8');
 }
 
-test('M4E2 first scalar cutover group is routed through the shared calculation compatibility seam', () => {
+test('M4E2 migrated scalar cutover groups are routed through the shared calculation compatibility seam', () => {
     assert.equal(MIGRATED_CONSTANT_IDS.length, 12);
     assert.deepEqual(Object.keys(MIGRATED_VARIANTS), ['harvester', 'shadow_mine']);
+    assert.deepEqual(Object.keys(MIGRATED_FACT_CASES), [
+        'gas_mining',
+        'oil_extractor',
+        'elerium_ship',
+        'iridium_ship',
+        'iron_ship',
+        'lander',
+        'shock_trooper',
+        'tank',
+        'ore_refinery',
+    ]);
+    assert.equal(
+        MIGRATED_CONSTANT_IDS.length + Object.keys(MIGRATED_VARIANTS).length + Object.keys(MIGRATED_FACT_CASES).length,
+        23
+    );
     assert.deepEqual(findViolations(root), []);
 });
 
@@ -54,7 +70,7 @@ test('M4E2 cutover guard rejects a restored legacy val switch', () => {
     assert.equal(violations.some(value => value.includes('shadow_mine') && value.includes('numeric production authority')), true);
 });
 
-test('M4E2 cutover guard rejects ambient state sneaking back into a migrated case', () => {
+test('M4E2 cutover guard rejects ambient state sneaking back into a migrated constant case', () => {
     const mutated = prodSource().replace(
         "return simpleProduction('alien_outpost');",
         "const hidden = global.tech['alien'];\n            return simpleProduction('alien_outpost') + hidden;"
@@ -70,4 +86,33 @@ test('M4E2 cutover guard rejects bypassing the compatibility helper', () => {
     );
     const violations = analyzeProdSource(mutated);
     assert.equal(violations.some(value => value.includes('whaling_station') && value.includes('bypassing the compatibility helper')), true);
+});
+
+test('M4E2 cutover guard rejects threshold arithmetic returning to a fact-fed case', () => {
+    const mutated = prodSource().replace(
+        MIGRATED_FACT_CASES.oil_extractor,
+        "return global.tech['oil'] >= 7 ? 0.96 : simpleProduction('oil_extractor', { oilTechLevel: global.tech['oil'] || 0 });"
+    );
+    const violations = analyzeProdSource(mutated);
+    assert.equal(violations.some(value => value.includes('oil_extractor') && value.includes('threshold or completion logic')), true);
+    assert.equal(violations.some(value => value.includes('oil_extractor') && value.includes('reviewed explicit fact')), true);
+});
+
+test('M4E2 cutover guard rejects completion gating returning to prod.js', () => {
+    const mutated = prodSource().replace(
+        MIGRATED_FACT_CASES.lander,
+        "if (global.space.crashed_ship.count === 100){ return simpleProduction('lander', { crashedShipCount: 100 }); } return 0;"
+    );
+    const violations = analyzeProdSource(mutated);
+    assert.equal(violations.some(value => value.includes('lander') && value.includes('threshold or completion logic')), true);
+    assert.equal(violations.some(value => value.includes('lander') && value.includes('numeric production authority')), true);
+});
+
+test('M4E2 cutover guard rejects changing the reviewed explicit fact snapshot', () => {
+    const mutated = prodSource().replace(
+        MIGRATED_FACT_CASES.ore_refinery,
+        "return simpleProduction('ore_refinery', { tauOreMiningUnlocked: Boolean(global.tech['tau_ore_mining']), hidden: global.tech['tau_farm'] });"
+    );
+    const violations = analyzeProdSource(mutated);
+    assert.equal(violations.some(value => value.includes('ore_refinery') && value.includes('reviewed explicit fact')), true);
 });
