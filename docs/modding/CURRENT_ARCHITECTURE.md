@@ -12,7 +12,7 @@ Slice documents remain valuable migration history, but when an older slice note 
 | M1 Engine kernel and seams | complete | `M1_CLOSURE_REVIEW.md`, `M0_M3_RETROSPECTIVE_HARDENING.md` |
 | M2 Explicit state architecture | complete | `M2_CLOSURE_REVIEW.md`, `M0_M3_RETROSPECTIVE_HARDENING.md` |
 | M3 Commands, conditions, effects and costs | complete | `M3_CLOSURE_REVIEW.md`, `M3_FINAL_REVIEW_HARDENING.md`, `M0_M3_RETROSPECTIVE_HARDENING.md` |
-| M4 Calculation and modifier engine | in progress | `M4C_RESOURCE_CALCULATIONS.md`, `ROADMAP.md` |
+| M4 Calculation and modifier engine | in progress | `M4D_OIL_WELL_PRODUCTION_CUTOVER.md`, `ROADMAP.md` |
 
 ## Current dependency direction
 
@@ -23,7 +23,7 @@ legacy gameplay / compatibility caller
 application composition
             |
             v
-first-party content commands
+first-party content commands / calculations
             |
             v
 generic engine semantic APIs
@@ -34,14 +34,14 @@ generic engine semantic APIs
             +-- commands / conditions                    [M3]
             +-- costs / effects / execution              [M3]
             +-- inert queue model                        [M3]
-            +-- calculation context + base trace                [M4A]
-            +-- deterministic modifier pipeline                 [M4B]
-            +-- resource calculation primitives                 [M4C]
+            +-- calculation context + base trace         [M4A]
+            +-- deterministic modifier pipeline          [M4B]
+            +-- resource calculation primitives          [M4C]
+```
 
 legacy bridge (temporary) may adapt legacy state to reviewed
 engine contracts, but generic engine packages never depend back
 on application, first-party content, legacy or platform layers.
-```
 
 Permanent direction rules:
 
@@ -64,7 +64,8 @@ Permanent direction rules:
 - M4C production, consumption, capacity and storage helpers are pure non-negative finite base-magnitude primitives intended for use by M4A registrations; M4B remains the only generic numeric modifier layer.
 - M4C resource-delta resolution is a pure ordered transformation over explicit starting amount, bounded/unbounded capacity policy and credit/debit operations. It preserves legacy buffer ordering, including the `max > 0` temporary-capacity rule and bounded-zero upper-clamp behavior, without mutating gameplay state.
 - M4C keeps requested, operation-applied and final-applied resource evidence distinct and reports overflow/shortfall from actual clamp conditions rather than floating-point subtraction artifacts.
-- `src/engine/calculations/**` has zero production consumers at M4C exit; live calculation cutover begins only in the reviewed M4D migration slice.
+- M4D introduces exactly one reviewed live production vertical, `production('oil_well')`. `src/prod.js` remains the legacy compatibility/state-snapshot seam; `src/application/evolve/oil-well-production-runtime.mjs` is its only reviewed runtime consumer path; the first-party Oil-Well calculation and application runtime are the only reviewed production consumers of `src/engine/calculations/**` at M4D closure.
+- M4D moves only the Oil-Well scalar arithmetic. Downstream Oil aggregation, mutation, `oil_extractor`, `fastLoop()` production logic and every other `production()` branch remain legacy until separately reviewed later work.
 
 ## M0 authority: safety net
 
@@ -168,7 +169,7 @@ Current M3 laws:
 
 ## M4 authority: calculation architecture
 
-`M4C_RESOURCE_CALCULATIONS.md` is the current M4 authority. M4A remains the base calculation/context/trace foundation, M4B adds the deterministic numeric contribution layer, and M4C adds generic state-free resource calculation primitives without beginning live vanilla cutover.
+`M4D_OIL_WELL_PRODUCTION_CUTOVER.md` is the current M4 authority. M4A remains the base calculation/context/trace foundation, M4B adds the deterministic numeric contribution layer, M4C adds generic state-free resource calculation primitives, and M4D proves the first bounded live vanilla production cutover.
 
 Current M4 laws:
 
@@ -193,9 +194,15 @@ Current M4 laws:
 - resource capacity policy is explicit `{ mode: 'bounded', value }` or `{ mode: 'unbounded' }`, so real zero capacity is not conflated with the legacy unbounded sentinel;
 - ordered resource-delta resolution preserves legacy temporary-capacity/debit ordering, returns frozen evidence and performs no mutation;
 - the calculation package owns no state read/write authority and has no direct runtime, legacy, platform, M3 semantic-package or first-party Evolve dependency;
-- production code has no calculation-package consumer yet, so vanilla behavior remains unchanged at M4C exit.
+- the first-party Oil-Well calculation receives only closed inert facts: technology level, geology bonus, resolved biome multiplier or `null`, Dirty Jobs percent, Warlord state, and pumpjack rank;
+- an absent biome contribution is represented by `null`; a real multiplier of `1` remains an applied modifier in `explain()`;
+- the five Oil-Well modifiers preserve vanilla multiplication order: technology, geology, biome, Dirty Jobs, Warlord;
+- `src/prod.js` remains the compatibility seam that reads legacy facts and resolves dynamic biome/governor state; the application runtime contains no legacy state reads;
+- the application Oil-Well runtime has exactly one reviewed live consumer, `src/prod.js`, and alternate import spellings/dynamic consumers are architecture-gated;
+- live characterization executes the real seam for normal/rejuvenated Desert, Tundra and Taiga values, Dirty Jobs, Warlord rank fallback, and the full floating-operation sequence;
+- all downstream Oil aggregation and every non-Oil-Well production branch remain outside M4D.
 
-The M4A boundary/status guards, M4B modifier/status guards and M4C resource/status guards are cumulative members of `npm run test:architecture`. M4A and M4B status guards now protect their historical closure facts; M4C owns the current M4 progression markers.
+The M4A boundary/status guards, M4B modifier/status guards, M4C resource/status guards and M4D production/status guards are cumulative members of `npm run test:architecture`. M4A-M4C status guards protect their historical closure facts; M4D owns the current M4 progression markers.
 
 ## Architecture inspector
 
@@ -215,7 +222,7 @@ Architecture report version 6 currently combines:
 - M2E ownership, write-capability, selector, and dependency gates;
 - M3 command-architecture closure, including the reviewed live DNA command/runtime/settlement seams, generic package roots, queue-production-consumer count, prerequisite gate counts, cross-layer violations, and M3 architecture-test coverage violations.
 
-The report is not bumped solely for M4A-M4C because these slices add no new report field. Their boundaries are enforced directly by their calculation/modifier/resource and status architecture gates. A later calculation-architecture report extension should bump the report version when the report shape actually changes.
+The report is not bumped solely for M4A-M4D because these slices add no new report field. Their boundaries are enforced directly by their calculation/modifier/resource/production and status architecture gates. A later calculation-architecture report extension should bump the report version when the report shape actually changes.
 
 M2D3/M2D4 and the M3G closure gate expose composable scanner functions directly, so the report consumes the same rule implementations as their standalone CLI gates rather than maintaining a second architecture truth.
 
@@ -242,6 +249,8 @@ M4B is complete: **Modifier pipeline**.
 
 M4C is complete: **Resource calculation primitives**.
 
-M4D is next: **Migrate one production vertical**.
+M4D is complete: **Migrate one production vertical**, using `production('oil_well')` as the bounded live cutover.
 
-M4D must deep-dive and characterize a controlled live vanilla production path before cutting it over to the M4 calculation/modifier/resource foundation. It must not broaden into the later `prod.js` migration wave owned by M4E.
+M4E is next: **Expand across `prod.js`**.
+
+M4E must proceed through separately reviewed bounded production verticals and must include related calculations embedded in `fastLoop()` before M4 can exit. M4D does not pre-authorize broader production consumers or move downstream Oil aggregation into the calculation layer.
