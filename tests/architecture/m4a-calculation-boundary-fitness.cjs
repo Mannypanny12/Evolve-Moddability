@@ -126,6 +126,13 @@ function listProductionSourceFiles(dir){
     return files.sort();
 }
 
+function resolveProductionCalculationReference(fromRelativePath, specifier){
+    if (specifier.startsWith('.')) return resolveRelative(fromRelativePath, specifier);
+    if (specifier.startsWith('/')) return path.posix.normalize(specifier.slice(1));
+    if (specifier.startsWith(`${CALCULATION_ROOT}/`)) return path.posix.normalize(specifier);
+    return null;
+}
+
 function productionCalculationConsumers(root){
     const srcRoot = path.join(root, 'src');
     const files = listProductionSourceFiles(srcRoot);
@@ -135,9 +142,8 @@ function productionCalculationConsumers(root){
         if (relative.startsWith(`${CALCULATION_ROOT}/`)) continue;
         const source = fs.readFileSync(filename, 'utf8');
         for (const reference of extractModuleReferences(source, relative)){
-            if (!reference.specifier.startsWith('.')) continue;
-            const target = resolveRelative(relative, reference.specifier);
-            if (target.startsWith(`${CALCULATION_ROOT}/`)){
+            const target = resolveProductionCalculationReference(relative, reference.specifier);
+            if (target && target.startsWith(`${CALCULATION_ROOT}/`)){
                 consumers.push(relative);
                 break;
             }
@@ -174,7 +180,7 @@ function findViolations(root){
 }
 
 function main(){
-    const root = path.resolve(__dirname, '../..');
+    const root = path.resolve(__dirname, '..', '..');
     const violations = findViolations(root);
     if (violations.length > 0){
         console.error('M4A calculation boundary fitness failed:');
