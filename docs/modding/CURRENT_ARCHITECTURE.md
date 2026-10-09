@@ -12,7 +12,7 @@ Slice documents remain valuable migration history, but when an older slice note 
 | M1 Engine kernel and seams | complete | `M1_CLOSURE_REVIEW.md`, `M0_M3_RETROSPECTIVE_HARDENING.md` |
 | M2 Explicit state architecture | complete | `M2_CLOSURE_REVIEW.md`, `M0_M3_RETROSPECTIVE_HARDENING.md` |
 | M3 Commands, conditions, effects and costs | complete | `M3_CLOSURE_REVIEW.md`, `M3_FINAL_REVIEW_HARDENING.md`, `M0_M3_RETROSPECTIVE_HARDENING.md` |
-| M4 Calculation and modifier engine | in progress | `M4B_MODIFIER_PIPELINE.md`, `ROADMAP.md` |
+| M4 Calculation and modifier engine | in progress | `M4C_RESOURCE_CALCULATIONS.md`, `ROADMAP.md` |
 
 ## Current dependency direction
 
@@ -36,6 +36,7 @@ generic engine semantic APIs
             +-- inert queue model                        [M3]
             +-- calculation context + base trace                [M4A]
             +-- deterministic modifier pipeline                 [M4B]
+            +-- resource calculation primitives                 [M4C]
 
 legacy bridge (temporary) may adapt legacy state to reviewed
 engine contracts, but generic engine packages never depend back
@@ -60,7 +61,10 @@ Permanent direction rules:
 - calculation/validation/modifier callbacks are contractually deterministic over explicit validated inputs plus immutable construction-time constants; hidden mutable closure state is not a valid semantic input, and future registration owners must preserve this at their composition boundary.
 - modifier callbacks see only validated detached frozen calculation inputs; they do not receive hidden state or the current intermediate value.
 - Promise/thenable inspection is bounded against hostile prototype traversal as well as accessors, cycles and runtime Promise leakage.
-- `src/engine/calculations/**` has zero production consumers at M4B exit; live calculation cutover begins only in the reviewed M4D migration slice.
+- M4C production, consumption, capacity and storage helpers are pure non-negative finite base-magnitude primitives intended for use by M4A registrations; M4B remains the only generic numeric modifier layer.
+- M4C resource-delta resolution is a pure ordered transformation over explicit starting amount, bounded/unbounded capacity policy and credit/debit operations. It preserves legacy buffer ordering, including the `max > 0` temporary-capacity rule and bounded-zero upper-clamp behavior, without mutating gameplay state.
+- M4C keeps requested, operation-applied and final-applied resource evidence distinct and reports overflow/shortfall from actual clamp conditions rather than floating-point subtraction artifacts.
+- `src/engine/calculations/**` has zero production consumers at M4C exit; live calculation cutover begins only in the reviewed M4D migration slice.
 
 ## M0 authority: safety net
 
@@ -79,6 +83,13 @@ The full Node suite recursively discovers every `*.test.cjs` file. Architecture 
 ## M1 authority: engine kernel
 
 `M1_CLOSURE_REVIEW.md` is the combined authority for M1. The later `M0_M3_RETROSPECTIVE_HARDENING.md` records the pre-M4 revalidation against the enlarged M2/M3 repository.
+
+The current authoritative root is GameState schema version 2:
+
+```text
+schemaVersion   metadata, not runtime writable
+achievements    authoritative domain owned by achievement-state
+```
 
 Current M1 structure is also emitted by `npm run inspect:architecture`:
 
@@ -164,7 +175,7 @@ Current M3 laws:
 
 ## M4 authority: calculation architecture
 
-`M4B_MODIFIER_PIPELINE.md` is the current M4 authority. M4A remains the base calculation/context/trace foundation; M4B adds the deterministic numeric contribution layer without beginning resource primitives or vanilla cutover.
+`M4C_RESOURCE_CALCULATIONS.md` is the current M4 authority. M4A remains the base calculation/context/trace foundation, M4B adds the deterministic numeric contribution layer, and M4C adds generic state-free resource calculation primitives without beginning live vanilla cutover.
 
 Current M4 laws:
 
@@ -185,10 +196,13 @@ Current M4 laws:
 - `explain()` runs the same calculation/modifier path and records base plus ordered applied/skipped modifier steps;
 - trace construction independently enforces arithmetic continuity, unique modifier IDs and deterministic modifier order;
 - async/generator/class handlers, Promise/thenable leakage and nested/cross-instance evaluation are rejected with calculation/modifier phase attribution;
+- production, consumption, capacity and storage helpers accept explicit non-negative finite resource magnitudes and reject non-finite arithmetic;
+- resource capacity policy is explicit `{ mode: 'bounded', value }` or `{ mode: 'unbounded' }`, so real zero capacity is not conflated with the legacy unbounded sentinel;
+- ordered resource-delta resolution preserves legacy temporary-capacity/debit ordering, returns frozen evidence and performs no mutation;
 - the calculation package owns no state read/write authority and has no direct runtime, legacy, platform, M3 semantic-package or first-party Evolve dependency;
-- production code has no calculation-package consumer yet, so vanilla behavior remains unchanged at M4B exit.
+- production code has no calculation-package consumer yet, so vanilla behavior remains unchanged at M4C exit.
 
-The M4A boundary/status guards and M4B modifier/status guards are cumulative members of `npm run test:architecture`. M4A's status guard now protects historical M4A closure facts; M4B owns the current M4 progression markers.
+The M4A boundary/status guards, M4B modifier/status guards and M4C resource/status guards are cumulative members of `npm run test:architecture`. M4A and M4B status guards now protect their historical closure facts; M4C owns the current M4 progression markers.
 
 ## Architecture inspector
 
@@ -208,7 +222,7 @@ Architecture report version 6 currently combines:
 - M2E ownership, write-capability, selector, and dependency gates;
 - M3 command-architecture closure, including the reviewed live DNA command/runtime/settlement seams, generic package roots, queue-production-consumer count, prerequisite gate counts, cross-layer violations, and M3 architecture-test coverage violations.
 
-The report is not bumped solely for M4B because M4B adds no new report field. M4A/M4B boundaries are enforced directly by their calculation/modifier and status architecture gates. A later calculation-architecture report extension should bump the report version when the report shape actually changes.
+The report is not bumped solely for M4A-M4C because these slices add no new report field. Their boundaries are enforced directly by their calculation/modifier/resource and status architecture gates. A later calculation-architecture report extension should bump the report version when the report shape actually changes.
 
 M2D3/M2D4 and the M3G closure gate expose composable scanner functions directly, so the report consumes the same rule implementations as their standalone CLI gates rather than maintaining a second architecture truth.
 
@@ -233,6 +247,8 @@ M4A is complete: **Calculation context and trace**.
 
 M4B is complete: **Modifier pipeline**.
 
-M4C is next: **Resource calculation primitives**.
+M4C is complete: **Resource calculation primitives**.
 
-M4C should define production, consumption, capacity, storage and resource-delta primitives on top of the hardened M4A/M4B calculation foundation. It must be deep-dived separately and must not silently begin the M4D vanilla production cutover.
+M4D is next: **Migrate one production vertical**.
+
+M4D must deep-dive and characterize a controlled live vanilla production path before cutting it over to the M4 calculation/modifier/resource foundation. It must not broaden into the later `prod.js` migration wave owned by M4E.
