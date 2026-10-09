@@ -71,12 +71,17 @@ function analyzeContentSource(source){
     const violations = [];
     const code = maskNonCode(source);
     for (const [label, pattern] of [
-        ['legacy global state', /\bglobal\b/],
+        ['legacy/global runtime state', /\b(?:global|globalThis|self)\b/],
         ['legacy production module', /\bproduction\s*\(|\bprod\.js\b/],
         ['legacy biome/governor helpers', /\b(?:biomes|govActive)\b/],
         ['browser/UI capability', /\b(?:window|document|navigator|jQuery|Vue)\b|\$\s*\(/],
+        ['browser storage', /\b(?:localStorage|sessionStorage|indexedDB)\b/],
+        ['browser/network API', /\b(?:fetch|XMLHttpRequest|WebSocket)\b/],
+        ['Node/platform global', /\b(?:process|Buffer)\b/],
         ['mutation authority', /\b(?:modRes|setGlobal|mutationAuthority|createMutationScope|beginTransaction)\b/],
         ['clock/random capability', /\b(?:Date|performance|crypto)\b|\bMath\s*\.\s*(?:random|rand)\s*\(/],
+        ['timer or microtask scheduling', /\b(?:setTimeout|setInterval|setImmediate|queueMicrotask|requestAnimationFrame|cancelAnimationFrame)\s*\(/],
+        ['dynamic code capability', /\be[v]al\s*\(|\bnew\s+F[u]nction\b|\bWebA[s]sembly\b/],
         ['async/dynamic loading', /\b(?:async|await)\b|\bimport\s*\(|\brequire\s*\(/],
     ]){
         if (pattern.test(code)) violations.push(`${CONTENT}: first-party calculation may not access ${label}`);
@@ -112,8 +117,14 @@ function analyzeRuntimeSource(source){
         violations.push(`${RUNTIME}: public surface must export only calculateOilWellProduction()`);
     }
     for (const [label, pattern] of [
-        ['legacy/global state', /\bglobal\b/],
+        ['legacy/global runtime state', /\b(?:global|globalThis|self)\b/],
         ['browser/UI capability', /\b(?:window|document|navigator|jQuery|Vue)\b|\$\s*\(/],
+        ['browser storage', /\b(?:localStorage|sessionStorage|indexedDB)\b/],
+        ['browser/network API', /\b(?:fetch|XMLHttpRequest|WebSocket)\b/],
+        ['Node/platform global', /\b(?:process|Buffer)\b/],
+        ['clock/random capability', /\b(?:Date|performance|crypto)\b|\bMath\s*\.\s*(?:random|rand)\s*\(/],
+        ['timer or microtask scheduling', /\b(?:setTimeout|setInterval|setImmediate|queueMicrotask|requestAnimationFrame|cancelAnimationFrame)\s*\(/],
+        ['dynamic code capability', /\be[v]al\s*\(|\bnew\s+F[u]nction\b|\bWebA[s]sembly\b/],
         ['mutation authority', /\b(?:modRes|setGlobal|mutationAuthority|createMutationScope|beginTransaction)\b/],
         ['legacy gameplay helpers', /\b(?:biomes|govActive|production)\b/],
         ['async/dynamic loading', /\b(?:async|await)\b|\bimport\s*\(|\brequire\s*\(/],
