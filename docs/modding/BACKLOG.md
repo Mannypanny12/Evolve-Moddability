@@ -57,7 +57,7 @@ Implement:
 - source/package ownership;
 - duplicate detection;
 - legacy aliases;
-- deterministic iteration;
+- deterministic lookup/iteration;
 - validation.
 
 This is an internal engine primitive, not yet a public Mod API.
