@@ -7,6 +7,8 @@ import { flib } from './functions.js';
 import { govActive } from './governor.js';
 import { hasLegacyAchievement, legacyAchievementRank } from './legacy/bridge/achievement-state-reader.mjs';
 import { calculateOilWellProduction } from './application/evolve/oil-well-production-runtime.mjs';
+import { calculateProductionCalculation } from './application/evolve/production-calculation-runtime.mjs';
+import { SIMPLE_PRODUCTION_CALCULATION_IDS } from './content/evolve/calculations/simple-production.mjs';
 
 export function highPopAdjust(v){
     if (global.race['high_pop']){
@@ -25,11 +27,18 @@ export function teamster(v){
     return v;
 }
 
+function simpleProduction(id, inputs = {}){
+    return calculateProductionCalculation({
+        id: SIMPLE_PRODUCTION_CALCULATION_IDS[id],
+        inputs,
+    });
+}
+
 export function production(id,val,wiki){
     switch (id){
         case 'transmitter':
         {
-            return 2.5;
+            return simpleProduction('transmitter');
         }
         case 'oil_well':
         {
@@ -191,28 +200,24 @@ export function production(id,val,wiki){
         }
         case 'harvester':
         {
-            switch (val){
-                case 'helium':
-                    return 0.85;
-                case 'deuterium':
-                    return 0.15;
-            }
+            if (val !== 'helium' && val !== 'deuterium') return;
+            return simpleProduction('harvester', { variant: val });
         }
         case 'elerium_prospector':
         {
-            return 0.014;
+            return simpleProduction('elerium_prospector');
         }
         case 'neutron_miner':
         {
-            return 0.055;
+            return simpleProduction('neutron_miner');
         }
         case 'bolognium_ship':
         {
-            return 0.008;
+            return simpleProduction('bolognium_ship');
         }
         case 'excavator':
         {
-            return 0.2;
+            return simpleProduction('excavator');
         }
         case 'vitreloy_plant':
         {
@@ -232,7 +237,7 @@ export function production(id,val,wiki){
         }
         case 'water_freighter':
         {
-            return 1.25;
+            return simpleProduction('water_freighter');
         }
         case 'titan_mine':
         {
@@ -258,19 +263,19 @@ export function production(id,val,wiki){
         }
         case 'orichalcum_mine':
         {
-            return 0.08;
+            return simpleProduction('orichalcum_mine');
         }
         case 'uranium_mine':
         {
-            return 0.025;
+            return simpleProduction('uranium_mine');
         }
         case 'neutronium_mine':
         {
-            return 0.04;
+            return simpleProduction('neutronium_mine');
         }
         case 'elerium_mine':
         {
-            return 0.009;
+            return simpleProduction('elerium_mine');
         }
         case 'shock_trooper':
         {
@@ -423,7 +428,7 @@ export function production(id,val,wiki){
         }
         case 'whaling_station':
         {
-            return 12;
+            return simpleProduction('whaling_station');
         }
         case 'mining_ship':
         {
@@ -482,7 +487,7 @@ export function production(id,val,wiki){
         }
         case 'alien_outpost':
         {
-            return 0.01;
+            return simpleProduction('alien_outpost');
         }
         case 'psychic_boost':
         {
@@ -527,20 +532,8 @@ export function production(id,val,wiki){
         }
         case 'shadow_mine':
         {
-            switch (val){
-                case 'elerium':
-                {
-                    return 0.02;
-                }
-                case 'infernite':
-                {
-                    return 0.015;
-                }
-                case 'vitreloy':
-                {
-                    return 0.22;
-                }
-            }
+            if (val !== 'elerium' && val !== 'infernite' && val !== 'vitreloy') return;
+            return simpleProduction('shadow_mine', { variant: val });
         }
     }
 }
