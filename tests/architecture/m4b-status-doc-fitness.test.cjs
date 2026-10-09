@@ -5,7 +5,6 @@ const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
 const {
-    CURRENT_M4_ROW,
     ORIGINAL_FINAL_BRANCH_PROOF,
     SECOND_REVIEW_CODE_PROOF,
     FINAL_SECOND_REVIEW_PROOF,
@@ -30,22 +29,22 @@ function violationsFor({
     return statusDocViolations(roadmapText, backlogText, currentArchitectureText, m4bAuthorityText);
 }
 
-test('M4B status-document guard accepts M4B complete with M4C next', () => {
+test('M4B status-document guard preserves historical M4B closure after later M4 slices advance', () => {
     assert.deepEqual(violationsFor(), []);
 });
 
-test('M4B status-document guard rejects stale M4B-next markers', () => {
-    const staleRoadmap = roadmap
-        .replace('### M4B Modifier pipeline - complete', '### M4B Modifier pipeline - next')
-        .replace('### M4C Resource calculation primitives - next', '### M4C Resource calculation primitives');
+test('M4B status-document guard rejects stale M4B-next markers without owning the current M4 next marker', () => {
+    const staleRoadmap = roadmap.replace(
+        '### M4B Modifier pipeline - complete',
+        '### M4B Modifier pipeline - next'
+    );
     const staleBacklog = backlog
         .replace('### M4B - Modifier pipeline - complete', '### M4B - Modifier pipeline - next')
-        .replace('M4B modifier pipeline - complete', 'M4B modifier pipeline - next')
-        .replace('M4C resource calculation primitives - next', 'M4C resource calculation primitives');
-    const staleCurrent = currentArchitecture
-        .replace(CURRENT_M4_ROW, '| M4 Calculation and modifier engine | in progress | `M4A_CALCULATION_CONTEXT_TRACE.md`, `ROADMAP.md` |')
-        .replace('M4B is complete: **Modifier pipeline**.', 'M4B is next: **Modifier pipeline**.')
-        .replace('M4C is next: **Resource calculation primitives**.', 'M4C remains later work.');
+        .replace('M4B modifier pipeline - complete', 'M4B modifier pipeline - next');
+    const staleCurrent = currentArchitecture.replace(
+        'M4B is complete: **Modifier pipeline**.',
+        'M4B is next: **Modifier pipeline**.'
+    );
 
     const violations = violationsFor({
         roadmapText: staleRoadmap,
