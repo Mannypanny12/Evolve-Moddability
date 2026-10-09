@@ -8,6 +8,11 @@ const SOURCE_EXTENSIONS = new Set(['.js', '.mjs', '.cjs']);
 const CALCULATION_ROOT = 'src/engine/calculations';
 const IDENTITY_FILE = 'src/engine/identity.mjs';
 const INERT_DATA_CONTRACT_FILE = 'src/engine/contracts/inert-data.mjs';
+const REVIEWED_PRODUCTION_CALCULATION_CONSUMERS = Object.freeze([
+    'src/application/evolve/oil-well-production-runtime.mjs',
+    'src/content/evolve/calculations/oil-well-production.mjs',
+]);
+const REVIEWED_PRODUCTION_CALCULATION_CONSUMER_SET = new Set(REVIEWED_PRODUCTION_CALCULATION_CONSUMERS);
 
 const FORBIDDEN_RUNTIME_PATTERNS = [
     ['legacy/global objects', /\b(?:global|globalThis|self)\b/],
@@ -152,6 +157,12 @@ function productionCalculationConsumers(root){
     return { consumers: [...new Set(consumers)].sort() };
 }
 
+function unreviewedProductionCalculationConsumers(root){
+    return productionCalculationConsumers(root).consumers.filter(
+        consumer => !REVIEWED_PRODUCTION_CALCULATION_CONSUMER_SET.has(consumer)
+    );
+}
+
 function findViolations(root){
     const violations = [];
     const calculationDir = path.join(root, ...CALCULATION_ROOT.split('/'));
@@ -172,9 +183,8 @@ function findViolations(root){
         }
     }
 
-    const production = productionCalculationConsumers(root);
-    for (const consumer of production.consumers){
-        violations.push(`${consumer}: M4A calculation package must have zero production consumers before the reviewed M4D cutover`);
+    for (const consumer of unreviewedProductionCalculationConsumers(root)){
+        violations.push(`${consumer}: calculation-package production consumer is outside the reviewed M4D Oil Well cutover`);
     }
     return [...new Set(violations)].sort();
 }
@@ -183,7 +193,7 @@ function main(){
     const root = path.resolve(__dirname, '..', '..');
     const violations = findViolations(root);
     if (violations.length > 0){
-        console.error('M4A calculation boundary fitness failed:');
+        console.error('M4A resource boundary fitness failed:');
         for (const violation of violations) console.error(`- ${violation}`);
         process.exitCode = 1;
         return;
@@ -193,8 +203,10 @@ function main(){
 
 module.exports = {
     CALCULATION_ROOT,
+    REVIEWED_PRODUCTION_CALCULATION_CONSUMERS,
     analyzeCalculationModule,
     productionCalculationConsumers,
+    unreviewedProductionCalculationConsumers,
     findViolations,
 };
 
