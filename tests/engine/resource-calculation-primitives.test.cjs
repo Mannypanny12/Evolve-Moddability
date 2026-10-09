@@ -77,6 +77,55 @@ test('M4C resource primitives reject negative, non-finite, sparse, oversized and
     );
 });
 
+test('M4C direct primitive contracts fail closed on accessors, symbols, exotic prototypes and hostile inspection', async () => {
+    const {
+        calculateProduction,
+        calculateCapacity,
+        calculateStorageCapacity,
+        EngineContractError,
+    } = await modules();
+
+    const accessorInputs = {};
+    Object.defineProperty(accessorInputs, 'contributions', {
+        enumerable: true,
+        get(){ throw new Error('must not execute'); },
+    });
+
+    const accessorArray = [1];
+    Object.defineProperty(accessorArray, '0', {
+        enumerable: true,
+        get(){ throw new Error('must not execute'); },
+    });
+
+    const symbolStorage = {
+        quantity: 1,
+        capacityPerUnit: 2,
+        [Symbol('hidden')]: true,
+    };
+
+    const exoticCapacity = Object.create({ inherited: true });
+    Object.assign(exoticCapacity, { baseCapacity: 1, additions: [] });
+
+    const hostileProduction = new Proxy({}, {
+        getPrototypeOf(){ throw new Error('hostile prototype'); },
+    });
+
+    const cases = [
+        [() => calculateProduction(accessorInputs), 'INVALID_RESOURCE_PRODUCTION'],
+        [() => calculateProduction({ contributions: accessorArray }), 'INVALID_RESOURCE_PRODUCTION'],
+        [() => calculateStorageCapacity(symbolStorage), 'INVALID_RESOURCE_STORAGE_CALCULATION'],
+        [() => calculateCapacity(exoticCapacity), 'INVALID_RESOURCE_CAPACITY_CALCULATION'],
+        [() => calculateProduction(hostileProduction), 'INVALID_RESOURCE_PRODUCTION'],
+    ];
+
+    for (const [run, code] of cases){
+        assert.throws(
+            run,
+            error => error instanceof EngineContractError && error.code === code
+        );
+    }
+});
+
 test('M4C resource primitives reject arithmetic overflow rather than leaking Infinity', async () => {
     const {
         calculateProduction,

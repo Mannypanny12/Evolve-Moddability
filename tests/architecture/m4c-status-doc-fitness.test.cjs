@@ -7,8 +7,14 @@ const test = require('node:test');
 const {
     CURRENT_M4_ROW,
     HARDENED_CODE_PROOF,
+    ORIGINAL_FINAL_CLOSURE_PROOF,
     BOUNDED_ZERO_FINDING,
     FRACTIONAL_EVIDENCE_FINDING,
+    SECOND_REVIEW_HEADING,
+    SECOND_REVIEW_DEPENDENCY_FINDING,
+    SECOND_REVIEW_CLOSURE_FINDING,
+    SECOND_REVIEW_SCOPE_FINDING,
+    SECOND_REVIEW_CODE_PROOF,
     STALE_FINAL_PROOF_PENDING,
     statusDocViolations,
 } = require('./m4c-status-doc-fitness.cjs');
@@ -65,16 +71,34 @@ test('M4C status-document guard rejects truncated roadmap tail', () => {
     assert.ok(violations.some(value => value.includes('Behavioral compatibility is more important')));
 });
 
-test('M4C status-document guard requires independent hardening evidence and removes pending-proof prose', () => {
-    const staleAuthority = `${m4cAuthority
+test('M4C status-document guard requires original closure and both independent hardening records', () => {
+    const staleAuthority = m4cAuthority
         .replace('## Independent review and hardening', '## Review notes')
         .replace(HARDENED_CODE_PROOF, 'Hardening passed.')
+        .replace(ORIGINAL_FINAL_CLOSURE_PROOF, 'Original closure passed.')
         .replace(BOUNDED_ZERO_FINDING, '**Buffer notes.**')
-        .replace(FRACTIONAL_EVIDENCE_FINDING, '**Arithmetic notes.**')}\n${STALE_FINAL_PROOF_PENDING}\n`;
+        .replace(FRACTIONAL_EVIDENCE_FINDING, '**Arithmetic notes.**')
+        .replace(SECOND_REVIEW_HEADING, '## Later review')
+        .replace(SECOND_REVIEW_DEPENDENCY_FINDING, '**Dependency notes.**')
+        .replace(SECOND_REVIEW_CLOSURE_FINDING, '**Closure notes.**')
+        .replace(SECOND_REVIEW_SCOPE_FINDING, '**Legacy notes.**')
+        .replace(SECOND_REVIEW_CODE_PROOF, 'Second review passed.');
+
     const violations = violationsFor({ m4cAuthorityText: staleAuthority });
     assert.ok(violations.some(value => value.includes('Independent review and hardening')));
     assert.ok(violations.some(value => value.includes('37879876389')));
+    assert.ok(violations.some(value => value.includes('11548b584f95116')));
     assert.ok(violations.some(value => value.includes('Bounded-zero buffering')));
     assert.ok(violations.some(value => value.includes('Fractional clamp evidence')));
+    assert.ok(violations.some(value => value.includes('Second post-merge independent review and hardening')));
+    assert.ok(violations.some(value => value.includes('one-way dependency gate')));
+    assert.ok(violations.some(value => value.includes('in-repo closure authority')));
+    assert.ok(violations.some(value => value.includes('Legacy parity wording')));
+    assert.ok(violations.some(value => value.includes('384529a1ceeb6683')));
+});
+
+test('M4C status-document guard rejects obsolete pending-proof prose', () => {
+    const staleAuthority = `${m4cAuthority}\n${STALE_FINAL_PROOF_PENDING}\n`;
+    const violations = violationsFor({ m4cAuthorityText: staleAuthority });
     assert.ok(violations.some(value => value.includes('stale status text')));
 });
