@@ -14,6 +14,8 @@ M4C models five concepts without taking gameplay-state authority:
 
 The numerical primitives are ordinary helpers intended for use by M4A calculation registrations. They do not create a second calculation engine or a resource-specific modifier mechanism. M4B modifiers remain the single deterministic contribution layer around numerical calculation results.
 
+The non-negative resource primitive contracts describe their base resource magnitudes. M4B itself remains a generic finite-number modifier system and can mathematically produce a negative final value through an allowed modifier. A later first-party resource registration that requires a non-negative final domain must own and test that registration-level policy rather than silently changing M4B's generic arithmetic semantics in M4C.
+
 ## Capacity policy
 
 Legacy Evolve overloads non-positive `resource.max` values as special storage semantics. M4C makes the distinction explicit when resolving deltas:
@@ -61,7 +63,9 @@ The resolver returns deeply frozen inert evidence including:
 - final capacity discard;
 - frozen ordered per-operation steps with requested amount, before/after amounts, applied delta, overflow/shortfall and the generic working ceiling before/after the step.
 
-For the bounded-zero compatibility edge case, credit overflow can exceed the requested credit because the same upper-bound operation also discards a pre-existing amount above the zero working ceiling. Requested, operation-applied and final-applied values therefore remain deliberately separate evidence.
+For the bounded-zero compatibility edge case, a clamped operation can discard a pre-existing amount above the zero working ceiling in addition to handling the requested operation. A credit's overflow can therefore exceed the requested credit, while a debit can apply a larger negative stored change than the requested debit without implying debit shortfall. Requested, operation-applied and final-applied values intentionally remain separate evidence.
+
+Overflow and shortfall are derived from actual clamp conditions rather than subtracting floating-point applied deltas from requested amounts. Unclipped fractional operations therefore cannot manufacture tiny negative overflow or shortfall values through IEEE-754 rounding.
 
 Overflow and shortfall are normal gameplay outcomes, not contract failures. Malformed inputs, negative magnitudes, non-finite values, unsupported operation kinds, sparse/oversized structures and non-finite arithmetic are contract failures.
 
@@ -72,6 +76,19 @@ M4C remains inside `src/engine/calculations/**` and inherits the M4A restriction
 Dependency direction is one-way: M4C resource modules may use the generic calculation contracts, but the generic M4A/M4B core may not import M4C resource modules. The fixed calculation-engine surface therefore remains `calculate`, `explain`, `has`, and `ids`.
 
 M4C also retains zero production consumers of the calculation package. No live `prod.js`, `fastLoop()`, `modRes()` or resource-state path is cut over before M4D.
+
+## Independent review and hardening
+
+The independent post-implementation review treated the first green implementation as untrusted and rechecked the new resolver against the actual legacy `resetResBuffer()` / `modRes()` branch order, the M4A/M4B contracts, hostile direct inputs, architecture direction and zero-production-consumer boundary.
+
+It found and fixed two substantive compatibility/correctness issues:
+
+1. **Bounded-zero buffering was initially too permissive.** The first resolver initialized every bounded working ceiling as `capacity + startAmount`, but legacy `resetResBuffer()` only adds the current amount when `max > 0`. A real zero bound therefore keeps a zero temporary ceiling. The hardened resolver now matches that rule and also applies the legacy upper clamp before the zero floor for every operation. Focused and deterministic-matrix differential tests compare buffered amounts and working ceilings against a small legacy reference model.
+2. **Fractional clamp evidence could become semantically false through floating-point subtraction.** Computing overflow as `requested - applied` could create a tiny negative overflow for an unclipped `0.1 + 0.2` style operation. Overflow and shortfall are now derived from the actual upper-bound and zero-floor clamp predicates instead.
+
+Hardening also added direct hostile-input coverage for accessors, symbol keys, exotic prototypes and hostile prototype inspection, plus a broader deterministic legacy differential matrix. None of these changes introduced a production consumer, state authority, first-party registration or M4D cutover.
+
+The hardened code-bearing head passed complete Baseline run `37879876389`, including Node tests, cumulative architecture fitness, game/wiki build, generated-output cleanliness, the injected startup-failure browser negative control and the normal real-browser smoke. The final documentation/status-bearing head still requires its own complete CI proof before closure.
 
 ## Deliberate deferrals
 
@@ -89,8 +106,8 @@ M4C does not:
 
 The M4A/M4B trace remains numerical base plus ordered modifiers. Resource-delta steps are separate resolution evidence rather than new calculation-trace step kinds.
 
-## Implementation proof expected before M4C closure
+## Closure criteria
 
-Implementation must prove the four numerical primitives, ordered legacy-compatible resolution including the bounded-zero `max > 0` buffer edge, bounded-zero versus unbounded policy, requested/applied distinctions, overflow/shortfall behavior, hostile/malformed input rejection, M4A/M4B composition, unchanged calculation-engine surface, one-way dependency direction and zero live production consumers.
+M4C closure requires proof of the four numerical primitives, ordered legacy-compatible resolution including the bounded-zero `max > 0` buffer edge, bounded-zero versus unbounded policy, requested/applied distinctions, overflow/shortfall behavior, hostile/malformed input rejection, M4A/M4B composition, unchanged calculation-engine surface, one-way dependency direction and zero live production consumers.
 
-M4C is not closed merely because these files exist or focused tests pass. Independent review/hardening and final CI proof are still required before the roadmap status advances to M4D.
+After the independent review/hardening pass, the final documentation/status-bearing head must pass the complete relevant CI chain before the roadmap advances to M4D.
