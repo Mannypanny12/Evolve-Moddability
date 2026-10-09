@@ -8,7 +8,7 @@ const { pathToFileURL } = require('node:url');
 const root = path.resolve(__dirname, '../..');
 const enginePromise = import(pathToFileURL(path.join(root, 'src/engine/calculations/calculation-engine.mjs')).href);
 const oilWellPromise = import(pathToFileURL(path.join(root, 'src/content/evolve/calculations/oil-well-production.mjs')).href);
-const runtimePromise = import(pathToFileURL(path.join(root, 'src/application/evolve/oil-well-production-runtime.mjs')).href);
+const runtimePromise = import(pathToFileURL(path.join(root, 'src/application/evolve/production-calculation-runtime.mjs')).href);
 const identityPromise = import(pathToFileURL(path.join(root, 'src/engine/identity.mjs')).href);
 
 async function modules(){
@@ -18,7 +18,11 @@ async function modules(){
         runtimePromise,
         identityPromise,
     ]);
-    return { ...engine, ...oilWell, ...runtime, ...identity };
+    const calculateOilWellProduction = inputs => runtime.calculateProductionCalculation({
+        id: oilWell.OIL_WELL_PRODUCTION_CALCULATION_ID,
+        inputs,
+    });
+    return { ...engine, ...oilWell, ...runtime, ...identity, calculateOilWellProduction };
 }
 
 function legacyOilWellProduction(inputs){
