@@ -231,17 +231,20 @@ test('M4E2 production seam preserves the frozen legacy matrix and a real fast-lo
             persisted.tech.space = Math.max(persisted.tech.space || 0, 5);
             persisted.tech.gas_giant = 1;
             delete persisted.tech.helium;
-            persisted.space.gas_mining = { count: 2, on: 2 };
+            persisted.space.gas_mining = { ...(persisted.space.gas_mining || {}), count: 2, on: 2 };
 
             // The legacy fast loop derives p_on from the real power allocator on every
             // tick. Give this focused consumer proof deterministic surplus generation
             // and make gas mining the first power priority instead of injecting p_on.
-            persisted.city.coal_power = { count: 3, on: 3 };
+            persisted.city.coal_power = { ...(persisted.city.coal_power || {}), count: 3, on: 3 };
             persisted.resource.Coal = persisted.resource.Coal || {};
             persisted.resource.Coal.amount = Math.max(persisted.resource.Coal.amount || 0, 1000);
             persisted.resource.Coal.max = Math.max(persisted.resource.Coal.max || 0, 1000);
             persisted.resource.Coal.display = true;
-            persisted.power = ['spc_gas:gas_mining'];
+            persisted.power = [
+                'spc_gas:gas_mining',
+                ...(persisted.power || []).filter(entry => entry !== 'spc_gas:gas_mining'),
+            ];
 
             legacy.installLegacyState(persisted);
             await legacy.hydrateSimulationState();
