@@ -166,7 +166,9 @@ function analyzeIsolationCase(source, id, expectedDelegate){
     if (/\bcalculateProductionCalculation\s*\(|\bSIMPLE_PRODUCTION_CALCULATION_IDS\b/.test(code)){
         violations.push(`${PROD}: migrated M4E2 Isolation-fed case ${id} must delegate through simpleProduction() rather than bypassing the compatibility helper`);
     }
-    if (/\breturn\s+[-+]?(?:\d|\.\d)/.test(code)){
+    // The reviewed Isolation compatibility seam contains variants/booleans only. Any numeric literal here
+    // means numeric production authority has leaked back out of the M4 calculation definition.
+    if (/(?:\b\d+(?:\.\d*)?|\.\d+\b)/.test(code)){
         violations.push(`${PROD}: migrated M4E2 Isolation-fed case ${id} may not retain numeric production authority`);
     }
     if (/\bswitch\s*\(\s*val\s*\)/.test(code)){
