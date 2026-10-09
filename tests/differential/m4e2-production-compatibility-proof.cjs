@@ -55,8 +55,23 @@ function buildProductionHarness(){
         throw new Error('M4E2 production test harness failed to initialize');
     }
 
+    function diagnoseBundledError(error){
+        const stack = String(error?.stack || error);
+        const match = /production-harness\.cjs:(\d+):(\d+)/.exec(stack);
+        if (!match) return stack;
+        const line = Number(match[1]);
+        const lines = fs.readFileSync(bundlePath, 'utf8').split('\n');
+        const start = Math.max(0, line - 5);
+        const end = Math.min(lines.length, line + 4);
+        const excerpt = lines.slice(start, end)
+            .map((text, index) => `${start + index + 1}: ${text}`)
+            .join('\n');
+        return `${stack}\nGenerated bundle excerpt:\n${excerpt}`;
+    }
+
     return {
         api,
+        diagnoseBundledError,
         cleanup(){
             delete globalThis.__M4E2_PRODUCTION_TEST_API__;
             fs.rmSync(tempDir, { recursive: true, force: true });
@@ -258,7 +273,12 @@ test('M4E2 production seam preserves the frozen legacy matrix and a real fast-lo
             assert.equal(runtime.power[0], 'spc_gas:gas_mining');
 
             delete runtime.tech.helium;
-            await legacy.runGameLoops(1);
+            try {
+                await legacy.runGameLoops(1);
+            }
+            catch (error){
+                throw new Error(harness.diagnoseBundledError(error));
+            }
             const lockedTransient = legacy.transientSimulationState();
             assert.equal(
                 lockedTransient.p_on.gas_mining,
