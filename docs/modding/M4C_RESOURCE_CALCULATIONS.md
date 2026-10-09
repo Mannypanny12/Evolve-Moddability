@@ -88,7 +88,7 @@ It found and fixed two substantive compatibility/correctness issues:
 
 Hardening also added direct hostile-input coverage for accessors, symbol keys, exotic prototypes and hostile prototype inspection, plus a broader deterministic legacy differential matrix. None of these changes introduced a production consumer, state authority, first-party registration or M4D cutover.
 
-The hardened code-bearing head passed complete Baseline run `37879876389`, including Node tests, cumulative architecture fitness, game/wiki build, generated-output cleanliness, the injected startup-failure browser negative control and the normal real-browser smoke. The final documentation/status-bearing head still requires its own complete CI proof before closure.
+The hardened code-bearing head passed complete Baseline run `37879876389`, including Node tests, cumulative architecture fitness, game/wiki build, generated-output cleanliness, the injected startup-failure browser negative control and the normal real-browser smoke. Closure additionally requires a complete Baseline run on the final documentation/status-bearing head.
 
 ## Deliberate deferrals
 
@@ -110,4 +110,4 @@ The M4A/M4B trace remains numerical base plus ordered modifiers. Resource-delta 
 
 M4C closure requires proof of the four numerical primitives, ordered legacy-compatible resolution including the bounded-zero `max > 0` buffer edge, bounded-zero versus unbounded policy, requested/applied distinctions, overflow/shortfall behavior, hostile/malformed input rejection, M4A/M4B composition, unchanged calculation-engine surface, one-way dependency direction and zero live production consumers.
 
-After the independent review/hardening pass, the final documentation/status-bearing head must pass the complete relevant CI chain before the roadmap advances to M4D.
+After the independent review/hardening pass, M4C is only closed when the final documentation/status-bearing head passes the complete relevant CI chain and the current roadmap/architecture authorities identify M4D as the next separately reviewed slice.
