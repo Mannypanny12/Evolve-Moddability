@@ -23,6 +23,7 @@ const THIRD_REVIEW_HEADING = '## Third post-merge independent review and hardeni
 const THIRD_REVIEW_ALIAS_FINDING = '**Repeated resource-delta operation identity was not rejected.**';
 const THIRD_REVIEW_CONSUMER_FINDING = '**Zero-production-consumer discovery ignored non-relative calculation imports.**';
 const THIRD_REVIEW_CLOSURE_FINDING = '**The second review\'s final closure chain was not actually durable in-repo.**';
+const THIRD_REVIEW_CODE_PROOF = 'The third-review code-bearing head `8cbc4ef0d9b2760ce78f443c65da57265c658368` passed complete Baseline run `37883267513`: Node tests, cumulative architecture fitness, game/wiki build, generated-output cleanliness, injected startup-failure browser negative control and normal real-browser smoke all passed.';
 const STALE_FINAL_PROOF_PENDING = 'The final documentation/status-bearing head still requires its own complete CI proof before closure.';
 
 function occurrences(source, needle){
@@ -82,6 +83,7 @@ function statusDocViolations(roadmap, backlog, currentArchitecture, m4cAuthority
     requireExactlyOnce(m4cAuthority, THIRD_REVIEW_ALIAS_FINDING, M4C_AUTHORITY, violations);
     requireExactlyOnce(m4cAuthority, THIRD_REVIEW_CONSUMER_FINDING, M4C_AUTHORITY, violations);
     requireExactlyOnce(m4cAuthority, THIRD_REVIEW_CLOSURE_FINDING, M4C_AUTHORITY, violations);
+    requireExactlyOnce(m4cAuthority, THIRD_REVIEW_CODE_PROOF, M4C_AUTHORITY, violations);
     requireExactlyOnce(m4cAuthority, 'Each operation must also be a distinct input object identity.', M4C_AUTHORITY, violations);
     requireExactlyOnce(m4cAuthority, 'Consumer discovery covers ordinary relative imports plus repository/root-style calculation imports, including dynamic imports', M4C_AUTHORITY, violations);
     requireExactlyOnce(m4cAuthority, '## Architecture boundary', M4C_AUTHORITY, violations);
@@ -130,6 +132,7 @@ module.exports = {
     THIRD_REVIEW_ALIAS_FINDING,
     THIRD_REVIEW_CONSUMER_FINDING,
     THIRD_REVIEW_CLOSURE_FINDING,
+    THIRD_REVIEW_CODE_PROOF,
     STALE_FINAL_PROOF_PENDING,
     statusDocViolations,
     findViolations,
