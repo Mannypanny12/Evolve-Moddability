@@ -293,7 +293,7 @@ Adds the frozen `createWorkQueueSelector()` readiness/selection boundary with tr
 
 Closes M3E with executable legacy build/research queue evidence, a zero-execution `prepare -> WorkItem -> WorkQueue -> selection` integration proof, and a cumulative architecture gate that pins the four-file generic queue package, keeps it first-party-neutral, and prevents any production consumer before reviewed cutover. Command-specific admission, execution progress, reconciliation, prediction, scheduling and persistence remain deferred to their owning later milestones. See `M3E4_QUEUE_CLOSURE.md`.
 
-M3E is closed without modifying vanilla build/research gameplay. M3F and M3G are closed; M4A and M4B are complete, and M4C is next.
+M3E is closed without modifying vanilla build/research gameplay. M3F and M3G are closed; M4A, M4B, and M4C are complete, and M4D is next.
 
 ### M3F First real vanilla cutover - complete
 
@@ -360,19 +360,21 @@ M4B adds the deterministic numeric contribution layer on top of M4A:
 
 M4B does not migrate `adjustCosts()`, `production()`, `prod.js`, `fastLoop()`, or any live vanilla calculation. See `M4B_MODIFIER_PIPELINE.md`.
 
-### M4C Resource calculation primitives - next
+### M4C Resource calculation primitives - complete
 
-Model:
+M4C adds generic state-free resource calculation vocabulary on top of M4A/M4B:
 
-- production;
-- consumption;
-- capacity;
-- storage;
-- resource delta application.
+- production and consumption as non-negative finite contribution sums;
+- capacity as non-negative finite base capacity plus additions;
+- storage contribution as non-negative quantity multiplied by capacity per unit;
+- explicit bounded versus unbounded capacity policy;
+- pure ordered resource-delta resolution with requested/applied/overflow/shortfall/final-discard evidence;
+- legacy-compatible temporary-capacity ordering, including the bounded-zero `max > 0` edge;
+- cumulative architecture guards retaining one-way dependency direction and zero production calculation consumers.
 
-M4C must build on the hardened M4A/M4B calculation/modifier contracts. It does not automatically imply a vanilla production cutover; M4D owns the first reviewed live production vertical.
+M4C does not cut over vanilla production or mutate resource state. See `M4C_RESOURCE_CALCULATIONS.md`.
 
-### M4D Migrate one production vertical
+### M4D Migrate one production vertical - next
 
 Pick a controlled resource path and produce exact legacy-equivalent results through the new pipeline.
 

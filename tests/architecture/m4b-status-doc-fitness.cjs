@@ -8,7 +8,6 @@ const BACKLOG = 'docs/modding/BACKLOG.md';
 const CURRENT_ARCHITECTURE = 'docs/modding/CURRENT_ARCHITECTURE.md';
 const M4B_AUTHORITY = 'docs/modding/M4B_MODIFIER_PIPELINE.md';
 
-const CURRENT_M4_ROW = '| M4 Calculation and modifier engine | in progress | `M4B_MODIFIER_PIPELINE.md`, `ROADMAP.md` |';
 const ORIGINAL_FINAL_BRANCH_PROOF = 'The final original M4B branch head `920c46331364f3959143eb25f908ada3aeb2861b` passed Baseline PR run `37751341942`, merged as `a096634a71a1bc0ccd74295ef11a20f3caed89dd`, and the merged master commit passed Baseline run `37751803143`.';
 const SECOND_REVIEW_CODE_PROOF = 'Code-bearing second-review head `e67b2ba30e86ee79701d5fa8192d2470cbf69d51` passed the complete Baseline workflow in run `37755684579`: Node tests, cumulative architecture gates, production build/cleanliness, injected-startup-failure browser negative control and normal real-browser smoke all passed.';
 const FINAL_SECOND_REVIEW_PROOF = 'The final second-review head `acc61049c03f9670e707e8d5b105901d33208c5d` passed complete Baseline PR run `37759833839`, merged through PR #56 as `bc0bf6031083f2f74faffb9806495b1f2991a8fc`, and the merged master commit passed Baseline run `37760263363`; Android test-site run `37760263358` also completed its build and Pages deployment successfully.';
@@ -38,7 +37,6 @@ function statusDocViolations(roadmap, backlog, currentArchitecture, m4bAuthority
 
     requireExactlyOnce(roadmap, '### M4B Modifier pipeline - complete', ROADMAP, violations);
     requireExactlyOnce(roadmap, 'See `M4B_MODIFIER_PIPELINE.md`.', ROADMAP, violations);
-    requireExactlyOnce(roadmap, '### M4C Resource calculation primitives - next', ROADMAP, violations);
     requireExactlyOnce(roadmap, 'Android packages the engine. It must not become a separate gameplay implementation.', ROADMAP, violations);
     requireExactlyOnce(roadmap, '## Cross-cutting migration rules', ROADMAP, violations);
     requireExactlyOnce(roadmap, '### No permanent dual systems', ROADMAP, violations);
@@ -46,18 +44,13 @@ function statusDocViolations(roadmap, backlog, currentArchitecture, m4bAuthority
     forbid(roadmap, '### M4B Modifier pipeline - next', ROADMAP, violations);
 
     requireExactlyOnce(backlog, '### M4B - Modifier pipeline - complete', BACKLOG, violations);
-    requireExactlyOnce(backlog, '### M4C - Resource calculation primitives - next', BACKLOG, violations);
     requireExactlyOnce(backlog, 'M4B modifier pipeline - complete', BACKLOG, violations);
-    requireExactlyOnce(backlog, 'M4C resource calculation primitives - next', BACKLOG, violations);
     requireExactlyOnce(backlog, 'See [M4B_MODIFIER_PIPELINE.md](M4B_MODIFIER_PIPELINE.md).', BACKLOG, violations);
     forbid(backlog, 'M4B modifier pipeline - next', BACKLOG, violations);
 
-    requireExactlyOnce(currentArchitecture, CURRENT_M4_ROW, CURRENT_ARCHITECTURE, violations);
     requireExactlyOnce(currentArchitecture, 'Architecture report version 6 currently combines:', CURRENT_ARCHITECTURE, violations);
-    requireExactlyOnce(currentArchitecture, '`M4B_MODIFIER_PIPELINE.md` is the current M4 authority.', CURRENT_ARCHITECTURE, violations);
     requireExactlyOnce(currentArchitecture, '+-- deterministic modifier pipeline                 [M4B]', CURRENT_ARCHITECTURE, violations);
     requireExactlyOnce(currentArchitecture, 'M4B is complete: **Modifier pipeline**.', CURRENT_ARCHITECTURE, violations);
-    requireExactlyOnce(currentArchitecture, 'M4C is next: **Resource calculation primitives**.', CURRENT_ARCHITECTURE, violations);
     forbid(currentArchitecture, 'M4B is next: **Modifier pipeline**.', CURRENT_ARCHITECTURE, violations);
 
     requireExactlyOnce(m4bAuthority, '# M4B Modifier Pipeline', M4B_AUTHORITY, violations);
@@ -101,7 +94,6 @@ function main(){
 }
 
 module.exports = {
-    CURRENT_M4_ROW,
     ORIGINAL_FINAL_BRANCH_PROOF,
     SECOND_REVIEW_CODE_PROOF,
     FINAL_SECOND_REVIEW_PROOF,
