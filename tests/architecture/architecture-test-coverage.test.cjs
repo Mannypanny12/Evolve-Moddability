@@ -50,3 +50,30 @@ test('architecture coverage audit rejects missing wrappers, duplicates, stale ga
         fs.rmSync(temp, { recursive: true, force: true });
     }
 });
+
+test('architecture coverage audit rejects omitted cumulative gates but permits explicit report-only targets', () => {
+    const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'architecture-test-reverse-coverage-'));
+    try {
+        write(temp, 'tests/architecture/alpha.cjs', "'use strict';\n");
+        write(temp, 'tests/architecture/alpha.test.cjs', "'use strict';\n");
+        write(temp, 'tests/architecture/omitted.cjs', "'use strict';\n");
+        write(temp, 'tests/architecture/omitted.test.cjs', "'use strict';\n");
+        write(temp, 'tests/architecture/architecture-report.cjs', "'use strict';\n");
+        write(temp, 'tests/architecture/architecture-report.test.cjs', "'use strict';\n");
+        write(temp, 'package.json', JSON.stringify({
+            scripts: {
+                'test:architecture': 'node tests/architecture/alpha.cjs',
+            },
+        }));
+
+        const violations = architectureTestCoverageViolations(temp).join('\n');
+        assert.match(
+            violations,
+            /omitted\.cjs: cumulative architecture gate with npm-test wrapper is missing from scripts\.test:architecture/
+        );
+        assert.doesNotMatch(violations, /architecture-report\.cjs/);
+    }
+    finally {
+        fs.rmSync(temp, { recursive: true, force: true });
+    }
+});
