@@ -1,6 +1,6 @@
 # M4E production migration
 
-Status: M4E2 implementation and independent hardening complete; exact-head CI is the closure authority. M4E remains in progress.
+Status: M4E2 complete after independent review and hardening; final exact-head CI is the closure authority. M4E remains in progress.
 
 M4E expands the reviewed M4 calculation architecture across vanilla production without taking the later M5 simulation/application responsibilities. M4E1 established the shared composition/inventory foundation. M4E2 migrates the reviewed simple scalar/variant/fact-fed family through that foundation while preserving the legacy `production()` compatibility surface. It does not move `fastLoop()` resource application and does not make M4E complete.
 
@@ -92,7 +92,9 @@ M4E1 moved engine construction into the shared production runtime and froze the 
 - differential compatibility proof over the reviewed matrix plus the real gas-mining fast-loop consumer;
 - an isolated child-process runner that removes inherited `NODE_TEST_CONTEXT` before invoking the nested Node test runner, preventing the recursive test-runner stall recovered during M4E2;
 - generated-bundle diagnostics in the isolated proof so a future legacy fast-loop crash reports the exact bundled source statement around the failure rather than only an opaque stack line;
-- removal guards that prevent the historical one-off Oil-Well runtime adapter from being reintroduced.
+- removal guards that prevent the historical one-off Oil-Well runtime adapter from being reintroduced;
+- a cumulative architecture-command ratchet that requires every executable architecture gate with a same-name npm-test wrapper to appear in `test:architecture`, with only explicitly reviewed non-cumulative tooling such as `architecture-report.cjs` exempted;
+- a shared-runtime composition marker that requires `...createSimpleProductionRegistrations()` so the 27-definition family cannot silently disappear from the live fixed engine while leaving its import allowed.
 
 The initial M4E1 implementation is commit `e09bc5e882de724b4218b49902e15bcd461f4427`. Baseline build workflow run 1341 completed successfully for that implementation head.
 
@@ -107,11 +109,14 @@ No production formula, `prod.js` arithmetic, Oil-Well input resolution, `fastLoo
 
 ## M4E2 review and hardening
 
-The independent M4E2 review re-read the whole slice from the closed M4E1 boundary rather than treating the repaired differential proof as sufficient closure evidence. It found two classes of hardening work:
+The independent M4E2 review re-read the whole slice from the closed M4E1 boundary rather than treating the repaired differential proof as sufficient closure evidence. It found three classes of hardening work:
 
 - **Differential-harness coherence and diagnosability.** The original proof first stalled because a nested Node test runner inherited `NODE_TEST_CONTEXT`, then falsely injected transient `p_on` state that the real legacy fast loop immediately recalculated. The hardened proof clears the nested-runner context, supplies coherent legacy power/fuel/priority state, lets the real allocator derive powered gas collectors, supplies the zero/off coal-mine structure required once Coal is active, and preserves generated-bundle source diagnostics for future failures.
-- **Current-authority/status drift.** After the code cutover, the migration authority, backlog, roadmap and current-architecture index still described M4E2 as future work and the deleted Oil-Well adapter as live. Those current authorities are advanced together, and the M4E1/M4E status guard is tightened to require the M4E2 review marker and current status text.
+- **Current-authority/status drift.** After the code cutover, the migration authority, backlog, roadmap and current-architecture index still described M4E2 as future work and the deleted Oil-Well adapter as live. Those current authorities were advanced together, and the M4E1/M4E status guard was tightened to require the M4E2 review marker and current status text.
+- **Closure-proof wiring.** A second independent audit found that `m4e2-simple-production-cutover-fitness.cjs` existed and its npm-test wrapper ran in the broad Node suite, but the direct gate was accidentally absent from `npm run test:architecture` even though current architecture prose claimed it was cumulative. M4E2 now appears directly in that command; the architecture-coverage audit has reverse coverage for omitted executable gate/wrapper pairs; non-executable catalogs remain valid support modules rather than forced CLI gates; and the shared-runtime guard pins the simple-production registration spread explicitly.
 
-The implementation head `fb7b863975371db27634f36fd3555a66bfcacf8c` passed the complete baseline workflow before this independent hardening commit: Node tests, architecture fitness, game/wiki build, generated-output cleanliness, browser startup-failure negative control and real-browser smoke. That successful implementation run is supporting evidence only; it is not the M4E2 closure authority.
+The implementation head `fb7b863975371db27634f36fd3555a66bfcacf8c` passed the complete baseline workflow before the first independent hardening commit: Node tests, architecture fitness, game/wiki build, generated-output cleanliness, browser startup-failure negative control and real-browser smoke. That successful implementation run is supporting evidence only; it is not the M4E2 closure authority.
 
-M4E remains in progress after M4E2. M4E3 is the next implementation checkpoint only after the exact M4E2 hardening head has completed the full final CI proof.
+The closure-wiring hardening head `48ccedd6fac863a6dd831993348cbc71c03d39eb` passed Baseline build workflow run 1378, including the full Node suite, the now-complete cumulative architecture command with the direct M4E2 gate, game/wiki build, generated-output cleanliness, browser startup-failure negative control and real-browser smoke. This is supporting hardening evidence; final exact-head CI on the documentation/guard closure head remains the closure authority.
+
+M4E2 is complete after independent review and hardening. M4E remains in progress. M4E3 explicit-state scalar family is the next checkpoint and has not started; it must begin with its own deep dive before implementation.
