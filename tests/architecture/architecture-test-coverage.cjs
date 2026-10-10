@@ -16,6 +16,10 @@ function splitCommandChain(script){
     return commands.length > 0 && commands.every(Boolean) ? commands : null;
 }
 
+function wrapperPathFor(architectureRoot, filename){
+    return path.join(architectureRoot, filename.replace(/\.cjs$/, TEST_SUFFIX));
+}
+
 function cumulativeArchitectureTargets(architectureRoot){
     return fs.readdirSync(architectureRoot, { withFileTypes: true })
         .filter(entry => entry.isFile())
@@ -23,13 +27,7 @@ function cumulativeArchitectureTargets(architectureRoot){
         .filter(filename => filename.endsWith('.cjs') && !filename.endsWith(TEST_SUFFIX))
         .filter(filename => !NON_CUMULATIVE_ARCHITECTURE_TARGETS.has(filename))
         .filter(filename => {
-            const gatePath = path.join(architectureRoot, filename);
-            const source = fs.readFileSync(gatePath, 'utf8');
-            return DIRECT_GATE_ENTRYPOINT_PATTERN.test(source);
-        })
-        .filter(filename => {
-            const wrapper = filename.replace(/\.cjs$/, TEST_SUFFIX);
-            const wrapperPath = path.join(architectureRoot, wrapper);
+            const wrapperPath = wrapperPathFor(architectureRoot, filename);
             return fs.existsSync(wrapperPath) && fs.statSync(wrapperPath).isFile();
         })
         .sort();
@@ -58,6 +56,15 @@ function architectureTestCoverageViolations(root){
     const commands = splitCommandChain(packageJson.scripts?.['test:architecture']);
     if (!commands){
         return ['package.json: scripts.test:architecture must be a non-empty inspectable &&-chained command sequence'];
+    }
+
+    const cumulativeTargets = cumulativeArchitectureTargets(architectureRoot);
+    for (const filename of cumulativeTargets){
+        const gatePath = path.join(architectureRoot, filename);
+        const source = fs.readFileSync(gatePath, 'utf8');
+        if (!DIRECT_GATE_ENTRYPOINT_PATTERN.test(source)){
+            violations.push(`tests/architecture/${filename}: cumulative architecture gate must use the canonical if (require.main === module) direct-entrypoint convention`);
+        }
     }
 
     const targetCounts = new Map();
@@ -89,6 +96,10 @@ function architectureTestCoverageViolations(root){
         if (fs.lstatSync(wrapperPath).isSymbolicLink()){
             violations.push(`tests/architecture/${wrapper}: npm-test wrapper may not be a symbolic link`);
         }
+        const source = fs.readFileSync(gatePath, 'utf8');
+        if (!DIRECT_GATE_ENTRYPOINT_PATTERN.test(source)){
+            violations.push(`tests/architecture/${filename}: direct architecture command must use the canonical if (require.main === module) entrypoint`);
+        }
     }
 
     for (const [filename, count] of [...targetCounts.entries()].sort(([a], [b]) => a.localeCompare(b))){
@@ -97,9 +108,9 @@ function architectureTestCoverageViolations(root){
         }
     }
 
-    for (const filename of cumulativeArchitectureTargets(architectureRoot)){
+    for (const filename of cumulativeTargets){
         if (!targetCounts.has(filename)){
-            violations.push(`tests/architecture/${filename}: executable architecture gate with npm-test wrapper is missing from scripts.test:architecture`);
+            violations.push(`tests/architecture/${filename}: architecture gate with npm-test wrapper is missing from scripts.test:architecture`);
         }
     }
 
