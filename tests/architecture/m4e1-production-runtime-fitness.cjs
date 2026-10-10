@@ -146,6 +146,7 @@ function analyzeSharedRuntimeSource(source){
     }
     for (const marker of [
         'createOilWellProductionRegistration()',
+        '...createSimpleProductionRegistrations()',
         '...createOilWellProductionModifiers()',
         'registrations: [',
         'modifiers: [',
