@@ -151,3 +151,39 @@ test('architecture coverage audit rejects alternate require.main spellings with 
         fs.rmSync(temp, { recursive: true, force: true });
     }
 });
+
+
+test('architecture coverage entrypoint detection ignores comments and strings', () => {
+    const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'architecture-test-entrypoint-masking-'));
+    try {
+        write(temp, 'tests/architecture/alpha.cjs', executableGate);
+        write(temp, 'tests/architecture/alpha.test.cjs', "'use strict';\n");
+        write(
+            temp,
+            'tests/architecture/comment-bypass.cjs',
+            "'use strict';\nfunction main(){}\n// if (require.main === module) main();\nif (module === require.main) main();\n"
+        );
+        write(temp, 'tests/architecture/comment-bypass.test.cjs', "'use strict';\n");
+        write(
+            temp,
+            'tests/architecture/support-comment.cjs',
+            "'use strict';\n// if (require.main === module) main();\nmodule.exports = { value: 'require.main === module' };\n"
+        );
+        write(temp, 'tests/architecture/support-comment.test.cjs', "'use strict';\n");
+        write(temp, 'package.json', JSON.stringify({
+            scripts: {
+                'test:architecture': 'node tests/architecture/alpha.cjs',
+            },
+        }));
+
+        const violations = architectureTestCoverageViolations(temp).join('\n');
+        assert.match(
+            violations,
+            /comment-bypass\.cjs: architecture gate must use the canonical if \(require\.main === module\) direct-entrypoint convention/
+        );
+        assert.doesNotMatch(violations, /support-comment\.cjs/);
+    }
+    finally {
+        fs.rmSync(temp, { recursive: true, force: true });
+    }
+});

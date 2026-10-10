@@ -2,6 +2,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { maskNonCode } = require('./architecture-fitness.cjs');
 
 const ARCHITECTURE_COMMAND_PATTERN = /^node\s+tests\/architecture\/([A-Za-z0-9._-]+\.cjs)$/;
 const TEST_SUFFIX = '.test.cjs';
@@ -52,11 +53,12 @@ function sourceDirectGateInfo(architectureRoot, filename){
         };
     }
     const source = fs.readFileSync(gatePath, 'utf8');
+    const code = maskNonCode(source);
     return {
         gateStat,
         source,
-        referencesDirectEntrypoint: DIRECT_GATE_REFERENCE_PATTERN.test(source),
-        hasCanonicalEntrypoint: DIRECT_GATE_ENTRYPOINT_PATTERN.test(source),
+        referencesDirectEntrypoint: DIRECT_GATE_REFERENCE_PATTERN.test(code),
+        hasCanonicalEntrypoint: DIRECT_GATE_ENTRYPOINT_PATTERN.test(code),
     };
 }
 
@@ -153,7 +155,7 @@ function architectureTestCoverageViolations(root){
             violations.push(`tests/architecture/${wrapper}: npm-test wrapper may not be a symbolic link`);
         }
         const source = fs.readFileSync(gatePath, 'utf8');
-        if (!DIRECT_GATE_ENTRYPOINT_PATTERN.test(source)){
+        if (!DIRECT_GATE_ENTRYPOINT_PATTERN.test(maskNonCode(source))){
             violations.push(`tests/architecture/${filename}: direct architecture command must use the canonical if (require.main === module) entrypoint`);
         }
     }
