@@ -5,6 +5,7 @@ const path = require('node:path');
 
 const ARCHITECTURE_COMMAND_PATTERN = /^node\s+tests\/architecture\/([A-Za-z0-9._-]+\.cjs)$/;
 const TEST_SUFFIX = '.test.cjs';
+const DIRECT_GATE_ENTRYPOINT_PATTERN = /\brequire\s*\.\s*main\s*===\s*module\b/;
 const NON_CUMULATIVE_ARCHITECTURE_TARGETS = new Set([
     'architecture-report.cjs',
 ]);
@@ -21,6 +22,11 @@ function cumulativeArchitectureTargets(architectureRoot){
         .map(entry => entry.name)
         .filter(filename => filename.endsWith('.cjs') && !filename.endsWith(TEST_SUFFIX))
         .filter(filename => !NON_CUMULATIVE_ARCHITECTURE_TARGETS.has(filename))
+        .filter(filename => {
+            const gatePath = path.join(architectureRoot, filename);
+            const source = fs.readFileSync(gatePath, 'utf8');
+            return DIRECT_GATE_ENTRYPOINT_PATTERN.test(source);
+        })
         .filter(filename => {
             const wrapper = filename.replace(/\.cjs$/, TEST_SUFFIX);
             const wrapperPath = path.join(architectureRoot, wrapper);
@@ -93,7 +99,7 @@ function architectureTestCoverageViolations(root){
 
     for (const filename of cumulativeArchitectureTargets(architectureRoot)){
         if (!targetCounts.has(filename)){
-            violations.push(`tests/architecture/${filename}: cumulative architecture gate with npm-test wrapper is missing from scripts.test:architecture`);
+            violations.push(`tests/architecture/${filename}: executable architecture gate with npm-test wrapper is missing from scripts.test:architecture`);
         }
     }
 
@@ -114,6 +120,7 @@ function main(){
 
 module.exports = {
     ARCHITECTURE_COMMAND_PATTERN,
+    DIRECT_GATE_ENTRYPOINT_PATTERN,
     NON_CUMULATIVE_ARCHITECTURE_TARGETS,
     splitCommandChain,
     cumulativeArchitectureTargets,
