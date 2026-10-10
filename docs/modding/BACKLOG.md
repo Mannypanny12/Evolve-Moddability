@@ -269,7 +269,7 @@ Established the reusable condition layer and closed it against legacy drift:
 - inert, canonical, deeply frozen condition data with hostile-input hardening;
 - reusable technology, resource, structure and trait predicates;
 - explicit separation between availability/execution conditions and affordability/payment;
-- read-only legacy compatibility providers where current authoritative state has not yet migrated;
+- read-only legacy compatibility providers where current authoritative state is not yet migrated;
 - differential evidence against representative legacy qualification behavior, including DNA resource predicates;
 - cumulative architecture closure preventing condition evaluation from acquiring mutation/payment authority.
 
@@ -366,9 +366,9 @@ Migrated exactly `production('oil_well')` through the M4 calculation pipeline wh
 
 M4E1 shared production runtime foundation - complete. It established the fixed shared production calculation composition root and froze the 44 top-level legacy production IDs as the migration ledger.
 
-M4E2 simple scalar production family - implementation and independent hardening complete; exact-head CI is the closure authority. It migrates the reviewed 27 simple scalar/variant/fact-fed production identities through the shared runtime, removes the redundant one-off Oil-Well runtime adapter, preserves the legacy `production()` compatibility surface, and adds differential proof through a real gas-mining fast-loop consumer. See [M4E_PRODUCTION_MIGRATION.md](M4E_PRODUCTION_MIGRATION.md).
+M4E2 simple scalar production family - complete after independent review and hardening. It migrates the reviewed 27 simple scalar/variant/fact-fed production identities through the shared runtime, removes the redundant one-off Oil-Well runtime adapter, preserves the legacy `production()` compatibility surface, adds differential proof through a real gas-mining fast-loop consumer, and is protected by the cumulative direct M4E2 architecture gate plus reverse gate-coverage ratchet. See [M4E_PRODUCTION_MIGRATION.md](M4E_PRODUCTION_MIGRATION.md).
 
-M4E3 explicit-state scalar family - next only after M4E2 exact-head CI closes.
+M4E3 explicit-state scalar family - next checkpoint; deep dive not yet started.
 
 M4E remains separately scoped. It must migrate additional production paths through bounded reviewed checkpoints, include related numerical composition embedded in `fastLoop()`, and must not treat M4D/M4E1/M4E2 as permission for arbitrary calculation consumers or M5-owned resource application.
 
@@ -395,7 +395,7 @@ M4C resource calculation primitives - complete
    |
 M4D first live production vertical - complete
    |
-M4E expand across prod.js - in progress (M4E1 complete; M4E2 hardened, exact-head closure CI pending; M4E3 next)
+M4E expand across prod.js - in progress (M4E1 complete; M4E2 complete; M4E3 next, not started)
 ```
 
 Do not jump directly to mod loading, total conversions, bulk content conversion, an unreviewed production migration, or later simulation work. The approved M4E deep dive governs the remaining bounded checkpoints; each checkpoint must preserve its reviewed scope and the full M4E slice still requires independent hardening and final CI proof before closure.
