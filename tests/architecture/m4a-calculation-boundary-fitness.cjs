@@ -10,6 +10,7 @@ const IDENTITY_FILE = 'src/engine/identity.mjs';
 const INERT_DATA_CONTRACT_FILE = 'src/engine/contracts/inert-data.mjs';
 const REVIEWED_PRODUCTION_CALCULATION_CONSUMERS = Object.freeze([
     'src/application/evolve/production-calculation-runtime.mjs',
+    'src/content/evolve/calculations/explicit-state-production.mjs',
     'src/content/evolve/calculations/oil-well-production.mjs',
     'src/content/evolve/calculations/simple-production.mjs',
 ]);
