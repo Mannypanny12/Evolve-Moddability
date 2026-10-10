@@ -5,11 +5,28 @@ const path = require('node:path');
 
 const ARCHITECTURE_COMMAND_PATTERN = /^node\s+tests\/architecture\/([A-Za-z0-9._-]+\.cjs)$/;
 const TEST_SUFFIX = '.test.cjs';
+const NON_CUMULATIVE_ARCHITECTURE_TARGETS = new Set([
+    'architecture-report.cjs',
+]);
 
 function splitCommandChain(script){
     if (typeof script !== 'string' || script.trim().length === 0) return null;
     const commands = script.split('&&').map(command => command.trim());
     return commands.length > 0 && commands.every(Boolean) ? commands : null;
+}
+
+function cumulativeArchitectureTargets(architectureRoot){
+    return fs.readdirSync(architectureRoot, { withFileTypes: true })
+        .filter(entry => entry.isFile())
+        .map(entry => entry.name)
+        .filter(filename => filename.endsWith('.cjs') && !filename.endsWith(TEST_SUFFIX))
+        .filter(filename => !NON_CUMULATIVE_ARCHITECTURE_TARGETS.has(filename))
+        .filter(filename => {
+            const wrapper = filename.replace(/\.cjs$/, TEST_SUFFIX);
+            const wrapperPath = path.join(architectureRoot, wrapper);
+            return fs.existsSync(wrapperPath) && fs.statSync(wrapperPath).isFile();
+        })
+        .sort();
 }
 
 function architectureTestCoverageViolations(root){
@@ -74,6 +91,12 @@ function architectureTestCoverageViolations(root){
         }
     }
 
+    for (const filename of cumulativeArchitectureTargets(architectureRoot)){
+        if (!targetCounts.has(filename)){
+            violations.push(`tests/architecture/${filename}: cumulative architecture gate with npm-test wrapper is missing from scripts.test:architecture`);
+        }
+    }
+
     return [...new Set(violations)].sort();
 }
 
@@ -91,7 +114,9 @@ function main(){
 
 module.exports = {
     ARCHITECTURE_COMMAND_PATTERN,
+    NON_CUMULATIVE_ARCHITECTURE_TARGETS,
     splitCommandChain,
+    cumulativeArchitectureTargets,
     architectureTestCoverageViolations,
 };
 
