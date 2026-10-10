@@ -7,6 +7,8 @@ const path = require('node:path');
 const test = require('node:test');
 const esbuild = require('esbuild');
 
+const fixtures = require('../fixtures/fixture-loader.cjs');
+
 const root = path.resolve(__dirname, '../..');
 const shimPath = path.join(root, 'tests/legacy/browser-shim.cjs');
 
@@ -84,7 +86,7 @@ function buildProductionHarness(){
     };
 }
 
-test('M4E3 production seam preserves the reviewed explicit-state legacy matrix', () => {
+test('M4E3 production seam preserves the reviewed explicit-state legacy matrix and a real fast-loop consumer', async () => {
     const harness = buildProductionHarness();
     const { api } = harness;
     const legacy = api.legacy;
@@ -181,6 +183,50 @@ test('M4E3 production seam preserves the reviewed explicit-state legacy matrix',
         state.eden.corruptor = { count: 5, on: 5 };
         api.setPowered('corruptor', 5);
         assert.equal(api.productionValue('asphodel_harvester'), 1 + 5 * 0.06);
+
+        const definition = fixtures.loadFixtureById('truepath-tauceti-human');
+        const persisted = fixtures.materializePersistedFixture(definition, legacy);
+        persisted.tech = persisted.tech || {};
+        persisted.tauceti = persisted.tauceti || {};
+        persisted.tech.tau_roid = Math.max(persisted.tech.tau_roid || 0, 4);
+        persisted.tech.tau_ore_mining = 1;
+        persisted.tauceti.mining_ship = {
+            ...(persisted.tauceti.mining_ship || {}),
+            count: 3,
+            on: 3,
+        };
+        persisted.tauceti.patrol_ship = {
+            ...(persisted.tauceti.patrol_ship || {}),
+            count: 5,
+            on: 5,
+        };
+        persisted.tauceti.ore_refinery = {
+            ...(persisted.tauceti.ore_refinery || {}),
+            count: 1,
+            on: 0,
+            fill: 0,
+            max: 1000,
+        };
+
+        legacy.installLegacyState(persisted);
+        await legacy.hydrateSimulationState();
+        const runtime = legacy.legacyState();
+        runtime.tauceti.ore_refinery.fill = 0;
+        runtime.tauceti.ore_refinery.on = 0;
+        runtime.tech.tau_ore_mining = 1;
+
+        await legacy.runGameLoops(1);
+        const transient = legacy.transientSimulationState();
+        const miningSupport = transient.support_on.mining_ship || 0;
+        assert.ok(miningSupport > 0, `real Tau support allocation did not keep a mining ship online: ${JSON.stringify(transient.support_on)}`);
+        assert.ok(Number.isFinite(runtime.tauceti.patrol_ship.support));
+        assert.ok(Number.isFinite(runtime.tauceti.patrol_ship.s_max));
+        const miningRate = api.productionValue('mining_ship');
+        assert.equal(
+            runtime.tauceti.ore_refinery.fill,
+            miningSupport * miningRate * 0.25,
+            'real fastLoop mining-ship consumer must add the migrated rate to refinery fill'
+        );
     }
     catch (error){
         throw new Error(harness.diagnoseBundledError(error));
