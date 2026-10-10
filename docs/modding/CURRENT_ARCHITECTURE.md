@@ -84,7 +84,7 @@ Read these for the underlying safety contracts:
 - `BROWSER_SMOKE.md` for real-browser startup and interaction smoke coverage.
 - `TEST_STRATEGY.md` for the complete regression strategy.
 
-The full Node suite recursively discovers every `*.test.cjs` file. Architecture gates then run as a cumulative explicit command chain in CI. The repository-wide architecture-test coverage gate requires every direct command in that chain to exist exactly once and to have an independently discovered same-name `*.test.cjs` wrapper. M3G additionally self-audits the direct M3 gate inventory so M3-specific gates cannot silently fall out of its milestone closure.
+The full Node suite recursively discovers every `*.test.cjs` file. Architecture gates then run as a cumulative explicit command chain in CI. The repository-wide architecture-test coverage gate requires every direct command in that chain to exist exactly once and to have an independently discovered same-name `*.test.cjs` wrapper. It also reverse-checks that every executable architecture gate with such a wrapper appears in the cumulative command, except explicitly reviewed non-cumulative tooling such as `architecture-report.cjs`. M3G additionally self-audits the direct M3 gate inventory so M3-specific gates cannot silently fall out of its milestone closure.
 
 ## M1 authority: engine kernel
 
@@ -210,7 +210,7 @@ Current M4 laws:
 - M4E2 differential coverage includes a real gas-mining fast-loop consumer whose powered collector count is produced by the legacy power allocator rather than injected as transient test state;
 - downstream resource application and non-migrated M4E3/M4E4 production families remain legacy until their reviewed checkpoints.
 
-The M4A boundary/status guards, M4B modifier/status guards, M4C resource/status guards, M4D production/status guards, M4E1 production-runtime guard and M4E2 simple-production cutover guard are cumulative members of `npm run test:architecture`. M4A-M4D retain their historical closure facts; the M4E production-runtime/status guard and M4E2 cutover guard own the current production-composition, migration and status ratchets.
+The M4A boundary/status guards, M4B modifier/status guards, M4C resource/status guards, M4D production/status guards, M4E1 production-runtime guard and M4E2 simple-production cutover guard are cumulative members of `npm run test:architecture`. M4A-M4D retain their historical closure facts; the M4E production-runtime/status guard and M4E2 cutover guard own the current production-composition, migration and status ratchets. The repository-wide reverse gate-coverage audit now prevents executable architecture gates with wrappers from silently falling out of that cumulative command.
 
 ## Architecture inspector
 
@@ -263,8 +263,8 @@ M4E is in progress: **Expand across `prod.js`**.
 
 M4E1 is complete: the shared production composition root and frozen production migration inventory are established.
 
-M4E2 has completed implementation and independent hardening: **Simple scalar production family**. Exact-head CI is the closure authority for the hardening head.
+M4E2 is complete after independent review and hardening: **Simple scalar production family**. Its direct architecture gate is cumulative and its closure wiring is protected by the reverse executable-gate coverage ratchet.
 
-M4E3 is next only after M4E2 closes: **Explicit-state scalar production family**.
+M4E3 is next but has not started: **Explicit-state scalar production family**. It must begin with its own deep dive before implementation.
 
 M4E must continue through separately reviewed bounded production checkpoints and must include related calculations embedded in `fastLoop()` before M4 can exit. M4E2 does not pre-authorize broader production consumers, downstream resource mutation, or later M5 simulation/application authority.
