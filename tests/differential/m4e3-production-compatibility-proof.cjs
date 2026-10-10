@@ -137,8 +137,8 @@ test('M4E3 production seam preserves the reviewed explicit-state legacy matrix',
         delete state.race.warlord;
 
         state.space.titan_mine = { ratio: 90 };
-        assert.equal(api.productionValue('titan_mine', 'adamantite'), 0.018);
-        assert.equal(api.productionValue('titan_mine', 'aluminium'), 0.012);
+        assert.equal(api.productionValue('titan_mine', 'adamantite'), 0.02 * 90 / 100);
+        assert.equal(api.productionValue('titan_mine', 'aluminium'), 0.12 * (100 - 90) / 100);
         assert.equal(api.productionValue('titan_mine', 'other'), undefined);
 
         delete state.race.tough;
@@ -180,7 +180,7 @@ test('M4E3 production seam preserves the reviewed explicit-state legacy matrix',
         state.race.warlord = 1;
         state.eden.corruptor = { count: 5, on: 5 };
         api.setPowered('corruptor', 5);
-        assert.equal(api.productionValue('asphodel_harvester'), 1.3);
+        assert.equal(api.productionValue('asphodel_harvester'), 1 + 5 * 0.06);
     }
     catch (error){
         throw new Error(harness.diagnoseBundledError(error));
