@@ -293,7 +293,7 @@ Adds the frozen `createWorkQueueSelector()` readiness/selection boundary with tr
 
 Closes M3E with executable legacy build/research queue evidence, a zero-execution `prepare -> WorkItem -> WorkQueue -> selection` integration proof, and a cumulative architecture gate that pins the four-file generic queue package, keeps it first-party-neutral, and prevents any production consumer before reviewed cutover. Command-specific admission, execution progress, reconciliation, prediction, scheduling and persistence remain deferred to their owning later milestones. See `M3E4_QUEUE_CLOSURE.md`.
 
-M3E is closed without modifying vanilla build/research gameplay. M3F and M3G are closed; M4A through M4D are complete, and M4E is in progress with M4E1 and M4E2 complete and M4E3 next but not started.
+M3E is closed without modifying vanilla build/research gameplay. M3F and M3G are closed; M4A through M4D are complete, and M4E is in progress with M4E1 through M4E3 complete and M4E4 next but not started.
 
 ### M3F First real vanilla cutover - complete
 
@@ -386,9 +386,11 @@ M4E1 is complete: the fixed shared production calculation composition root and f
 
 M4E2 simple scalar production family is complete after independent review and hardening. It migrates the reviewed 27 simple scalar/variant/fact-fed production identities through the shared runtime, removes the redundant one-off Oil-Well runtime adapter, preserves the legacy `production()` compatibility surface, proves a real gas-mining `fastLoop()` consumer through coherent legacy power allocation, and is protected by the direct cumulative M4E2 architecture gate plus reverse executable-gate coverage.
 
-M4E3 explicit-state scalar family is the next checkpoint. Its deep dive has not started.
+M4E3 explicit-state scalar production family is complete after independent review and hardening. It migrates the reviewed ten state-fed scalar identities through the same shared runtime, preserves exact legacy branching and floating-operation order, keeps Hell suppression resolution on the legacy compatibility side, and proves the real Tau mining-ship `fastLoop()` consumer with support derived by the legacy allocator.
 
-Important: completion requires migrating related calculations currently embedded in `fastLoop()`, not merely emptying `prod.js`.
+M4E4 compound/mixed/shared production family is the next checkpoint and has not started.
+
+Important: completion of M4E still requires migrating related calculations currently embedded in `fastLoop()`, not merely emptying `prod.js`.
 
 Exit: a meaningful set of vanilla resource calculations is explainable and no longer depends on the legacy production switch.
 

@@ -269,9 +269,9 @@ Established the reusable condition layer and closed it against legacy drift:
 - inert, canonical, deeply frozen condition data with hostile-input hardening;
 - reusable technology, resource, structure and trait predicates;
 - explicit separation between availability/execution conditions and affordability/payment;
-- read-only legacy compatibility providers where current authoritative state is not yet migrated;
-- differential evidence against representative legacy qualification behavior, including DNA resource predicates;
-- cumulative architecture closure preventing condition evaluation from acquiring mutation/payment authority.
+- read-only legacy compatibility providers where authoritative state is not yet migrated;
+- differential evidence against representative legacy qualification behavior, including DNA resource qualification;
+- cumulative architecture closure preventing conditions from acquiring mutation/payment authority.
 
 M3B does not cut over vanilla actions and does not own payment semantics.
 
@@ -368,9 +368,11 @@ M4E1 shared production runtime foundation - complete. It established the fixed s
 
 M4E2 simple scalar production family - complete after independent review and hardening. It migrates the reviewed 27 simple scalar/variant/fact-fed production identities through the shared runtime, removes the redundant one-off Oil-Well runtime adapter, preserves the legacy `production()` compatibility surface, adds differential proof through a real gas-mining fast-loop consumer, and is protected by the cumulative direct M4E2 architecture gate plus reverse gate-coverage ratchet. See [M4E_PRODUCTION_MIGRATION.md](M4E_PRODUCTION_MIGRATION.md).
 
-M4E3 explicit-state scalar family - next checkpoint; deep dive not yet started.
+M4E3 explicit-state scalar family - complete after independent review and hardening. It migrates the reviewed ten state-fed scalar identities through the same shared runtime, keeps Hell suppression resolution on the legacy compatibility side, and adds a real Truepath/Tau mining-ship `fastLoop()` consumer proof with support derived by the legacy allocator. See [M4E_PRODUCTION_MIGRATION.md](M4E_PRODUCTION_MIGRATION.md).
 
-M4E remains separately scoped. It must migrate additional production paths through bounded reviewed checkpoints, include related numerical composition embedded in `fastLoop()`, and must not treat M4D/M4E1/M4E2 as permission for arbitrary calculation consumers or M5-owned resource application.
+M4E4 compound/mixed/shared production family is the next checkpoint and has not started.
+
+M4E remains separately scoped. It must migrate additional production paths through bounded reviewed checkpoints, include related numerical composition embedded in `fastLoop()`, and must not treat completed M4E checkpoints as permission for arbitrary calculation consumers or M5-owned resource application.
 
 ## Immediate sequence
 
@@ -395,7 +397,7 @@ M4C resource calculation primitives - complete
    |
 M4D first live production vertical - complete
    |
-M4E expand across prod.js - in progress (M4E1 complete; M4E2 complete; M4E3 next, not started)
+M4E expand across prod.js - in progress (M4E1-M4E3 complete; M4E4 next, not started)
 ```
 
 Do not jump directly to mod loading, total conversions, bulk content conversion, an unreviewed production migration, or later simulation work. The approved M4E deep dive governs the remaining bounded checkpoints; each checkpoint must preserve its reviewed scope and the full M4E slice still requires independent hardening and final CI proof before closure.
