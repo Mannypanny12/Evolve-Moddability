@@ -213,13 +213,15 @@ function findViolations(root){
     if (fs.existsSync(manifestPath)){
         const manifest = fs.readFileSync(manifestPath, 'utf8');
         for (const marker of [
-            'Status: M4E2 complete after independent review and hardening; final exact-head CI is the closure authority. M4E remains in progress.',
+            'Status: M4E3 complete after independent review and hardening; final exact-head CI is the closure authority. M4E remains in progress.',
             '## M4E1 review and hardening',
             '## M4E2 review and hardening',
+            '## M4E3 review and hardening',
             '**Closure-proof wiring.**',
-            'M4E2 is complete after independent review and hardening. M4E remains in progress. M4E3 explicit-state scalar family is the next checkpoint and has not started; it must begin with its own deep dive before implementation.',
+            'M4E3 is complete after independent review and hardening. M4E remains in progress. M4E4 compound/mixed/shared production family is the next checkpoint and has not started; it must begin with its own deep dive before implementation.',
             '`evolve:calculation/production/<production-source>`',
             'The redundant one-off Oil-Well runtime adapter is removed in M4E2.',
+            '...createExplicitStateProductionRegistrations()',
         ]){
             if (!manifest.includes(marker)) violations.push(`${MANIFEST}: reviewed M4E marker is missing: ${marker}`);
         }
