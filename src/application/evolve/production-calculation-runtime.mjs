@@ -4,11 +4,13 @@ import {
     createOilWellProductionRegistration,
 } from '../../content/evolve/calculations/oil-well-production.mjs';
 import { createSimpleProductionRegistrations } from '../../content/evolve/calculations/simple-production.mjs';
+import { createExplicitStateProductionRegistrations } from '../../content/evolve/calculations/explicit-state-production.mjs';
 
 const productionCalculationEngine = createCalculationEngine({
     registrations: [
         createOilWellProductionRegistration(),
         ...createSimpleProductionRegistrations(),
+        ...createExplicitStateProductionRegistrations(),
     ],
     modifiers: [
         ...createOilWellProductionModifiers(),

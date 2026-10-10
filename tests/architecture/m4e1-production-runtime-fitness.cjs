@@ -14,6 +14,7 @@ const {
 
 const SHARED_RUNTIME = 'src/application/evolve/production-calculation-runtime.mjs';
 const SIMPLE_PRODUCTION_CONTENT = 'src/content/evolve/calculations/simple-production.mjs';
+const EXPLICIT_STATE_PRODUCTION_CONTENT = 'src/content/evolve/calculations/explicit-state-production.mjs';
 const MANIFEST = 'docs/modding/M4E_PRODUCTION_MIGRATION.md';
 const SOURCE_EXTENSIONS = new Set(['.js', '.mjs', '.cjs']);
 const REVIEWED_SHARED_RUNTIME_CONSUMERS = Object.freeze([
@@ -23,6 +24,7 @@ const ALLOWED_RUNTIME_IMPORTS = new Set([
     'src/engine/calculations/calculation-engine.mjs',
     CONTENT,
     SIMPLE_PRODUCTION_CONTENT,
+    EXPLICIT_STATE_PRODUCTION_CONTENT,
 ]);
 const PRODUCTION_IDS = Object.freeze([
     'transmitter',
@@ -147,6 +149,7 @@ function analyzeSharedRuntimeSource(source){
     for (const marker of [
         'createOilWellProductionRegistration()',
         '...createSimpleProductionRegistrations()',
+        '...createExplicitStateProductionRegistrations()',
         '...createOilWellProductionModifiers()',
         'registrations: [',
         'modifiers: [',

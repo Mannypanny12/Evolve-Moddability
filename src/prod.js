@@ -3,12 +3,21 @@ import { biomes, traits, fathomCheck } from './races.js';
 import { govRelationFactor, govEffect } from './civics.js';
 import { jobScale, teamsterCap } from './jobs.js';
 import { hellSupression } from './portal.js';
-import { flib } from './functions.js';
 import { govActive } from './governor.js';
 import { hasLegacyAchievement, legacyAchievementRank } from './legacy/bridge/achievement-state-reader.mjs';
 import { calculateProductionCalculation } from './application/evolve/production-calculation-runtime.mjs';
 import { OIL_WELL_PRODUCTION_CALCULATION_ID } from './content/evolve/calculations/oil-well-production.mjs';
 import { SIMPLE_PRODUCTION_CALCULATION_IDS } from './content/evolve/calculations/simple-production.mjs';
+import { EXPLICIT_STATE_PRODUCTION_CALCULATION_IDS } from './content/evolve/calculations/explicit-state-production.mjs';
+
+const MINING_PIT_VARIANTS = new Set([
+    'materials', 'bolognium', 'stone', 'adamantite', 'copper',
+    'coal', 'iron', 'aluminium', 'chrysotile',
+]);
+const WOMLING_MINE_VARIANTS = new Set([
+    'unobtainium', 'uranium', 'titanium', 'copper',
+    'iron', 'aluminium', 'neutronium', 'iridium',
+]);
 
 export function highPopAdjust(v){
     if (global.race['high_pop']){
@@ -30,6 +39,13 @@ export function teamster(v){
 function simpleProduction(id, inputs = {}){
     return calculateProductionCalculation({
         id: SIMPLE_PRODUCTION_CALCULATION_IDS[id],
+        inputs,
+    });
+}
+
+function explicitStateProduction(id, inputs){
+    return calculateProductionCalculation({
+        id: EXPLICIT_STATE_PRODUCTION_CALCULATION_IDS[id],
         inputs,
     });
 }
@@ -128,14 +144,19 @@ export function production(id,val,wiki){
         }
         case 'biodome':
         {
-            switch (val){
-                case 'food':
-                    return highPopAdjust(global.race.universe === 'evil' ? 0.1 : 0.25);
-                case 'cat_food':
-                    return 2;
-                case 'lumber':
-                    return highPopAdjust(1.5);
+            if (val !== 'food' && val !== 'cat_food' && val !== 'lumber') return;
+            let evilUniverse = false;
+            let highPopMultiplier = 1;
+            if (val === 'food'){
+                evilUniverse = global.race.universe === 'evil';
+                if (global.race['high_pop']){
+                    highPopMultiplier = traits.high_pop.vars()[1] / 100;
+                }
             }
+            else if (val === 'lumber' && global.race['high_pop']){
+                highPopMultiplier = traits.high_pop.vars()[1] / 100;
+            }
+            return explicitStateProduction('biodome', { variant: val, evilUniverse, highPopMultiplier });
         }
         case 'gas_mining':
         {
@@ -177,22 +198,27 @@ export function production(id,val,wiki){
         }
         case 'g_factory':
         {
-            if (global.race['truepath']){
-                if (global.tech['isolation']){
-                    return 1.8;
+            const truepath = Boolean(global.race['truepath']);
+            const isolation = truepath ? Boolean(global.tech['isolation']) : false;
+            let titanColonistWorkers = 0;
+            let aiColonistContribution = 0;
+            let highPopProductionMultiplier = 1;
+            if (truepath && !isolation){
+                titanColonistWorkers = global.civic.titan_colonist.workers;
+                if (p_on['ai_colonist']){
+                    aiColonistContribution = jobScale(p_on['ai_colonist']);
                 }
-                else {
-                    let titan_colonists = p_on['ai_colonist'] ? global.civic.titan_colonist.workers + jobScale(p_on['ai_colonist']) : global.civic.titan_colonist.workers;
-                    let gain = 0.05 * titan_colonists;
-                    if (global.race['high_pop']){
-                        gain = highPopAdjust(gain);
-                    }
-                    return gain;
+                if (global.race['high_pop']){
+                    highPopProductionMultiplier = traits.high_pop.vars()[1] / 100;
                 }
             }
-            else {
-                return 0.6;
-            }
+            return explicitStateProduction('g_factory', {
+                truepath,
+                isolation,
+                titanColonistWorkers,
+                aiColonistContribution,
+                highPopProductionMultiplier,
+            });
         }
         case 'harvester':
         {
@@ -217,19 +243,16 @@ export function production(id,val,wiki){
         }
         case 'vitreloy_plant':
         {
-            let vitreloy = 0.18;
-            if (global.civic.govern.type === 'corpocracy'){
-                vitreloy *= global.tech['high_tech'] && global.tech['high_tech'] >= 16 ? 1.4 : 1.3;
-            }
-            if (global.civic.govern.type === 'socialist'){
-                vitreloy *= 1.1;
-            }
-            return vitreloy;
+            const governmentType = global.civic.govern.type === 'corpocracy'
+                ? 'corpocracy'
+                : global.civic.govern.type === 'socialist' ? 'socialist' : 'other';
+            const highTechLevel = governmentType === 'corpocracy' ? (global.tech['high_tech'] || 0) : 0;
+            return explicitStateProduction('vitreloy_plant', { governmentType, highTechLevel });
         }
         case 'infernite_mine':
         {
-            let sup = hellSupression('gate', 0, wiki);
-            return 0.5 * sup.supress;
+            const suppression = hellSupression('gate', 0, wiki).supress;
+            return explicitStateProduction('infernite_mine', { suppression });
         }
         case 'water_freighter':
         {
@@ -237,18 +260,16 @@ export function production(id,val,wiki){
         }
         case 'titan_mine':
         {
-            switch (val){
-                case 'adamantite':
-                {
-                    let base = highPopAdjust(0.02);
-                    return base * (global.space['titan_mine'] ? global.space.titan_mine.ratio : 50) / 100;
-                }
-                case 'aluminium':
-                {
-                    let base = highPopAdjust(0.12);
-                    return base * (100 - (global.space['titan_mine'] ? global.space.titan_mine.ratio : 50)) / 100;
-                }
+            if (val !== 'adamantite' && val !== 'aluminium') return;
+            let highPopMultiplier = 1;
+            if (global.race['high_pop']){
+                highPopMultiplier = traits.high_pop.vars()[1] / 100;
             }
+            return explicitStateProduction('titan_mine', {
+                variant: val,
+                ratio: global.space['titan_mine'] ? global.space.titan_mine.ratio : 50,
+                highPopMultiplier,
+            });
         }
         case 'lander':
         {
@@ -280,65 +301,15 @@ export function production(id,val,wiki){
         }
         case 'mining_pit':
         {
-            let mats = 0;
-            switch (val){
-                case 'materials':
-                {
-                    mats = global.tech['isolation'] ? 0.12 : 0.09;
-                    break;
-                }
-                case 'bolognium':
-                {
-                    mats = global.tech['isolation'] ? 0.0288 : 0.0216;
-                    break;
-                }
-                case 'stone':
-                {
-                    mats = global.tech['isolation'] ? 0.8 : 0.6;
-                    break;
-                }
-                case 'adamantite':
-                {
-                    mats = global.tech['isolation'] ? 0.448 : 0.336;
-                    break;
-                }
-                case 'copper':
-                {
-                    mats = 0.58;
-                    break;
-                }
-                case 'coal':
-                {
-                    mats = 0.13;
-                    break;
-                }
-                case 'iron':
-                {
-                    mats = 0.74;
-                    break;
-                }
-                case 'aluminium':
-                {
-                    mats = 0.88;
-                    break;
-                }
-                case 'chrysotile':
-                {
-                    mats = 1.44;
-                    break;
-                }
-            }
-            if (global.race['tough']){
-                mats *= 1 + (traits.tough.vars()[0] / 100);
-            }
-            let fathom = fathomCheck('ogre');
-            if (fathom > 0){
-                mats *= 1 + (traits.tough.vars(1)[0] / 100 * fathom);
-            }
-            if (global.tech['tau_pit_mining']){
-                mats *= 1.18;
-            }
-            return mats;
+            const ogreFathom = fathomCheck('ogre');
+            return explicitStateProduction('mining_pit', {
+                variant: MINING_PIT_VARIANTS.has(val) ? val : 'other',
+                isolation: Boolean(global.tech['isolation']),
+                toughPercent: global.race['tough'] ? traits.tough.vars()[0] : 0,
+                ogreFathom,
+                fathomedToughPercent: ogreFathom > 0 ? traits.tough.vars(1)[0] : 0,
+                tauPitMining: Boolean(global.tech['tau_pit_mining']),
+            });
         }
         case 'tau_farm':
         {
@@ -347,51 +318,13 @@ export function production(id,val,wiki){
         }
         case 'womling_mine':
         {
-            let boost = 1;
-            if (global.tech['womling_mining']){
-                boost += global.tech.womling_mining * 0.15;
-            }
-            if (hasLegacyAchievement('overlord') && legacyAchievementRank('overlord') >= 5){
-                boost *= 1.1;
-            }
-            if (global.tech['womling_gene']){
-                boost *= 1.25;
-            }
-
-            switch (val){
-                case 'unobtainium':
-                {
-                    return 0.0305 * boost;
-                }
-                case 'uranium':
-                {
-                    return 0.047 * boost;
-                }
-                case 'titanium':
-                {
-                    return 0.616 * boost;
-                }
-                case 'copper':
-                {
-                    return 1.191 * boost;
-                }
-                case 'iron':
-                {
-                    return 1.377 * boost;
-                }
-                case 'aluminium':
-                {
-                    return 1.544 * boost;
-                }
-                case 'neutronium':
-                {
-                    return 0.382 * boost;
-                }
-                case 'iridium':
-                {
-                    return 0.535 * boost;
-                }
-            }
+            const inputs = {
+                womlingMiningLevel: global.tech['womling_mining'] || 0,
+                overlordRankFive: hasLegacyAchievement('overlord') && legacyAchievementRank('overlord') >= 5,
+                womlingGene: Boolean(global.tech['womling_gene']),
+            };
+            if (!WOMLING_MINE_VARIANTS.has(val)) return;
+            return explicitStateProduction('womling_mine', { variant: val, ...inputs });
         }
         case 'refueling_station':
         {
@@ -407,14 +340,13 @@ export function production(id,val,wiki){
         }
         case 'mining_ship':
         {
-            if (global.tauceti['patrol_ship']){
-                let patrol = 1;
-                if (global.tauceti.patrol_ship.support > global.tauceti.patrol_ship.s_max){
-                    patrol = flib('curve',global.tauceti.patrol_ship.s_max / global.tauceti.patrol_ship.support,1.4);
-                }
-                return (global.tech['tau_ore_mining'] && global.tech.tau_ore_mining >= 2 ? 12 : 10) * patrol;
-            }
-            return 0;
+            const patrolExists = Boolean(global.tauceti['patrol_ship']);
+            return explicitStateProduction('mining_ship', {
+                patrolExists,
+                support: patrolExists ? global.tauceti.patrol_ship.support : 0,
+                maxSupport: patrolExists ? global.tauceti.patrol_ship.s_max : 0,
+                tauOreMiningLevel: patrolExists ? (global.tech['tau_ore_mining'] || 0) : 0,
+            });
         }
         case 'mining_ship_ore':
         {
@@ -423,14 +355,12 @@ export function production(id,val,wiki){
         }
         case 'whaling_ship':
         {
-            if (global.tauceti['patrol_ship']){
-                let patrol = 1;
-                if (global.tauceti.patrol_ship.support > global.tauceti.patrol_ship.s_max){
-                    patrol = flib('curve',global.tauceti.patrol_ship.s_max / global.tauceti.patrol_ship.support,1.4);
-                }
-                return 8 * patrol;
-            }
-            return 0;
+            const patrolExists = Boolean(global.tauceti['patrol_ship']);
+            return explicitStateProduction('whaling_ship', {
+                patrolExists,
+                support: patrolExists ? global.tauceti.patrol_ship.support : 0,
+                maxSupport: patrolExists ? global.tauceti.patrol_ship.s_max : 0,
+            });
         }
         case 'whaling_ship_oil':
         {
@@ -472,14 +402,17 @@ export function production(id,val,wiki){
         }
         case 'asphodel_harvester':
         {
-            let base = 0.075;
-            if (global.tech['hell_lake'] && global.tech.hell_lake >= 7 && global.tech['railway']){
-                base *= 1 + (global.tech.railway / 100);
-            }
-            if (global.race['warlord'] && global.eden['corruptor']){
-                base = 1 + (p_on['corruptor'] || 0) * 0.06;
-            }
-            return base;
+            const hellLakeLevel = global.tech['hell_lake'] || 0;
+            const railwayLevel = hellLakeLevel >= 7 ? (global.tech['railway'] || 0) : 0;
+            const warlord = Boolean(global.race['warlord']);
+            const corruptorExists = warlord ? Boolean(global.eden['corruptor']) : false;
+            return explicitStateProduction('asphodel_harvester', {
+                hellLakeLevel,
+                railwayLevel,
+                warlord,
+                corruptorExists,
+                corruptorOn: warlord && corruptorExists ? (p_on['corruptor'] || 0) : 0,
+            });
         }
         case 'shadow_mine':
         {
