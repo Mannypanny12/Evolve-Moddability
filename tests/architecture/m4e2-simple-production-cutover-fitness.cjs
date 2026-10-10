@@ -72,12 +72,14 @@ function analyzeHelper(source){
     }
 
     const helperStart = source.indexOf('function simpleProduction(id, inputs = {}){');
+    const nextHelperStart = source.indexOf('function explicitStateProduction(id, inputs){', helperStart + 1);
     const productionStart = source.indexOf('export function production', helperStart + 1);
     if (helperStart < 0 || productionStart < 0){
         violations.push(`${PROD}: M4E2 compatibility helper simpleProduction(id, inputs) is missing`);
         return violations;
     }
-    const helper = source.slice(helperStart, productionStart);
+    const helperEnd = nextHelperStart >= 0 && nextHelperStart < productionStart ? nextHelperStart : productionStart;
+    const helper = source.slice(helperStart, helperEnd);
     const helperCode = maskNonCode(helper);
     if ((helperCode.match(/\bcalculateProductionCalculation\s*\(/g) || []).length !== 1){
         violations.push(`${PROD}: simpleProduction() must delegate exactly once to the shared production runtime`);
