@@ -54,7 +54,7 @@ test('architecture coverage audit rejects missing wrappers, duplicates, stale ga
     }
 });
 
-test('architecture coverage audit treats every gate-wrapper pair as cumulative unless it is explicitly exempted', () => {
+test('architecture coverage audit rejects omitted executable gates while preserving tested support modules', () => {
     const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'architecture-test-reverse-coverage-'));
     try {
         write(temp, 'tests/architecture/alpha.cjs', executableGate);
@@ -63,7 +63,6 @@ test('architecture coverage audit treats every gate-wrapper pair as cumulative u
         write(temp, 'tests/architecture/omitted.test.cjs', "'use strict';\n");
         write(temp, 'tests/architecture/catalog.cjs', "'use strict';\nmodule.exports = { value: 1 };\n");
         write(temp, 'tests/architecture/catalog.test.cjs', "'use strict';\n");
-        write(temp, 'tests/architecture/no-wrapper-catalog.cjs', "'use strict';\nmodule.exports = { value: 1 };\n");
         write(temp, 'tests/architecture/architecture-report.cjs', executableGate);
         write(temp, 'tests/architecture/architecture-report.test.cjs', "'use strict';\n");
         write(temp, 'package.json', JSON.stringify({
@@ -75,17 +74,9 @@ test('architecture coverage audit treats every gate-wrapper pair as cumulative u
         const violations = architectureTestCoverageViolations(temp).join('\n');
         assert.match(
             violations,
-            /omitted\.cjs: architecture gate with npm-test wrapper is missing from scripts\.test:architecture/
+            /omitted\.cjs: executable architecture gate with npm-test wrapper is missing from scripts\.test:architecture/
         );
-        assert.match(
-            violations,
-            /catalog\.cjs: gate-wrapper pair must use the canonical if \(require\.main === module\) direct-entrypoint convention/
-        );
-        assert.match(
-            violations,
-            /catalog\.cjs: architecture gate with npm-test wrapper is missing from scripts\.test:architecture/
-        );
-        assert.doesNotMatch(violations, /no-wrapper-catalog\.cjs/);
+        assert.doesNotMatch(violations, /catalog\.cjs/);
         assert.doesNotMatch(violations, /architecture-report\.cjs/);
     }
     finally {
@@ -116,7 +107,7 @@ test('architecture coverage audit rejects executable gates that try to exist wit
     }
 });
 
-test('architecture coverage audit rejects alternate direct-entrypoint spellings even without a wrapper', () => {
+test('architecture coverage audit rejects alternate require.main spellings with or without a wrapper', () => {
     const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'architecture-test-entrypoint-convention-'));
     try {
         write(temp, 'tests/architecture/alpha.cjs', executableGate);
@@ -124,6 +115,12 @@ test('architecture coverage audit rejects alternate direct-entrypoint spellings 
         write(
             temp,
             'tests/architecture/noncanonical.cjs',
+            "'use strict';\nfunction main(){}\nif (module === require.main) main();\n"
+        );
+        write(temp, 'tests/architecture/noncanonical.test.cjs', "'use strict';\n");
+        write(
+            temp,
+            'tests/architecture/noncanonical-no-wrapper.cjs',
             "'use strict';\nfunction main(){}\nif (module === require.main) main();\n"
         );
         write(temp, 'package.json', JSON.stringify({
@@ -139,7 +136,15 @@ test('architecture coverage audit rejects alternate direct-entrypoint spellings 
         );
         assert.match(
             violations,
-            /noncanonical\.cjs: executable architecture gate is missing same-name npm-test wrapper noncanonical\.test\.cjs/
+            /noncanonical\.cjs: executable architecture gate with npm-test wrapper is missing from scripts\.test:architecture/
+        );
+        assert.match(
+            violations,
+            /noncanonical-no-wrapper\.cjs: architecture gate must use the canonical if \(require\.main === module\) direct-entrypoint convention/
+        );
+        assert.match(
+            violations,
+            /noncanonical-no-wrapper\.cjs: executable architecture gate is missing same-name npm-test wrapper noncanonical-no-wrapper\.test\.cjs/
         );
     }
     finally {

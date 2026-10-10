@@ -40,9 +40,31 @@ function wrapperPathFor(architectureRoot, filename){
     return path.join(architectureRoot, filename.replace(/\.cjs$/, TEST_SUFFIX));
 }
 
+function sourceDirectGateInfo(architectureRoot, filename){
+    const gatePath = path.join(architectureRoot, filename);
+    const gateStat = lstatOrNull(gatePath);
+    if (gateStat === null || !gateStat.isFile()){
+        return {
+            gateStat,
+            source: '',
+            referencesDirectEntrypoint: false,
+            hasCanonicalEntrypoint: false,
+        };
+    }
+    const source = fs.readFileSync(gatePath, 'utf8');
+    return {
+        gateStat,
+        source,
+        referencesDirectEntrypoint: DIRECT_GATE_REFERENCE_PATTERN.test(source),
+        hasCanonicalEntrypoint: DIRECT_GATE_ENTRYPOINT_PATTERN.test(source),
+    };
+}
+
 function cumulativeArchitectureTargets(architectureRoot){
     return architectureSourceNames(architectureRoot)
         .filter(filename => {
+            const info = sourceDirectGateInfo(architectureRoot, filename);
+            if (!info.referencesDirectEntrypoint) return false;
             const wrapperStat = lstatOrNull(wrapperPathFor(architectureRoot, filename));
             return wrapperStat !== null && (wrapperStat.isFile() || wrapperStat.isSymbolicLink());
         })
@@ -76,32 +98,25 @@ function architectureTestCoverageViolations(root){
 
     const cumulativeTargets = cumulativeArchitectureTargets(architectureRoot);
     for (const filename of architectureSourceNames(architectureRoot)){
-        const gatePath = path.join(architectureRoot, filename);
-        const gateStat = lstatOrNull(gatePath);
+        const info = sourceDirectGateInfo(architectureRoot, filename);
         const wrapperPath = wrapperPathFor(architectureRoot, filename);
         const wrapperStat = lstatOrNull(wrapperPath);
         const hasWrapper = wrapperStat !== null && (wrapperStat.isFile() || wrapperStat.isSymbolicLink());
 
-        if (gateStat?.isSymbolicLink()){
+        if (info.gateStat?.isSymbolicLink()){
             violations.push(`tests/architecture/${filename}: architecture source may not be a symbolic link`);
+            continue;
         }
-        if (wrapperStat?.isSymbolicLink()){
-            violations.push(`tests/architecture/${path.basename(wrapperPath)}: npm-test wrapper may not be a symbolic link`);
-        }
+        if (!info.referencesDirectEntrypoint) continue;
 
-        let source = '';
-        if (gateStat?.isFile()) source = fs.readFileSync(gatePath, 'utf8');
-        const referencesDirectEntrypoint = DIRECT_GATE_REFERENCE_PATTERN.test(source);
-        const hasCanonicalEntrypoint = DIRECT_GATE_ENTRYPOINT_PATTERN.test(source);
-
-        if (referencesDirectEntrypoint && !hasCanonicalEntrypoint){
+        if (!info.hasCanonicalEntrypoint){
             violations.push(`tests/architecture/${filename}: architecture gate must use the canonical if (require.main === module) direct-entrypoint convention`);
         }
-        if (hasWrapper && !hasCanonicalEntrypoint){
-            violations.push(`tests/architecture/${filename}: gate-wrapper pair must use the canonical if (require.main === module) direct-entrypoint convention`);
-        }
-        if ((referencesDirectEntrypoint || hasCanonicalEntrypoint) && !hasWrapper){
+        if (!hasWrapper){
             violations.push(`tests/architecture/${filename}: executable architecture gate is missing same-name npm-test wrapper ${filename.replace(/\.cjs$/, TEST_SUFFIX)}`);
+        }
+        else if (wrapperStat.isSymbolicLink()){
+            violations.push(`tests/architecture/${path.basename(wrapperPath)}: npm-test wrapper may not be a symbolic link`);
         }
     }
 
@@ -151,7 +166,7 @@ function architectureTestCoverageViolations(root){
 
     for (const filename of cumulativeTargets){
         if (!targetCounts.has(filename)){
-            violations.push(`tests/architecture/${filename}: architecture gate with npm-test wrapper is missing from scripts.test:architecture`);
+            violations.push(`tests/architecture/${filename}: executable architecture gate with npm-test wrapper is missing from scripts.test:architecture`);
         }
     }
 
@@ -177,6 +192,7 @@ module.exports = {
     NON_CUMULATIVE_ARCHITECTURE_TARGETS,
     splitCommandChain,
     architectureSourceNames,
+    sourceDirectGateInfo,
     cumulativeArchitectureTargets,
     architectureTestCoverageViolations,
 };
