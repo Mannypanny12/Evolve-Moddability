@@ -25,7 +25,7 @@ test('M4E2 simple-production content stays inside the reviewed pure calculation 
 test('M4E2 content guard rejects a dependency on legacy production code', () => {
     const mutated = contentSource().replace(
         "import { calculateProduction } from '../../../engine/calculations/resource-primitives.mjs';",
-        "import { production } from '../../../prod.js';"
+        "import { production as legacyProduction } from '../../../prod.js';"
     );
     const violations = analyzeContentSource(mutated).join('\n');
     assert.match(violations, /unsupported M4E2 dependency src\/prod\.js/);
