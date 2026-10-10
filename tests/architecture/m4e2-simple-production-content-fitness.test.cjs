@@ -31,6 +31,15 @@ test('M4E2 content guard rejects a dependency on legacy production code', () => 
     assert.match(violations, /unsupported M4E2 dependency src\/prod\.js/);
 });
 
+test('M4E2 content guard rejects external or root-style imports', () => {
+    const mutated = contentSource().replace(
+        "import { EngineContractError } from '../../../engine/identity.mjs';",
+        "import fs from 'node:fs';"
+    );
+    const violations = analyzeContentSource(mutated).join('\n');
+    assert.match(violations, /external or root-style import is forbidden: node:fs/);
+});
+
 test('M4E2 content guard rejects ambient capabilities and mutation authority', () => {
     const adversarialCases = [
         ['legacy/global runtime state', 'const hiddenState = global.tech;'],
@@ -40,6 +49,7 @@ test('M4E2 content guard rejects ambient capabilities and mutation authority', (
         ['browser/network API', "fetch('/m4e2');"],
         ['Node/platform global', 'process.cwd();'],
         ['mutation authority', "modRes('Oil', 1);"],
+        ['mutation authority', 'commitTransaction();'],
         ['clock/random capability', 'Math.random();'],
         ['timer or microtask scheduling', 'setTimeout(() => {}, 0);'],
         ['dynamic code capability', "eval('1');"],
