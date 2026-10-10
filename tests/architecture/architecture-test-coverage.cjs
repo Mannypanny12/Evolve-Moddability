@@ -6,6 +6,7 @@ const path = require('node:path');
 const ARCHITECTURE_COMMAND_PATTERN = /^node\s+tests\/architecture\/([A-Za-z0-9._-]+\.cjs)$/;
 const TEST_SUFFIX = '.test.cjs';
 const DIRECT_GATE_ENTRYPOINT_PATTERN = /\brequire\s*\.\s*main\s*===\s*module\b/;
+const DIRECT_GATE_REFERENCE_PATTERN = /\brequire\s*\.\s*main\b/;
 const NON_CUMULATIVE_ARCHITECTURE_TARGETS = new Set([
     'architecture-report.cjs',
 ]);
@@ -16,19 +17,34 @@ function splitCommandChain(script){
     return commands.length > 0 && commands.every(Boolean) ? commands : null;
 }
 
+function lstatOrNull(filename){
+    try {
+        return fs.lstatSync(filename);
+    }
+    catch (error){
+        if (error?.code === 'ENOENT') return null;
+        throw error;
+    }
+}
+
+function architectureSourceNames(architectureRoot){
+    return fs.readdirSync(architectureRoot, { withFileTypes: true })
+        .filter(entry => entry.isFile() || entry.isSymbolicLink())
+        .map(entry => entry.name)
+        .filter(filename => filename.endsWith('.cjs') && !filename.endsWith(TEST_SUFFIX))
+        .filter(filename => !NON_CUMULATIVE_ARCHITECTURE_TARGETS.has(filename))
+        .sort();
+}
+
 function wrapperPathFor(architectureRoot, filename){
     return path.join(architectureRoot, filename.replace(/\.cjs$/, TEST_SUFFIX));
 }
 
 function cumulativeArchitectureTargets(architectureRoot){
-    return fs.readdirSync(architectureRoot, { withFileTypes: true })
-        .filter(entry => entry.isFile())
-        .map(entry => entry.name)
-        .filter(filename => filename.endsWith('.cjs') && !filename.endsWith(TEST_SUFFIX))
-        .filter(filename => !NON_CUMULATIVE_ARCHITECTURE_TARGETS.has(filename))
+    return architectureSourceNames(architectureRoot)
         .filter(filename => {
-            const wrapperPath = wrapperPathFor(architectureRoot, filename);
-            return fs.existsSync(wrapperPath) && fs.statSync(wrapperPath).isFile();
+            const wrapperStat = lstatOrNull(wrapperPathFor(architectureRoot, filename));
+            return wrapperStat !== null && (wrapperStat.isFile() || wrapperStat.isSymbolicLink());
         })
         .sort();
 }
@@ -59,11 +75,33 @@ function architectureTestCoverageViolations(root){
     }
 
     const cumulativeTargets = cumulativeArchitectureTargets(architectureRoot);
-    for (const filename of cumulativeTargets){
+    for (const filename of architectureSourceNames(architectureRoot)){
         const gatePath = path.join(architectureRoot, filename);
-        const source = fs.readFileSync(gatePath, 'utf8');
-        if (!DIRECT_GATE_ENTRYPOINT_PATTERN.test(source)){
-            violations.push(`tests/architecture/${filename}: cumulative architecture gate must use the canonical if (require.main === module) direct-entrypoint convention`);
+        const gateStat = lstatOrNull(gatePath);
+        const wrapperPath = wrapperPathFor(architectureRoot, filename);
+        const wrapperStat = lstatOrNull(wrapperPath);
+        const hasWrapper = wrapperStat !== null && (wrapperStat.isFile() || wrapperStat.isSymbolicLink());
+
+        if (gateStat?.isSymbolicLink()){
+            violations.push(`tests/architecture/${filename}: architecture source may not be a symbolic link`);
+        }
+        if (wrapperStat?.isSymbolicLink()){
+            violations.push(`tests/architecture/${path.basename(wrapperPath)}: npm-test wrapper may not be a symbolic link`);
+        }
+
+        let source = '';
+        if (gateStat?.isFile()) source = fs.readFileSync(gatePath, 'utf8');
+        const referencesDirectEntrypoint = DIRECT_GATE_REFERENCE_PATTERN.test(source);
+        const hasCanonicalEntrypoint = DIRECT_GATE_ENTRYPOINT_PATTERN.test(source);
+
+        if (referencesDirectEntrypoint && !hasCanonicalEntrypoint){
+            violations.push(`tests/architecture/${filename}: architecture gate must use the canonical if (require.main === module) direct-entrypoint convention`);
+        }
+        if (hasWrapper && !hasCanonicalEntrypoint){
+            violations.push(`tests/architecture/${filename}: gate-wrapper pair must use the canonical if (require.main === module) direct-entrypoint convention`);
+        }
+        if ((referencesDirectEntrypoint || hasCanonicalEntrypoint) && !hasWrapper){
+            violations.push(`tests/architecture/${filename}: executable architecture gate is missing same-name npm-test wrapper ${filename.replace(/\.cjs$/, TEST_SUFFIX)}`);
         }
     }
 
@@ -79,21 +117,24 @@ function architectureTestCoverageViolations(root){
         targetCounts.set(filename, (targetCounts.get(filename) || 0) + 1);
 
         const gatePath = path.join(architectureRoot, filename);
-        if (!fs.existsSync(gatePath) || !fs.statSync(gatePath).isFile()){
+        const gateStat = lstatOrNull(gatePath);
+        if (gateStat === null || (!gateStat.isFile() && !gateStat.isSymbolicLink())){
             violations.push(`tests/architecture/${filename}: architecture gate referenced by package.json is missing`);
             continue;
         }
-        if (fs.lstatSync(gatePath).isSymbolicLink()){
+        if (gateStat.isSymbolicLink()){
             violations.push(`tests/architecture/${filename}: architecture gate may not be a symbolic link`);
+            continue;
         }
 
         const wrapper = filename.replace(/\.cjs$/, TEST_SUFFIX);
         const wrapperPath = path.join(architectureRoot, wrapper);
-        if (!fs.existsSync(wrapperPath) || !fs.statSync(wrapperPath).isFile()){
+        const wrapperStat = lstatOrNull(wrapperPath);
+        if (wrapperStat === null || (!wrapperStat.isFile() && !wrapperStat.isSymbolicLink())){
             violations.push(`tests/architecture/${filename}: direct architecture gate is missing npm-test wrapper ${wrapper}`);
             continue;
         }
-        if (fs.lstatSync(wrapperPath).isSymbolicLink()){
+        if (wrapperStat.isSymbolicLink()){
             violations.push(`tests/architecture/${wrapper}: npm-test wrapper may not be a symbolic link`);
         }
         const source = fs.readFileSync(gatePath, 'utf8');
@@ -132,8 +173,10 @@ function main(){
 module.exports = {
     ARCHITECTURE_COMMAND_PATTERN,
     DIRECT_GATE_ENTRYPOINT_PATTERN,
+    DIRECT_GATE_REFERENCE_PATTERN,
     NON_CUMULATIVE_ARCHITECTURE_TARGETS,
     splitCommandChain,
+    architectureSourceNames,
     cumulativeArchitectureTargets,
     architectureTestCoverageViolations,
 };

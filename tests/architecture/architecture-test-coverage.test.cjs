@@ -43,6 +43,7 @@ test('architecture coverage audit rejects missing wrappers, duplicates, stale ga
         }));
 
         const violations = architectureTestCoverageViolations(temp).join('\n');
+        assert.match(violations, /beta\.cjs: executable architecture gate is missing same-name npm-test wrapper beta\.test\.cjs/);
         assert.match(violations, /beta\.cjs: direct architecture gate is missing npm-test wrapper beta\.test\.cjs/);
         assert.match(violations, /alpha\.cjs: architecture gate must appear exactly once/);
         assert.match(violations, /missing\.cjs: architecture gate referenced by package\.json is missing/);
@@ -78,7 +79,7 @@ test('architecture coverage audit treats every gate-wrapper pair as cumulative u
         );
         assert.match(
             violations,
-            /catalog\.cjs: cumulative architecture gate must use the canonical if \(require\.main === module\) direct-entrypoint convention/
+            /catalog\.cjs: gate-wrapper pair must use the canonical if \(require\.main === module\) direct-entrypoint convention/
         );
         assert.match(
             violations,
@@ -92,17 +93,12 @@ test('architecture coverage audit treats every gate-wrapper pair as cumulative u
     }
 });
 
-test('architecture coverage audit rejects alternate direct-entrypoint spellings instead of silently ignoring them', () => {
-    const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'architecture-test-entrypoint-convention-'));
+test('architecture coverage audit rejects executable gates that try to exist without a same-name wrapper', () => {
+    const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'architecture-test-no-wrapper-'));
     try {
         write(temp, 'tests/architecture/alpha.cjs', executableGate);
         write(temp, 'tests/architecture/alpha.test.cjs', "'use strict';\n");
-        write(
-            temp,
-            'tests/architecture/noncanonical.cjs',
-            "'use strict';\nfunction main(){}\nif (module === require.main) main();\n"
-        );
-        write(temp, 'tests/architecture/noncanonical.test.cjs', "'use strict';\n");
+        write(temp, 'tests/architecture/unwired.cjs', executableGate);
         write(temp, 'package.json', JSON.stringify({
             scripts: {
                 'test:architecture': 'node tests/architecture/alpha.cjs',
@@ -112,11 +108,38 @@ test('architecture coverage audit rejects alternate direct-entrypoint spellings 
         const violations = architectureTestCoverageViolations(temp).join('\n');
         assert.match(
             violations,
-            /noncanonical\.cjs: cumulative architecture gate must use the canonical if \(require\.main === module\) direct-entrypoint convention/
+            /unwired\.cjs: executable architecture gate is missing same-name npm-test wrapper unwired\.test\.cjs/
+        );
+    }
+    finally {
+        fs.rmSync(temp, { recursive: true, force: true });
+    }
+});
+
+test('architecture coverage audit rejects alternate direct-entrypoint spellings even without a wrapper', () => {
+    const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'architecture-test-entrypoint-convention-'));
+    try {
+        write(temp, 'tests/architecture/alpha.cjs', executableGate);
+        write(temp, 'tests/architecture/alpha.test.cjs', "'use strict';\n");
+        write(
+            temp,
+            'tests/architecture/noncanonical.cjs',
+            "'use strict';\nfunction main(){}\nif (module === require.main) main();\n"
+        );
+        write(temp, 'package.json', JSON.stringify({
+            scripts: {
+                'test:architecture': 'node tests/architecture/alpha.cjs',
+            },
+        }));
+
+        const violations = architectureTestCoverageViolations(temp).join('\n');
+        assert.match(
+            violations,
+            /noncanonical\.cjs: architecture gate must use the canonical if \(require\.main === module\) direct-entrypoint convention/
         );
         assert.match(
             violations,
-            /noncanonical\.cjs: architecture gate with npm-test wrapper is missing from scripts\.test:architecture/
+            /noncanonical\.cjs: executable architecture gate is missing same-name npm-test wrapper noncanonical\.test\.cjs/
         );
     }
     finally {
