@@ -47,13 +47,13 @@ test('M4E3 biodome and Titan mine preserve variant and high-pop semantics', asyn
     const { EXPLICIT_STATE_PRODUCTION_CALCULATION_IDS: ids } = await modules();
 
     assert.equal(engine.calculate({ id: ids.biodome, inputs: { variant: 'food', evilUniverse: false, highPopMultiplier: 1 } }).value, 0.25);
-    assert.equal(engine.calculate({ id: ids.biodome, inputs: { variant: 'food', evilUniverse: true, highPopMultiplier: 1.5 } }).value, 0.15);
+    assert.equal(engine.calculate({ id: ids.biodome, inputs: { variant: 'food', evilUniverse: true, highPopMultiplier: 1.5 } }).value, 0.1 * 1.5);
     assert.equal(engine.calculate({ id: ids.biodome, inputs: { variant: 'cat_food', evilUniverse: false, highPopMultiplier: 99 } }).value, 2);
-    assert.equal(engine.calculate({ id: ids.biodome, inputs: { variant: 'lumber', evilUniverse: false, highPopMultiplier: 1.5 } }).value, 2.25);
+    assert.equal(engine.calculate({ id: ids.biodome, inputs: { variant: 'lumber', evilUniverse: false, highPopMultiplier: 1.5 } }).value, 1.5 * 1.5);
 
-    assert.equal(engine.calculate({ id: ids.titan_mine, inputs: { variant: 'adamantite', ratio: 90, highPopMultiplier: 1 } }).value, 0.018);
-    assert.equal(engine.calculate({ id: ids.titan_mine, inputs: { variant: 'aluminium', ratio: 90, highPopMultiplier: 1 } }).value, 0.012);
-    assert.equal(engine.calculate({ id: ids.titan_mine, inputs: { variant: 'adamantite', ratio: 50, highPopMultiplier: 2 } }).value, 0.02);
+    assert.equal(engine.calculate({ id: ids.titan_mine, inputs: { variant: 'adamantite', ratio: 90, highPopMultiplier: 1 } }).value, 0.02 * 90 / 100);
+    assert.equal(engine.calculate({ id: ids.titan_mine, inputs: { variant: 'aluminium', ratio: 90, highPopMultiplier: 1 } }).value, 0.12 * (100 - 90) / 100);
+    assert.equal(engine.calculate({ id: ids.titan_mine, inputs: { variant: 'adamantite', ratio: 50, highPopMultiplier: 2 } }).value, (0.02 * 2) * 50 / 100);
 });
 
 test('M4E3 g_factory preserves Truepath, Isolation and separate high-pop effects', async () => {
@@ -83,7 +83,7 @@ test('M4E3 government and suppression cases preserve legacy scalar arithmetic', 
     assert.equal(engine.calculate({ id: ids.vitreloy_plant, inputs: { governmentType: 'corpocracy', highTechLevel: 15 } }).value, 0.18 * 1.3);
     assert.equal(engine.calculate({ id: ids.vitreloy_plant, inputs: { governmentType: 'corpocracy', highTechLevel: 16 } }).value, 0.18 * 1.4);
     assert.equal(engine.calculate({ id: ids.vitreloy_plant, inputs: { governmentType: 'socialist', highTechLevel: 0 } }).value, 0.18 * 1.1);
-    assert.equal(engine.calculate({ id: ids.infernite_mine, inputs: { suppression: 0.62 } }).value, 0.31);
+    assert.equal(engine.calculate({ id: ids.infernite_mine, inputs: { suppression: 0.62 } }).value, 0.5 * 0.62);
 });
 
 test('M4E3 mining pit preserves base table, modifier order and zero fallback', async () => {
@@ -152,7 +152,7 @@ test('M4E3 Asphodel harvester preserves railway multiplication before Warlord ov
     assert.equal(engine.calculate({
         id: ids.asphodel_harvester,
         inputs: { ...baseInputs, warlord: true, corruptorExists: true, corruptorOn: 5 },
-    }).value, 1.3);
+    }).value, 1 + 5 * 0.06);
 });
 
 test('M4E3 registrations reject malformed explicit facts and hostile objects', async () => {
@@ -186,7 +186,7 @@ test('M4E3 shared runtime composes the explicit-state family in the existing pro
     assert.equal(calculateProductionCalculation({
         id: ids.infernite_mine,
         inputs: { suppression: 0.8 },
-    }), 0.4);
+    }), 0.5 * 0.8);
     assert.equal(calculateProductionCalculation({
         id: ids.whaling_ship,
         inputs: { patrolExists: true, support: 10, maxSupport: 10 },
