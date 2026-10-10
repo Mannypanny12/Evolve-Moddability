@@ -120,7 +120,7 @@ test('M4E3 production seam preserves the reviewed explicit-state legacy matrix',
         api.clearPowered('ai_colonist');
         assert.equal(api.productionValue('g_factory'), 1);
         api.setPowered('ai_colonist', 4);
-        assert.equal(api.productionValue('g_factory'), 1.2);
+        assert.equal(api.productionValue('g_factory'), 0.05 * (20 + 4));
 
         state.civic.govern.type = 'anarchy';
         assert.equal(api.productionValue('vitreloy_plant'), 0.18);
