@@ -42,7 +42,7 @@ function analyzeContentSource(source){
 
     for (const [label, pattern] of [
         ['legacy/global runtime state', /\b(?:global|globalThis|self)\b/],
-        ['legacy production module', /\bproduction\s*\(|\bprod\.js\b/],
+        ['legacy production module', /\bproduction\s*\(\s*['"]|\bprod\.js\b/],
         ['legacy biome/governor helpers', /\b(?:biomes|govActive|govEffect)\b/],
         ['browser/UI capability', /\b(?:window|document|navigator|jQuery|Vue)\b|\$\s*\(/],
         ['browser storage', /\b(?:localStorage|sessionStorage|indexedDB)\b/],

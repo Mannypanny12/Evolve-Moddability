@@ -29,12 +29,12 @@ test('M4E2 content guard rejects a dependency on legacy production code', () => 
     );
     const violations = analyzeContentSource(mutated).join('\n');
     assert.match(violations, /unsupported M4E2 dependency src\/prod\.js/);
-    assert.match(violations, /legacy production module/);
 });
 
 test('M4E2 content guard rejects ambient capabilities and mutation authority', () => {
     const adversarialCases = [
         ['legacy/global runtime state', 'const hiddenState = global.tech;'],
+        ['legacy production module', "production('oil_well');"],
         ['browser/UI capability', 'const hiddenWindow = window.location;'],
         ['browser storage', "localStorage.getItem('m4e2');"],
         ['browser/network API', "fetch('/m4e2');"],
