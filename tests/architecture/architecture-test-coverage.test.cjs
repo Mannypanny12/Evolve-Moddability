@@ -18,6 +18,8 @@ function write(rootPath, relativePath, content){
     fs.writeFileSync(target, content, 'utf8');
 }
 
+const executableGate = "'use strict';\nfunction main(){}\nif (require.main === module) main();\n";
+
 test('every direct architecture command is independently covered by npm test', () => {
     assert.deepEqual(architectureTestCoverageViolations(root), []);
 });
@@ -25,9 +27,9 @@ test('every direct architecture command is independently covered by npm test', (
 test('architecture coverage audit rejects missing wrappers, duplicates, stale gates, and command bypasses', () => {
     const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'architecture-test-coverage-'));
     try {
-        write(temp, 'tests/architecture/alpha.cjs', "'use strict';\n");
+        write(temp, 'tests/architecture/alpha.cjs', executableGate);
         write(temp, 'tests/architecture/alpha.test.cjs', "'use strict';\n");
-        write(temp, 'tests/architecture/beta.cjs', "'use strict';\n");
+        write(temp, 'tests/architecture/beta.cjs', executableGate);
         write(temp, 'package.json', JSON.stringify({
             scripts: {
                 'test:architecture': [
@@ -51,14 +53,16 @@ test('architecture coverage audit rejects missing wrappers, duplicates, stale ga
     }
 });
 
-test('architecture coverage audit rejects omitted cumulative gates but permits explicit report-only targets', () => {
+test('architecture coverage audit rejects omitted executable gates while ignoring non-executable catalogs and explicit report-only targets', () => {
     const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'architecture-test-reverse-coverage-'));
     try {
-        write(temp, 'tests/architecture/alpha.cjs', "'use strict';\n");
+        write(temp, 'tests/architecture/alpha.cjs', executableGate);
         write(temp, 'tests/architecture/alpha.test.cjs', "'use strict';\n");
-        write(temp, 'tests/architecture/omitted.cjs', "'use strict';\n");
+        write(temp, 'tests/architecture/omitted.cjs', executableGate);
         write(temp, 'tests/architecture/omitted.test.cjs', "'use strict';\n");
-        write(temp, 'tests/architecture/architecture-report.cjs', "'use strict';\n");
+        write(temp, 'tests/architecture/catalog.cjs', "'use strict';\nmodule.exports = { value: 1 };\n");
+        write(temp, 'tests/architecture/catalog.test.cjs', "'use strict';\n");
+        write(temp, 'tests/architecture/architecture-report.cjs', executableGate);
         write(temp, 'tests/architecture/architecture-report.test.cjs', "'use strict';\n");
         write(temp, 'package.json', JSON.stringify({
             scripts: {
@@ -69,8 +73,9 @@ test('architecture coverage audit rejects omitted cumulative gates but permits e
         const violations = architectureTestCoverageViolations(temp).join('\n');
         assert.match(
             violations,
-            /omitted\.cjs: cumulative architecture gate with npm-test wrapper is missing from scripts\.test:architecture/
+            /omitted\.cjs: executable architecture gate with npm-test wrapper is missing from scripts\.test:architecture/
         );
+        assert.doesNotMatch(violations, /catalog\.cjs/);
         assert.doesNotMatch(violations, /architecture-report\.cjs/);
     }
     finally {
