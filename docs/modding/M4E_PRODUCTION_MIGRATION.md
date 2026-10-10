@@ -1,14 +1,14 @@
 # M4E production migration
 
-Status: M4E2 complete after independent review and hardening; final exact-head CI is the closure authority. M4E remains in progress.
+Status: M4E3 complete after independent review and hardening; final exact-head CI is the closure authority. M4E remains in progress.
 
-M4E expands the reviewed M4 calculation architecture across vanilla production without taking the later M5 simulation/application responsibilities. M4E1 established the shared composition/inventory foundation. M4E2 migrates the reviewed simple scalar/variant/fact-fed family through that foundation while preserving the legacy `production()` compatibility surface. It does not move `fastLoop()` resource application and does not make M4E complete.
+M4E expands the reviewed M4 calculation architecture across vanilla production without taking the later M5 simulation/application responsibilities. M4E1 established the shared composition/inventory foundation. M4E2 migrated the reviewed simple scalar/variant/fact-fed family through that foundation. M4E3 now migrates the reviewed explicit-state scalar family while preserving the legacy `production()` compatibility surface. `fastLoop()` orchestration/resource mutation remains legacy-owned until its later migration slices.
 
 ## M4E1 composition contract
 
 `src/application/evolve/production-calculation-runtime.mjs` is the single shared Evolve production-calculation composition root. It constructs one fixed M4 calculation engine from reviewed first-party registrations and modifiers and exposes one cheap synchronous scalar calculation entry point. The runtime has no authority to read `global`, traits, biomes, government state, DOM/platform state, clocks/randomness, mutation capabilities, Promise/async capabilities, or other legacy gameplay helpers.
 
-M4E2 removes the former `src/application/evolve/oil-well-production-runtime.mjs` compatibility adapter. `src/prod.js` now consumes the shared production runtime directly for Oil Well and the migrated M4E2 family. The first-party Oil-Well definition remains unchanged; M4E2 changes routing/composition for the new family without changing the closed M4D numerical semantics.
+M4E2 removes the former `src/application/evolve/oil-well-production-runtime.mjs` compatibility adapter. `src/prod.js` now consumes the shared production runtime directly for Oil Well and the migrated M4E2/M4E3 families. The first-party Oil-Well definition remains unchanged; later M4E checkpoints add registrations to the same fixed engine rather than creating parallel runtimes.
 
 ### Production calculation identity convention
 
@@ -67,7 +67,7 @@ The M4E1 architecture gate freezes the current top-level `production(id, val, wi
 | `asphodel_harvester` | scalar; Hell Lake/railway/Warlord corruptor state | M4E3 explicit state |
 | `shadow_mine` | scalar resource variants | M4E2 simple scalar |
 
-`highPopAdjust()`, `teamster()` and `factoryBonus()` are not top-level production IDs, but they are also production authority currently living in `prod.js`. They remain explicit M4E3/M4E4 migration targets rather than being forgotten because they do not appear in the switch inventory.
+`highPopAdjust()`, `teamster()` and `factoryBonus()` are not top-level production IDs, but they are also production authority currently living in `prod.js`. They remain explicit later-M4E migration targets rather than being forgotten because they do not appear in the switch inventory.
 
 ## M4E2 simple production cutover
 
@@ -77,24 +77,40 @@ The migrated family is composed into the same shared production calculation engi
 
 The redundant one-off Oil-Well runtime adapter is removed in M4E2. This is an architecture simplification only: Oil Well retains the M4D compatibility seam and numerical behavior, while the shared runtime now has `src/prod.js` as its reviewed live consumer.
 
+## M4E3 explicit-state production cutover
+
+M4E3 migrates exactly ten reviewed scalar identities defined by `src/content/evolve/calculations/explicit-state-production.mjs`: `biodome`, `g_factory`, `vitreloy_plant`, `infernite_mine`, `titan_mine`, `mining_pit`, `womling_mine`, `mining_ship`, `whaling_ship`, and `asphodel_harvester`.
+
+The new calculation module owns the numerical formulas, variants, thresholds and pure Tau support curve. It receives only closed explicit inert facts and contains no direct legacy state, trait, achievement, Hell, platform, mutation, clock/random, async or dynamic-loading capability. `src/prod.js` remains the compatibility seam and snapshots only the reviewed legacy facts before delegation.
+
+Important compatibility details remain explicit:
+
+- `g_factory` preserves separate High Population effects for `jobScale()`-resolved AI colonists and final production scaling rather than collapsing them into one multiplier;
+- `mining_pit` preserves its historical unknown/missing-resource result of zero and the modifier order base -> Tough -> Ogre fathom -> Tau Pit Mining;
+- `mining_ship` and `whaling_ship` preserve the support curve `1 - ((1 - ratio) ** 1.4)` only when support is strictly greater than `s_max`;
+- `asphodel_harvester` applies Railway to its normal base before the Warlord/Corruptor branch replaces that result entirely;
+- `infernite_mine` does not absorb the Hell combat/suppression subsystem. The compatibility seam resolves `hellSupression('gate', 0, wiki).supress` and passes only that numeric fact to M4E3.
+
+M4E3 deliberately does not migrate `highPopAdjust()`, `teamster()`, `factoryBonus()`, `fastLoop()` orchestration, support/power allocation, breakdown presentation or `modRes()` application.
+
 ## `fastLoop()` boundary
 
-M4E2 does not move `fastLoop()` orchestration. M4E5 owns extracting related pure numerical resource-production composition for selected migrated verticals. Until then, `fastLoop()` continues to own legacy orchestration, breakdown presentation and `modRes()` application. M5C still owns moving production/capacity/consumption application itself out of `main.js`.
+M4E2/M4E3 do not move `fastLoop()` orchestration. M4E5 owns extracting related pure numerical resource-production composition for selected migrated verticals. Until then, `fastLoop()` continues to own legacy orchestration, breakdown presentation and `modRes()` application. M5C still owns moving production/capacity/consumption application itself out of `main.js`.
 
-M4E2 nevertheless includes one real fast-loop consumer proof for `gas_mining` so the cutover is not validated only through direct function calls. The proof uses a coherent gas-giant-era fixture with deterministic coal-backed surplus power, an explicit zero/off coal mine needed by the legacy Coal path, and gas mining first in the legacy power-priority list. The legacy allocator therefore derives `p_on.gas_mining` naturally, and the proof observes both the locked `2 * 0.5 = 1v` and helium-unlocked `2 * 0.65 = 1.3v` contributions.
+M4E2 includes one real fast-loop consumer proof for `gas_mining` so that cutover is not validated only through direct calls. M4E3 adds a second real consumer proof for `mining_ship`: a coherent Truepath/Tau fixture is hydrated through the real legacy runtime, legacy support allocation derives `support_on.mining_ship`, and one real `fastLoop()` is required to increase refinery fill by exactly `support_on.mining_ship * production('mining_ship') * 0.25`. Neither proof injects transient powered/support state as authoritative test setup.
 
 ## Proof and ratchets
 
-M4E1 moved engine construction into the shared production runtime and froze the 44-ID migration inventory. M4E2 extends that proof surface with:
+M4E1 moved engine construction into the shared production runtime and froze the 44-ID migration inventory. M4E2/M4E3 extend that proof surface with:
 
-- engine tests that freeze exactly 27 simple-production identities and cover constants, technology thresholds, exact `=== 100` gates, all reviewed variants, Isolation branches, hostile/malformed explicit inputs, explain traces and shared-runtime composition;
-- an M4E2 architecture gate that pins the reviewed `src/prod.js` cutovers, forbids hidden numeric authority from reappearing in the compatibility cases and keeps the first-party simple-production module state/platform/mutation free;
-- differential compatibility proof over the reviewed matrix plus the real gas-mining fast-loop consumer;
-- an isolated child-process runner that removes inherited `NODE_TEST_CONTEXT` before invoking the nested Node test runner, preventing the recursive test-runner stall recovered during M4E2;
-- generated-bundle diagnostics in the isolated proof so a future legacy fast-loop crash reports the exact bundled source statement around the failure rather than only an opaque stack line;
+- engine tests that freeze the 27 M4E2 and ten M4E3 identities and cover their reviewed constants, thresholds, variants, explicit-state branches, malformed/hostile inputs and shared-runtime composition;
+- direct architecture gates that pin the reviewed `src/prod.js` cutovers and keep both first-party production calculation modules state/platform/mutation free;
+- compatibility proofs over the reviewed matrices plus real gas-mining and mining-ship fast-loop consumers;
+- isolated child-process runners that remove inherited `NODE_TEST_CONTEXT` before invoking nested Node test runners;
+- generated-bundle diagnostics so legacy runtime crashes report the bundled source statement around the failure;
 - removal guards that prevent the historical one-off Oil-Well runtime adapter from being reintroduced;
-- a cumulative architecture-command ratchet that requires every executable architecture gate with a same-name npm-test wrapper to appear in `test:architecture`, with only explicitly reviewed non-cumulative tooling such as `architecture-report.cjs` exempted;
-- a shared-runtime composition marker that requires `...createSimpleProductionRegistrations()` so the 27-definition family cannot silently disappear from the live fixed engine while leaving its import allowed.
+- a cumulative architecture-command ratchet that requires executable architecture gate/wrapper pairs to appear in `test:architecture`;
+- shared-runtime composition markers that require both `...createSimpleProductionRegistrations()` and `...createExplicitStateProductionRegistrations()` so a reviewed registration family cannot silently disappear from the fixed live engine.
 
 The initial M4E1 implementation is commit `e09bc5e882de724b4218b49902e15bcd461f4427`. Baseline build workflow run 1341 completed successfully for that implementation head.
 
@@ -119,4 +135,13 @@ The implementation head `fb7b863975371db27634f36fd3555a66bfcacf8c` passed the co
 
 The closure-wiring hardening head `48ccedd6fac863a6dd831993348cbc71c03d39eb` passed Baseline build workflow run 1378, including the full Node suite, the now-complete cumulative architecture command with the direct M4E2 gate, game/wiki build, generated-output cleanliness, browser startup-failure negative control and real-browser smoke. This is supporting hardening evidence; final exact-head CI on the documentation/guard closure head remains the closure authority.
 
-M4E2 is complete after independent review and hardening. M4E remains in progress. M4E3 explicit-state scalar family is the next checkpoint and has not started; it must begin with its own deep dive before implementation.
+## M4E3 review and hardening
+
+The independent M4E3 review re-read the ten cutovers against the original `prod.js` formulas and treated the green implementation run as supporting evidence rather than closure. It found no material numerical or routing defect. Two material closure gaps were corrected:
+
+- **Real-consumer proof.** The implementation proved all ten calculations through the live `production()` compatibility seam but had not yet exercised one M4E3 calculation through a real `fastLoop()` consumer, despite that being part of the approved design. The hardened differential proof uses the existing Truepath/Tau fixture, real simulation hydration and real support allocation, then verifies the migrated mining-ship rate through the refinery-fill path without injecting transient support state.
+- **Current-authority/status drift.** The migration authority, backlog, roadmap and current-architecture index still described M4E3 as future work. The current authorities and this existing M4E lifecycle ratchet are advanced together; historical closure documents remain unchanged.
+
+The implementation head `c61d1aad42adf669548f2f84c09494014703af86` passed Baseline build workflow run 1403 completely. The real-consumer hardening head `84a1a9fb21aea039d416b4788bec009d0add937a` passed Baseline build workflow run 1404 completely. Both are supporting evidence only. Final exact-head CI on the documentation/status-ratchet closure candidate remains the M4E3 closure authority.
+
+M4E3 is complete after independent review and hardening. M4E remains in progress. M4E4 compound/mixed/shared production family is the next checkpoint and has not started; it must begin with its own deep dive before implementation.
